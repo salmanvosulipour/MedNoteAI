@@ -53,6 +53,22 @@ export default function RecordPage() {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const [patientDetailsConfirmed, setPatientDetailsConfirmed] = useState(false);
+
+  const handleRecordButtonClick = () => {
+    if (!patientDetailsConfirmed) {
+      setShowPatientDialog(true);
+    } else if (isRecording) {
+      if (mediaRecorderRef.current?.state === "recording") {
+        mediaRecorderRef.current.pause();
+      } else if (mediaRecorderRef.current?.state === "paused") {
+        mediaRecorderRef.current.resume();
+      }
+    } else {
+      startRecording();
+    }
+  };
+
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -82,28 +98,16 @@ export default function RecordPage() {
     }
   };
 
-  const toggleRecording = () => {
-    if (isRecording) {
-      if (mediaRecorderRef.current?.state === "recording") {
-        mediaRecorderRef.current.pause();
-      } else if (mediaRecorderRef.current?.state === "paused") {
-        mediaRecorderRef.current.resume();
-      }
-    } else {
-      startRecording();
-    }
-  };
-
   const handleStop = () => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
       mediaRecorderRef.current.stop();
       streamRef.current?.getTracks().forEach(track => track.stop());
     }
     setIsRecording(false);
-    setShowPatientDialog(true);
+    processRecording();
   };
 
-  const handleSubmit = async () => {
+  const handlePatientDetailsSubmit = () => {
     if (!patientName.trim() || !patientAge || !chiefComplaint.trim()) {
       toast({
         title: "Missing Information",
@@ -112,8 +116,12 @@ export default function RecordPage() {
       });
       return;
     }
-
+    setPatientDetailsConfirmed(true);
     setShowPatientDialog(false);
+    startRecording();
+  };
+
+  const processRecording = async () => {
     setIsProcessing(true);
 
     try {
@@ -149,6 +157,7 @@ export default function RecordPage() {
         variant: "destructive",
       });
       setIsProcessing(false);
+      setPatientDetailsConfirmed(false);
     }
   };
 
@@ -244,7 +253,7 @@ export default function RecordPage() {
           </AnimatePresence>
 
           <button 
-            onClick={isRecording ? toggleRecording : startRecording}
+            onClick={handleRecordButtonClick}
             className={`relative w-28 h-28 rounded-[2.5rem] flex items-center justify-center transition-all duration-500 shadow-2xl ${
               isRecording 
                 ? 'bg-red-500 hover:bg-red-600 shadow-red-500/40 rotate-180 rounded-full' 
@@ -328,7 +337,7 @@ export default function RecordPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowPatientDialog(false)}>Cancel</Button>
-            <Button onClick={handleSubmit} data-testid="button-submit-case">Process Recording</Button>
+            <Button onClick={handlePatientDetailsSubmit} data-testid="button-start-recording">Start Recording</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
