@@ -299,33 +299,59 @@ export function EditableSection({
               data-testid={`text-${testId}`}
             >
               {formattedContent ? (
-                <div className="space-y-2">
-                  {formattedContent.split('\n').map((line, idx) => {
-                    const trimmedLine = line.trim();
-                    if (!trimmedLine) return null;
+                <div className="space-y-1">
+                  {(() => {
+                    const lines = formattedContent.split('\n').filter(line => line.trim());
+                    const listItems: string[] = [];
+                    const regularContent: { type: 'header' | 'text' | 'list'; content: string | string[] }[] = [];
                     
-                    const isNumberedItem = /^\d+\./.test(trimmedLine);
-                    const isBulletItem = /^[-•]/.test(trimmedLine);
-                    const isHeaderLike = trimmedLine.endsWith(':') && trimmedLine.length < 50;
+                    lines.forEach((line) => {
+                      const trimmedLine = line.trim();
+                      const isNumberedItem = /^\d+[\.\)]\s/.test(trimmedLine);
+                      const isBulletItem = /^[-•*]\s/.test(trimmedLine);
+                      const isHeaderLike = trimmedLine.endsWith(':') && trimmedLine.length < 50;
+                      
+                      if (isNumberedItem || isBulletItem) {
+                        listItems.push(trimmedLine.replace(/^\d+[\.\)]\s|^[-•*]\s/, ''));
+                      } else {
+                        if (listItems.length > 0) {
+                          regularContent.push({ type: 'list', content: [...listItems] });
+                          listItems.length = 0;
+                        }
+                        if (isHeaderLike) {
+                          regularContent.push({ type: 'header', content: trimmedLine });
+                        } else {
+                          regularContent.push({ type: 'text', content: trimmedLine });
+                        }
+                      }
+                    });
                     
-                    if (isHeaderLike) {
-                      return (
-                        <p key={idx} className="font-semibold text-foreground mt-3 first:mt-0">
-                          {trimmedLine}
-                        </p>
-                      );
+                    if (listItems.length > 0) {
+                      regularContent.push({ type: 'list', content: [...listItems] });
                     }
                     
-                    if (isNumberedItem || isBulletItem) {
-                      return (
-                        <p key={idx} className="pl-4 text-foreground/90">
-                          {trimmedLine}
-                        </p>
-                      );
-                    }
-                    
-                    return <p key={idx}>{trimmedLine}</p>;
-                  })}
+                    return regularContent.map((item, idx) => {
+                      if (item.type === 'header') {
+                        return (
+                          <p key={idx} className="font-semibold text-foreground mt-3 first:mt-0">
+                            {item.content as string}
+                          </p>
+                        );
+                      }
+                      if (item.type === 'list') {
+                        return (
+                          <ul key={idx} className="list-disc list-inside space-y-1 pl-2 my-2">
+                            {(item.content as string[]).map((listItem, listIdx) => (
+                              <li key={listIdx} className="text-foreground/90">
+                                {listItem}
+                              </li>
+                            ))}
+                          </ul>
+                        );
+                      }
+                      return <p key={idx}>{item.content as string}</p>;
+                    });
+                  })()}
                 </div>
               ) : (
                 placeholder
