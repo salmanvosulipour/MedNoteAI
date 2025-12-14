@@ -47,23 +47,34 @@ declare global {
   }
 }
 
-function parseAndFormatContent(content: string): string {
-  if (!content) return "";
+function parseAndFormatContent(content: string): string[] {
+  if (!content) return [];
+  
+  // Handle PostgreSQL array format: {"item1","item2",...}
+  if (content.startsWith('{"') && content.endsWith('"}')) {
+    const items = content
+      .slice(1, -1) // Remove outer braces
+      .split('","')
+      .map(item => item.replace(/^"|"$/g, '').replace(/""/g, '"'));
+    return items;
+  }
   
   try {
     const parsed = JSON.parse(content);
     if (typeof parsed === "object" && parsed !== null) {
       if (Array.isArray(parsed)) {
-        return parsed.map((item, i) => `${i + 1}. ${typeof item === 'string' ? item : JSON.stringify(item)}`).join("\n");
+        return parsed.map(item => typeof item === 'string' ? item : JSON.stringify(item));
       }
       return Object.entries(parsed)
-        .map(([key, value]) => `${key}: ${typeof value === 'string' ? value : JSON.stringify(value)}`)
-        .join("\n");
+        .map(([key, value]) => `${key}: ${typeof value === 'string' ? value : JSON.stringify(value)}`);
     }
   } catch {
-    // Not JSON, return as-is
+    // Not JSON, check for newline-separated content
   }
-  return content;
+  
+  // Split by newlines for regular text
+  const lines = content.split('\n').filter(line => line.trim());
+  return lines.length > 0 ? lines : [content];
 }
 
 interface EditableSectionProps {
@@ -298,61 +309,18 @@ export function EditableSection({
               )}
               data-testid={`text-${testId}`}
             >
-              {formattedContent ? (
-                <div className="space-y-1">
-                  {(() => {
-                    const lines = formattedContent.split('\n').filter(line => line.trim());
-                    const listItems: string[] = [];
-                    const regularContent: { type: 'header' | 'text' | 'list'; content: string | string[] }[] = [];
-                    
-                    lines.forEach((line) => {
-                      const trimmedLine = line.trim();
-                      const isNumberedItem = /^\d+[\.\)]\s/.test(trimmedLine);
-                      const isBulletItem = /^[-•*]\s/.test(trimmedLine);
-                      const isHeaderLike = trimmedLine.endsWith(':') && trimmedLine.length < 50;
-                      
-                      if (isNumberedItem || isBulletItem) {
-                        listItems.push(trimmedLine.replace(/^\d+[\.\)]\s|^[-•*]\s/, ''));
-                      } else {
-                        if (listItems.length > 0) {
-                          regularContent.push({ type: 'list', content: [...listItems] });
-                          listItems.length = 0;
-                        }
-                        if (isHeaderLike) {
-                          regularContent.push({ type: 'header', content: trimmedLine });
-                        } else {
-                          regularContent.push({ type: 'text', content: trimmedLine });
-                        }
-                      }
-                    });
-                    
-                    if (listItems.length > 0) {
-                      regularContent.push({ type: 'list', content: [...listItems] });
-                    }
-                    
-                    return regularContent.map((item, idx) => {
-                      if (item.type === 'header') {
-                        return (
-                          <p key={idx} className="font-semibold text-foreground mt-3 first:mt-0">
-                            {item.content as string}
-                          </p>
-                        );
-                      }
-                      if (item.type === 'list') {
-                        return (
-                          <ul key={idx} className="list-disc list-inside space-y-1 pl-2 my-2">
-                            {(item.content as string[]).map((listItem, listIdx) => (
-                              <li key={listIdx} className="text-foreground/90">
-                                {listItem}
-                              </li>
-                            ))}
-                          </ul>
-                        );
-                      }
-                      return <p key={idx}>{item.content as string}</p>;
-                    });
-                  })()}
-                </div>
+              {formattedContent.length > 0 ? (
+                formattedContent.length > 1 ? (
+                  <ul className="list-disc list-outside space-y-2 pl-5">
+                    {formattedContent.map((item, idx) => (
+                      <li key={idx} className="text-foreground/90">
+                        {item.replace(/^\d+[\.\)]\s*/, '')}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>{formattedContent[0]}</p>
+                )
               ) : (
                 placeholder
               )}

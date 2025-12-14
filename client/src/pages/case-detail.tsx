@@ -1,7 +1,7 @@
 import { MobileLayout } from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ChevronLeft, Share2, AlertTriangle, Pill, Plus, GraduationCap, Stethoscope, Activity, FlaskConical, FileImage, Loader2, CheckCircle, Download, Printer, Presentation, TrendingUp } from "lucide-react";
+import { ChevronLeft, Share2, AlertTriangle, Pill, Plus, GraduationCap, Stethoscope, Activity, FlaskConical, FileImage, Loader2, CheckCircle, Download, Printer, Presentation, TrendingUp, Mic, MicOff, ClipboardCheck } from "lucide-react";
 import { EditableSection } from "@/components/EditableSection";
 import pptxgen from "pptxgenjs";
 import { Link, useRoute } from "wouter";
@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { fetchCase, updateCase, invalidateCase, type Case } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
@@ -47,7 +47,10 @@ export default function CaseDetailPage() {
 
   const [diagnosticStudies, setDiagnosticStudies] = useState<DiagnosticStudy[]>([]);
   const [patientEducation, setPatientEducation] = useState("");
-  const [redFlags, setRedFlags] = useState("");
+  const [dispositionDialogOpen, setDispositionDialogOpen] = useState(false);
+  const [isRecordingDisposition, setIsRecordingDisposition] = useState(false);
+  const [dispositionText, setDispositionText] = useState("");
+  const dispositionRecognitionRef = useRef<any>(null);
   const [medications, setMedications] = useState<Medication[]>([]);
   const [medDialogOpen, setMedDialogOpen] = useState(false);
   const [studyDialogOpen, setStudyDialogOpen] = useState(false);
@@ -58,7 +61,6 @@ export default function CaseDetailPage() {
     if (caseData) {
       setDiagnosticStudies(caseData.diagnosticStudies || []);
       setPatientEducation(caseData.patientEducation || "");
-      setRedFlags(caseData.treatmentRedFlags || "");
       setMedications(caseData.dischargeMedications || []);
     }
   }, [caseData]);
@@ -88,6 +90,51 @@ export default function CaseDetailPage() {
       setNewStudy({ type: "", interpretation: "", aiAssisted: false });
       setStudyDialogOpen(false);
     }
+  };
+
+  const generateDischargeSummary = () => {
+    if (!caseData) return "";
+    
+    let summary = "";
+    
+    // Diagnosis
+    if (caseData.differentialDiagnosis && caseData.differentialDiagnosis.length > 0) {
+      summary += "DIAGNOSIS:\n";
+      caseData.differentialDiagnosis.forEach((dx, i) => {
+        summary += `${i + 1}. ${dx.diagnosis} (${dx.icdCode})\n`;
+      });
+      summary += "\n";
+    }
+    
+    // Treatment Plan
+    if (caseData.plan) {
+      summary += "TREATMENT:\n" + caseData.plan + "\n\n";
+    }
+    
+    // Medications
+    if (medications.length > 0) {
+      summary += "MEDICATIONS:\n";
+      medications.forEach((med) => {
+        summary += `- ${med.name} ${med.dose}, ${med.frequency} for ${med.duration}\n`;
+        if (med.instructions) summary += `  (${med.instructions})\n`;
+      });
+      summary += "\n";
+    }
+    
+    // Patient Education
+    if (patientEducation) {
+      summary += "PATIENT EDUCATION:\n" + patientEducation + "\n\n";
+    }
+    
+    // Red Flags
+    if (caseData.treatmentRedFlags) {
+      summary += "WARNING SIGNS - RETURN IF:\n" + caseData.treatmentRedFlags + "\n\n";
+    }
+    
+    // Follow-up
+    summary += "FOLLOW-UP:\nFollow up with your primary care physician within 3-5 days or sooner if symptoms worsen.\n";
+    
+    return summary;
   };
 
   const generateCaseSummaryText = () => {
@@ -136,8 +183,8 @@ export default function CaseDetailPage() {
       summary += `PATIENT EDUCATION\n${"-".repeat(30)}\n${patientEducation}\n\n`;
     }
     
-    if (redFlags) {
-      summary += `WARNING SIGNS (RED FLAGS)\n${"-".repeat(30)}\n${redFlags}\n\n`;
+    if (caseData.treatmentRedFlags) {
+      summary += `WARNING SIGNS (RED FLAGS)\n${"-".repeat(30)}\n${caseData.treatmentRedFlags}\n\n`;
     }
     
     return summary;
@@ -246,7 +293,7 @@ export default function CaseDetailPage() {
       });
     }
     
-    if (patientEducation || redFlags) {
+    if (patientEducation || caseData.treatmentRedFlags) {
       const slide7 = pptx.addSlide();
       slide7.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: "100%", h: 1.2, fill: { color: "7C3AED" } });
       slide7.addText("PATIENT EDUCATION & SAFETY", { x: 0.5, y: 0.35, w: 9, h: 0.5, fontSize: 24, bold: true, color: "FFFFFF", fontFace: "Arial" });
@@ -256,10 +303,10 @@ export default function CaseDetailPage() {
         slide7.addText(patientEducation, { x: 0.5, y: 1.9, w: 9, h: 1.5, fontSize: 11, color: darkColor, fontFace: "Arial", valign: "top" });
       }
       
-      if (redFlags) {
+      if (caseData.treatmentRedFlags) {
         slide7.addShape(pptx.ShapeType.rect, { x: 0.5, y: 3.6, w: 9, h: 1.8, fill: { color: "FEF2F2" }, line: { color: "DC2626", pt: 2 } });
         slide7.addText("Warning Signs (Red Flags)", { x: 0.7, y: 3.7, w: 8.6, h: 0.4, fontSize: 14, bold: true, color: "DC2626", fontFace: "Arial" });
-        slide7.addText(redFlags, { x: 0.7, y: 4.1, w: 8.6, h: 1.2, fontSize: 10, color: darkColor, fontFace: "Arial", valign: "top" });
+        slide7.addText(caseData.treatmentRedFlags, { x: 0.7, y: 4.1, w: 8.6, h: 1.2, fontSize: 10, color: darkColor, fontFace: "Arial", valign: "top" });
       }
     }
     
@@ -591,23 +638,6 @@ export default function CaseDetailPage() {
           </Card>
 
           <Card className="border-none shadow-md bg-white dark:bg-slate-900 mb-6 overflow-hidden">
-            <div className="h-1 bg-gradient-to-r from-red-500 to-orange-500" />
-            <CardContent className="p-5">
-              <EditableSection
-                title="Warning Signs (Red Flags)"
-                content={redFlags}
-                onSave={(content) => {
-                  setRedFlags(content);
-                  updateMutation.mutate({ treatmentRedFlags: content });
-                }}
-                placeholder="List warning signs that require immediate medical attention..."
-                variant="warning"
-                testId="red-flags"
-              />
-            </CardContent>
-          </Card>
-
-          <Card className="border-none shadow-md bg-white dark:bg-slate-900 mb-6 overflow-hidden">
             <div className="h-1 bg-gradient-to-r from-violet-500 to-purple-500" />
             <CardContent className="p-5">
               <div className="flex items-center justify-between mb-4">
@@ -704,6 +734,139 @@ export default function CaseDetailPage() {
                   <p className="text-sm text-muted-foreground text-center py-4">No medications added</p>
                 )}
               </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-none shadow-md bg-white dark:bg-slate-900 mb-6 overflow-hidden">
+            <div className="h-1 bg-gradient-to-r from-indigo-500 to-blue-600" />
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <ClipboardCheck className="w-4 h-4 text-indigo-500" />
+                  Final Diagnosis & Disposition
+                </h3>
+              </div>
+              
+              <Dialog open={dispositionDialogOpen} onOpenChange={setDispositionDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button 
+                    className="w-full bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 text-white shadow-lg"
+                    data-testid="button-disposition"
+                  >
+                    <Mic className="w-4 h-4 mr-2" />
+                    Record Final Diagnosis & Disposition
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>Final Diagnosis & Disposition</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <p className="text-sm text-muted-foreground">
+                      Record the final diagnosis and patient disposition. If discharged, a summary will be generated including patient education, warning signs, and follow-up instructions.
+                    </p>
+                    
+                    <div className="relative">
+                      <Textarea
+                        value={dispositionText}
+                        onChange={(e) => setDispositionText(e.target.value)}
+                        placeholder="Dictate or type final diagnosis and disposition..."
+                        className={`min-h-[150px] resize-none pr-12 ${isRecordingDisposition ? 'border-red-400 ring-2 ring-red-100' : ''}`}
+                        data-testid="textarea-disposition"
+                      />
+                      <Button
+                        type="button"
+                        variant={isRecordingDisposition ? "destructive" : "secondary"}
+                        size="icon"
+                        onClick={() => {
+                          if (isRecordingDisposition) {
+                            if (dispositionRecognitionRef.current) {
+                              dispositionRecognitionRef.current.stop();
+                            }
+                            setIsRecordingDisposition(false);
+                          } else {
+                            const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+                            if (!SpeechRecognitionAPI) {
+                              alert("Speech recognition not supported");
+                              return;
+                            }
+                            const recognition = new SpeechRecognitionAPI();
+                            recognition.continuous = true;
+                            recognition.interimResults = true;
+                            let finalText = dispositionText;
+                            recognition.onresult = (event: any) => {
+                              let interim = "";
+                              for (let i = event.resultIndex; i < event.results.length; i++) {
+                                if (event.results[i].isFinal) {
+                                  finalText += event.results[i][0].transcript + " ";
+                                } else {
+                                  interim += event.results[i][0].transcript;
+                                }
+                              }
+                              setDispositionText(finalText + interim);
+                            };
+                            recognition.onend = () => setIsRecordingDisposition(false);
+                            dispositionRecognitionRef.current = recognition;
+                            recognition.start();
+                            setIsRecordingDisposition(true);
+                          }
+                        }}
+                        className={`absolute right-2 top-2 h-8 w-8 ${isRecordingDisposition ? 'animate-pulse' : ''}`}
+                        data-testid="button-voice-disposition"
+                      >
+                        {isRecordingDisposition ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                      </Button>
+                    </div>
+
+                    {isRecordingDisposition && (
+                      <div className="flex items-center gap-2 text-xs text-red-500">
+                        <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                        Recording...
+                      </div>
+                    )}
+
+                    <div className="space-y-2">
+                      <Label>Disposition</Label>
+                      <Select onValueChange={(value) => {
+                        if (value === 'discharged') {
+                          const summary = generateDischargeSummary();
+                          setDispositionText(prev => prev + "\n\n--- DISCHARGE SUMMARY ---\n" + summary);
+                        }
+                      }}>
+                        <SelectTrigger data-testid="select-disposition">
+                          <SelectValue placeholder="Select disposition" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="discharged">Discharged Home</SelectItem>
+                          <SelectItem value="admitted">Admitted</SelectItem>
+                          <SelectItem value="transferred">Transferred</SelectItem>
+                          <SelectItem value="ama">Left AMA</SelectItem>
+                          <SelectItem value="observation">Observation</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button 
+                      onClick={() => {
+                        updateMutation.mutate({ 
+                          assessment: dispositionText,
+                          status: 'completed'
+                        });
+                        setDispositionDialogOpen(false);
+                        toast({
+                          title: "Case Finalized",
+                          description: "Final diagnosis and disposition saved.",
+                        });
+                      }}
+                      data-testid="button-save-disposition"
+                    >
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Finalize Case
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </CardContent>
           </Card>
 
