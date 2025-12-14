@@ -1,11 +1,9 @@
 import { useState, useEffect } from "react";
 import { MobileLayout } from "@/components/MobileLayout";
-import { Button } from "@/components/ui/button";
 import { AudioVisualizer } from "@/components/AudioVisualizer";
-import { ChevronLeft, Pause, Square, Mic, Settings2, Info } from "lucide-react";
+import { ChevronLeft, Pause, Square, Mic, Settings2, Info, Sparkles } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import tokenIcon from "@assets/generated_images/gold_medical_token_icon.png";
 
 export default function RecordPage() {
   const [isRecording, setIsRecording] = useState(false);
@@ -41,24 +39,28 @@ export default function RecordPage() {
   };
 
   return (
-    <MobileLayout showNav={false} className="bg-slate-950 text-white relative overflow-hidden">
-      {/* Background ambient glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/20 rounded-full blur-[100px] pointer-events-none" />
+    <MobileLayout showNav={false} className="bg-slate-950 text-white relative overflow-hidden font-sans">
+      {/* Dynamic Background */}
+      <div className={`absolute inset-0 transition-opacity duration-1000 ${isRecording ? 'opacity-100' : 'opacity-60'}`}>
+         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/20 rounded-full blur-[120px] animate-pulse" />
+         <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-blue-500/10 rounded-full blur-[100px]" />
+         <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-emerald-500/10 rounded-full blur-[100px]" />
+      </div>
       
-      {/* Mesh Gradient Overlay */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(14,165,233,0.15),transparent)] z-0" />
+      {/* Mesh Overlay */}
+      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20" />
 
       <header className="absolute top-0 left-0 right-0 p-6 flex justify-between items-center z-10">
         <Link href="/home">
-          <a className="p-2 bg-white/5 border border-white/10 rounded-full backdrop-blur-md hover:bg-white/10 transition-colors">
-            <ChevronLeft className="w-5 h-5" />
+          <a className="p-3 bg-white/5 border border-white/10 rounded-full backdrop-blur-xl hover:bg-white/10 transition-colors group">
+            <ChevronLeft className="w-5 h-5 group-hover:-translate-x-0.5 transition-transform" />
           </a>
         </Link>
-        <div className="flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/10 rounded-full backdrop-blur-md">
-           <img src={tokenIcon} alt="Token" className="w-4 h-4" />
-           <span className="text-xs font-medium tracking-wide">1 TOKEN LEFT</span>
+        <div className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full backdrop-blur-xl">
+           <Sparkles className="w-3 h-3 text-amber-300" />
+           <span className="text-[10px] font-bold tracking-widest uppercase text-white/80">AI Enhanced</span>
         </div>
-        <button className="p-2 hover:bg-white/10 rounded-full transition-colors">
+        <button className="p-3 bg-white/5 border border-white/10 rounded-full backdrop-blur-xl hover:bg-white/10 transition-colors">
           <Settings2 className="w-5 h-5" />
         </button>
       </header>
@@ -69,26 +71,32 @@ export default function RecordPage() {
         <AnimatePresence mode="wait">
           <motion.div 
             key={isRecording ? "recording" : "ready"}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 1.1 }}
+            transition={{ type: "spring", stiffness: 200, damping: 20 }}
             className="text-center mb-16"
           >
-            <h2 className="text-6xl font-mono font-light tracking-tighter mb-4 tabular-nums">
+            <h2 className="text-7xl font-light tracking-tighter mb-6 tabular-nums font-heading bg-gradient-to-br from-white to-white/60 bg-clip-text text-transparent">
               {formatTime(duration)}
             </h2>
-            <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full ${isRecording ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-slate-800/50 text-slate-400 border border-slate-700/50'}`}>
-              <div className={`w-2 h-2 rounded-full ${isRecording ? 'bg-red-500 animate-pulse' : 'bg-slate-500'}`} />
-              <span className="text-xs font-bold tracking-widest uppercase">
-                {isRecording ? "Recording" : "Ready"}
+            <div className={`inline-flex items-center gap-3 px-5 py-2 rounded-full backdrop-blur-md transition-colors duration-500 ${isRecording ? 'bg-red-500/10 border border-red-500/30' : 'bg-white/5 border border-white/10'}`}>
+              <div className={`w-2 h-2 rounded-full ${isRecording ? 'bg-red-500 animate-ping' : 'bg-emerald-400'}`} />
+              <span className={`text-xs font-bold tracking-[0.2em] uppercase ${isRecording ? 'text-red-400' : 'text-slate-300'}`}>
+                {isRecording ? "Live Recording" : "Standby"}
               </span>
             </div>
           </motion.div>
         </AnimatePresence>
 
-        {/* Visualizer */}
-        <div className="h-32 w-full mb-12 flex items-center justify-center">
+        {/* Visualizer - Only show when recording or subtle breathe when idle */}
+        <div className="h-24 w-full mb-16 flex items-center justify-center relative">
           <AudioVisualizer isRecording={isRecording} />
+          {!isRecording && (
+            <div className="absolute inset-0 flex items-center justify-center opacity-30">
+               <div className="w-full h-0.5 bg-white/20" />
+            </div>
+          )}
         </div>
 
         {/* Controls */}
@@ -96,29 +104,34 @@ export default function RecordPage() {
           <AnimatePresence>
             {isRecording && (
               <motion.button
-                initial={{ scale: 0, opacity: 0, x: 20 }}
+                initial={{ scale: 0, opacity: 0, x: 40 }}
                 animate={{ scale: 1, opacity: 1, x: 0 }}
-                exit={{ scale: 0, opacity: 0, x: 20 }}
+                exit={{ scale: 0, opacity: 0, x: 40 }}
                 onClick={handleStop}
-                className="absolute -left-24 w-16 h-16 rounded-full bg-slate-800/80 border border-slate-700 backdrop-blur-md flex items-center justify-center text-red-500 hover:bg-slate-700 transition-colors"
+                className="absolute -left-28 w-20 h-20 rounded-[2rem] bg-slate-800/50 border border-white/10 backdrop-blur-xl flex items-center justify-center text-red-500 hover:bg-slate-700/50 transition-colors group"
               >
-                <Square className="w-6 h-6 fill-current" />
+                <Square className="w-6 h-6 fill-current group-hover:scale-90 transition-transform" />
               </motion.button>
             )}
           </AnimatePresence>
 
           <button 
             onClick={toggleRecording}
-            className={`w-28 h-28 rounded-full flex items-center justify-center transition-all duration-300 shadow-2xl ring-4 ${
+            className={`relative w-28 h-28 rounded-[2.5rem] flex items-center justify-center transition-all duration-500 shadow-2xl ${
               isRecording 
-                ? 'bg-red-500 hover:bg-red-600 shadow-red-500/30 ring-red-500/20' 
-                : 'bg-gradient-to-br from-primary to-blue-600 hover:scale-105 shadow-primary/40 ring-primary/20'
+                ? 'bg-red-500 hover:bg-red-600 shadow-red-500/40 rotate-180 rounded-full' 
+                : 'bg-white hover:scale-105 shadow-white/20'
             }`}
           >
             {isRecording ? (
-              <Pause className="w-10 h-10 text-white" fill="currentColor" />
+              <Pause className="w-10 h-10 text-white rotate-180" fill="currentColor" />
             ) : (
-              <Mic className="w-10 h-10 text-white" />
+              <Mic className="w-10 h-10 text-primary" />
+            )}
+            
+            {/* Ripple Effect Ring */}
+            {!isRecording && (
+               <div className="absolute inset-0 rounded-[2.5rem] border border-white/30 animate-ping duration-[2000ms]" />
             )}
           </button>
         </div>
@@ -127,11 +140,10 @@ export default function RecordPage() {
           initial={{ opacity: 0 }} 
           animate={{ opacity: 1 }} 
           transition={{ delay: 0.5 }}
-          className="mt-16 flex items-start gap-3 p-4 bg-white/5 border border-white/10 rounded-xl max-w-xs"
+          className="mt-16 text-center"
         >
-          <Info className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-          <p className="text-xs text-slate-400 leading-relaxed">
-            Using <span className="text-white font-medium">Whisper AI</span> for transcription. Please speak clearly. Your recording is encrypted locally.
+          <p className="text-xs text-slate-400 font-medium tracking-wide">
+             POWERED BY WHISPER AI
           </p>
         </motion.div>
 
