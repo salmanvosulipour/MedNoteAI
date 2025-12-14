@@ -19,9 +19,11 @@ function redirectToCheckout(url: string, showToast: (msg: string) => void) {
   }
 }
 
-const PRICE_IDS = {
-  monthly: "price_1SeG93BSUOePdLSHdZCAfoTm",
-  yearly: "price_1SeG93BSUOePdLSHXrpYYN2x",
+// Lemon Squeezy variant IDs - these will be set after creating products in Lemon Squeezy
+// The user needs to configure these in their Lemon Squeezy dashboard
+const VARIANT_IDS = {
+  monthly: import.meta.env.VITE_LEMONSQUEEZY_MONTHLY_VARIANT_ID || "",
+  yearly: import.meta.env.VITE_LEMONSQUEEZY_YEARLY_VARIANT_ID || "",
 };
 
 export default function SubscriptionPage() {
@@ -71,7 +73,7 @@ export default function SubscriptionPage() {
   });
 
   const checkoutMutation = useMutation({
-    mutationFn: async (priceId: string) => {
+    mutationFn: async (variantId: string) => {
       const authToken = localStorage.getItem("authToken");
       const res = await fetch("/api/billing/checkout", {
         method: "POST",
@@ -79,7 +81,7 @@ export default function SubscriptionPage() {
           "Content-Type": "application/json",
           ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {})
         },
-        body: JSON.stringify({ priceId }),
+        body: JSON.stringify({ variantId }),
         credentials: "include",
       });
       if (!res.ok) {
@@ -134,8 +136,16 @@ export default function SubscriptionPage() {
   });
 
   const handleSubscribe = () => {
-    const priceId = isYearly ? PRICE_IDS.yearly : PRICE_IDS.monthly;
-    checkoutMutation.mutate(priceId);
+    const variantId = isYearly ? VARIANT_IDS.yearly : VARIANT_IDS.monthly;
+    if (!variantId) {
+      toast({
+        title: "Configuration needed",
+        description: "Payment is not configured yet. Please contact support.",
+        variant: "destructive",
+      });
+      return;
+    }
+    checkoutMutation.mutate(variantId);
   };
 
   const features = [
@@ -191,7 +201,7 @@ export default function SubscriptionPage() {
                 <div>
                   <p className="font-semibold text-white">Pro Subscription</p>
                   <p className="text-sm text-slate-400 capitalize">
-                    {subscription?.status === 'trialing' ? 'Trial Active' : 'Active'}
+                    {subscription?.status === 'on_trial' ? 'Trial Active' : 'Active'}
                   </p>
                 </div>
               </div>

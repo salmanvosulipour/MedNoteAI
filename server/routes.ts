@@ -10,7 +10,7 @@ import { z } from "zod";
 import multer from "multer";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
-import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
+import { createLemonSqueezyCheckout, verifyWebhookSignature, setupLemonSqueezy } from "./lemonSqueezyClient";
 
 // Generate a signed auth token for terms acceptance
 function generateAuthToken(userId: string): string {
@@ -347,9 +347,9 @@ export async function registerRoutes(
 
       // Check subscription or free tokens
       let hasActiveSubscription = false;
-      if (user.stripeCustomerId) {
-        const subscription = await storage.getSubscriptionByCustomerId(user.stripeCustomerId);
-        hasActiveSubscription = subscription && ['active', 'trialing'].includes(subscription.status);
+      const subscription = await storage.getSubscriptionByUserId(userId);
+      if (subscription) {
+        hasActiveSubscription = ['active', 'on_trial'].includes(subscription.status);
       }
 
       const hasFreeTokens = (user.freeTokensRemaining || 0) > 0;
@@ -764,16 +764,10 @@ export async function registerRoutes(
     }
   });
 
-  // Billing Routes
-  app.get('/api/billing/config', async (req, res) => {
-    try {
-      const publishableKey = await getStripePublishableKey();
-      res.json({ publishableKey });
-    } catch (error) {
-      console.error("Error getting Stripe config:", error);
-      res.status(500).json({ error: "Failed to get payment configuration" });
-    }
-  });
+  // Billing Routes - Lemon Squeezy
+  
+  // Initialize Lemon Squeezy on server start
+  setupLemonSqueezy();
 
   app.get('/api/billing/status', sessionAuth, async (req: any, res) => {
     try {
@@ -784,12 +778,8 @@ export async function registerRoutes(
         return res.status(404).json({ message: "User not found" });
       }
 
-      let subscription = null;
-      if (user.stripeCustomerId) {
-        subscription = await storage.getSubscriptionByCustomerId(user.stripeCustomerId);
-      }
-
-      const isSubscribed = subscription && ['active', 'trialing'].includes(subscription.status);
+      const subscription = await storage.getSubscriptionByUserId(userId);
+      const isSubscribed = subscription && ['active', 'on_trial'].includes(subscription.status);
 
       res.json({
         isEmailVerified: user.isEmailVerified,
@@ -797,8 +787,9 @@ export async function registerRoutes(
         isSubscribed,
         subscription: subscription ? {
           status: subscription.status,
-          currentPeriodEnd: subscription.current_period_end,
-          cancelAtPeriodEnd: subscription.cancel_at_period_end,
+          currentPeriodEnd: subscription.currentPeriodEnd ? Math.floor(subscription.currentPeriodEnd.getTime() / 1000) : null,
+          cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+          customerPortalUrl: subscription.customerPortalUrl,
         } : null,
       });
     } catch (error) {
@@ -817,27 +808,15 @@ export async function registerRoutes(
       }
 
       const schema = z.object({
-        priceId: z.string(),
+        variantId: z.string(),
       });
       
       const parsed = schema.safeParse(req.body);
       if (!parsed.success) {
-        return res.status(400).json({ message: "Invalid request" });
+        return res.status(400).json({ message: "Invalid request - variantId required" });
       }
 
-      const { priceId } = parsed.data;
-      const stripe = await getUncachableStripeClient();
-
-      let customerId = user.stripeCustomerId;
-      if (!customerId) {
-        const customer = await stripe.customers.create({
-          email: user.email || undefined,
-          name: [user.firstName, user.lastName].filter(Boolean).join(' ') || undefined,
-          metadata: { userId: user.id },
-        });
-        customerId = customer.id;
-        await storage.updateUser(userId, { stripeCustomerId: customerId });
-      }
+      const { variantId } = parsed.data;
 
       const baseUrl = process.env.REPLIT_DEV_DOMAIN 
         ? `https://${process.env.REPLIT_DEV_DOMAIN}`
@@ -845,19 +824,15 @@ export async function registerRoutes(
           ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
           : 'http://localhost:5000';
 
-      const session = await stripe.checkout.sessions.create({
-        customer: customerId,
-        payment_method_types: ['card'],
-        line_items: [{ price: priceId, quantity: 1 }],
-        mode: 'subscription',
-        subscription_data: {
-          trial_period_days: 7,
-        },
-        success_url: `${baseUrl}/subscription?success=true`,
-        cancel_url: `${baseUrl}/subscription?canceled=true`,
-      });
+      const checkoutUrl = await createLemonSqueezyCheckout(
+        variantId,
+        user.email || '',
+        userId,
+        `${baseUrl}/subscription?success=true`,
+        `${baseUrl}/subscription?canceled=true`
+      );
 
-      res.json({ url: session.url });
+      res.json({ url: checkoutUrl });
     } catch (error) {
       console.error("Error creating checkout session:", error);
       res.status(500).json({ error: "Failed to create checkout session" });
@@ -867,33 +842,95 @@ export async function registerRoutes(
   app.post('/api/billing/portal', sessionAuth, async (req: any, res) => {
     try {
       const userId = req.authUserId;
-      const user = await storage.getUser(userId);
+      const subscription = await storage.getSubscriptionByUserId(userId);
       
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
+      if (!subscription || !subscription.customerPortalUrl) {
+        return res.status(400).json({ message: "No active subscription found" });
       }
 
-      if (!user.stripeCustomerId) {
-        return res.status(400).json({ message: "No billing account found" });
-      }
-
-      const stripe = await getUncachableStripeClient();
-
-      const baseUrl = process.env.REPLIT_DEV_DOMAIN 
-        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-        : process.env.REPLIT_DOMAINS?.split(',')[0] 
-          ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
-          : 'http://localhost:5000';
-
-      const portalSession = await stripe.billingPortal.sessions.create({
-        customer: user.stripeCustomerId,
-        return_url: `${baseUrl}/subscription`,
-      });
-
-      res.json({ url: portalSession.url });
+      res.json({ url: subscription.customerPortalUrl });
     } catch (error) {
-      console.error("Error creating portal session:", error);
-      res.status(500).json({ error: "Failed to create billing portal" });
+      console.error("Error getting portal URL:", error);
+      res.status(500).json({ error: "Failed to get billing portal" });
+    }
+  });
+
+  // Lemon Squeezy Webhook Handler
+  app.post('/api/webhooks/lemonsqueezy', async (req, res) => {
+    try {
+      const signature = req.headers['x-signature'] as string;
+      const rawBody = JSON.stringify(req.body);
+      
+      if (!signature || !verifyWebhookSignature(rawBody, signature)) {
+        console.error('Invalid webhook signature');
+        return res.status(401).send('Invalid signature');
+      }
+
+      const payload = req.body;
+      const eventName = payload.meta?.event_name;
+      const data = payload.data;
+
+      console.log('Lemon Squeezy webhook received:', eventName);
+
+      if (!data?.attributes) {
+        return res.status(200).send('OK');
+      }
+
+      const attrs = data.attributes;
+      const customData = payload.meta?.custom_data || {};
+      const userId = customData.user_id;
+
+      switch (eventName) {
+        case 'subscription_created': {
+          if (!userId) {
+            console.error('No user_id in webhook custom_data');
+            return res.status(400).send('Missing user_id');
+          }
+
+          await storage.createSubscription({
+            userId,
+            lemonSqueezySubscriptionId: data.id?.toString(),
+            lemonSqueezyCustomerId: attrs.customer_id?.toString(),
+            lemonSqueezyOrderId: attrs.order_id?.toString(),
+            productId: attrs.product_id?.toString(),
+            variantId: attrs.variant_id?.toString(),
+            status: attrs.status,
+            currentPeriodEnd: attrs.renews_at ? new Date(attrs.renews_at) : null,
+            cancelAtPeriodEnd: false,
+            customerPortalUrl: attrs.urls?.customer_portal,
+          });
+
+          // Update user with Lemon Squeezy customer ID
+          await storage.updateUser(userId, {
+            lemonSqueezyCustomerId: attrs.customer_id?.toString(),
+          });
+          break;
+        }
+
+        case 'subscription_updated': {
+          await storage.updateSubscription(data.id?.toString(), {
+            status: attrs.status,
+            currentPeriodEnd: attrs.renews_at ? new Date(attrs.renews_at) : null,
+            cancelAtPeriodEnd: attrs.cancelled === true,
+            customerPortalUrl: attrs.urls?.customer_portal,
+          });
+          break;
+        }
+
+        case 'subscription_cancelled':
+        case 'subscription_expired': {
+          await storage.updateSubscription(data.id?.toString(), {
+            status: attrs.status || 'cancelled',
+            cancelAtPeriodEnd: true,
+          });
+          break;
+        }
+      }
+
+      res.status(200).send('OK');
+    } catch (error) {
+      console.error('Webhook error:', error);
+      res.status(500).send('Webhook processing failed');
     }
   });
 
