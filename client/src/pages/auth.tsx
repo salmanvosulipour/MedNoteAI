@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion } from "framer-motion";
 import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { storeUser } from "@/hooks/useAuth";
+import { storeUser, clearOldProfileKeys } from "@/hooks/useAuth";
 import logoIcon from "@assets/generated_images/minimalist_medical_ai_logo_icon.png";
 
 export default function AuthPage() {
@@ -35,6 +35,7 @@ export default function AuthPage() {
       return res.json();
     },
     onSuccess: (data) => {
+      clearOldProfileKeys();
       storeUser(data.user);
       if (data.needsTerms) {
         localStorage.setItem("authToken", data.authToken);
@@ -63,6 +64,7 @@ export default function AuthPage() {
       return res.json();
     },
     onSuccess: (data) => {
+      clearOldProfileKeys();
       storeUser(data.user);
       localStorage.setItem("authToken", data.authToken);
       setLocation("/terms");

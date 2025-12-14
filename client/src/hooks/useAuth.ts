@@ -18,7 +18,18 @@ export function storeUser(user: User) {
 export function clearStoredUser() {
   localStorage.removeItem("user");
   localStorage.removeItem("authToken");
+  // Clear old global profile keys (legacy)
+  localStorage.removeItem("user-avatar");
+  localStorage.removeItem("user-fullname");
+  localStorage.removeItem("user-specialty");
   window.dispatchEvent(new Event('authChange'));
+}
+
+export function clearOldProfileKeys() {
+  // Clear old global profile keys that may have been set before user-specific keys
+  localStorage.removeItem("user-avatar");
+  localStorage.removeItem("user-fullname");
+  localStorage.removeItem("user-specialty");
 }
 
 export function useAuth() {

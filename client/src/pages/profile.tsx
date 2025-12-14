@@ -71,14 +71,16 @@ export default function ProfilePage() {
   };
 
   useEffect(() => {
-    const savedAvatar = localStorage.getItem(`user-avatar-${user?.id}`);
-    const savedName = localStorage.getItem(`user-fullname-${user?.id}`);
-    const savedSpecialty = localStorage.getItem(`user-specialty-${user?.id}`);
+    if (!user?.id) return;
+    
+    const savedAvatar = localStorage.getItem(`user-avatar-${user.id}`);
+    const savedName = localStorage.getItem(`user-fullname-${user.id}`);
+    const savedSpecialty = localStorage.getItem(`user-specialty-${user.id}`);
     
     if (savedAvatar) setAvatar(savedAvatar);
     if (savedName) {
       setFullName(savedName);
-    } else if (user) {
+    } else {
       const userName = `${user.firstName || ''}${user.lastName ? ' ' + user.lastName : ''}`.trim() || 'User';
       setFullName(userName);
     }
@@ -91,12 +93,12 @@ export default function ProfilePage() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
+    if (file && user?.id) {
       const reader = new FileReader();
       reader.onloadend = () => {
         const result = reader.result as string;
         setAvatar(result);
-        localStorage.setItem(`user-avatar-${user?.id}`, result);
+        localStorage.setItem(`user-avatar-${user.id}`, result);
         toast({
           title: "Profile Photo Updated",
           description: "Your new profile photo has been saved.",
@@ -114,9 +116,9 @@ export default function ProfilePage() {
   };
 
   const saveName = () => {
-    if (editNameValue.trim()) {
+    if (editNameValue.trim() && user?.id) {
       setFullName(editNameValue.trim());
-      localStorage.setItem(`user-fullname-${user?.id}`, editNameValue.trim());
+      localStorage.setItem(`user-fullname-${user.id}`, editNameValue.trim());
       toast({ title: "Name Updated", description: "Your profile name has been saved." });
       window.dispatchEvent(new Event("storage"));
     }
@@ -125,7 +127,9 @@ export default function ProfilePage() {
 
   const handleSpecialtyChange = (value: string) => {
     setSpecialty(value);
-    localStorage.setItem(`user-specialty-${user?.id}`, value);
+    if (user?.id) {
+      localStorage.setItem(`user-specialty-${user.id}`, value);
+    }
     toast({ title: "Specialty Updated", description: `Your specialty is now ${value}.` });
     window.dispatchEvent(new Event("storage"));
   };
