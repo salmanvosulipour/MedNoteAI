@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Pencil, Mic, MicOff, Check, X, Languages } from "lucide-react";
+import { Pencil, Mic, MicOff, Check, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -48,33 +47,24 @@ declare global {
   }
 }
 
-const SUPPORTED_LANGUAGES = [
-  { code: "en-US", name: "English (US)", flag: "🇺🇸" },
-  { code: "en-GB", name: "English (UK)", flag: "🇬🇧" },
-  { code: "fa-IR", name: "Persian (Farsi)", flag: "🇮🇷" },
-  { code: "ar-SA", name: "Arabic", flag: "🇸🇦" },
-  { code: "es-ES", name: "Spanish", flag: "🇪🇸" },
-  { code: "fr-FR", name: "French", flag: "🇫🇷" },
-  { code: "de-DE", name: "German", flag: "🇩🇪" },
-  { code: "it-IT", name: "Italian", flag: "🇮🇹" },
-  { code: "pt-BR", name: "Portuguese (Brazil)", flag: "🇧🇷" },
-  { code: "ru-RU", name: "Russian", flag: "🇷🇺" },
-  { code: "zh-CN", name: "Chinese (Mandarin)", flag: "🇨🇳" },
-  { code: "ja-JP", name: "Japanese", flag: "🇯🇵" },
-  { code: "ko-KR", name: "Korean", flag: "🇰🇷" },
-  { code: "hi-IN", name: "Hindi", flag: "🇮🇳" },
-  { code: "tr-TR", name: "Turkish", flag: "🇹🇷" },
-  { code: "nl-NL", name: "Dutch", flag: "🇳🇱" },
-  { code: "pl-PL", name: "Polish", flag: "🇵🇱" },
-  { code: "uk-UA", name: "Ukrainian", flag: "🇺🇦" },
-  { code: "he-IL", name: "Hebrew", flag: "🇮🇱" },
-  { code: "th-TH", name: "Thai", flag: "🇹🇭" },
-  { code: "vi-VN", name: "Vietnamese", flag: "🇻🇳" },
-  { code: "id-ID", name: "Indonesian", flag: "🇮🇩" },
-  { code: "sv-SE", name: "Swedish", flag: "🇸🇪" },
-  { code: "da-DK", name: "Danish", flag: "🇩🇰" },
-  { code: "fi-FI", name: "Finnish", flag: "🇫🇮" },
-];
+function parseAndFormatContent(content: string): string {
+  if (!content) return "";
+  
+  try {
+    const parsed = JSON.parse(content);
+    if (typeof parsed === "object" && parsed !== null) {
+      if (Array.isArray(parsed)) {
+        return parsed.map((item, i) => `${i + 1}. ${typeof item === 'string' ? item : JSON.stringify(item)}`).join("\n");
+      }
+      return Object.entries(parsed)
+        .map(([key, value]) => `${key}: ${typeof value === 'string' ? value : JSON.stringify(value)}`)
+        .join("\n");
+    }
+  } catch {
+    // Not JSON, return as-is
+  }
+  return content;
+}
 
 interface EditableSectionProps {
   title: string;
@@ -96,10 +86,11 @@ export function EditableSection({
   const [isEditing, setIsEditing] = useState(false);
   const [editedContent, setEditedContent] = useState(content);
   const [isRecording, setIsRecording] = useState(false);
-  const [selectedLanguage, setSelectedLanguage] = useState("en-US");
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const isRecordingRef = useRef(false);
   const finalTranscriptRef = useRef("");
+
+  const formattedContent = parseAndFormatContent(content);
 
   useEffect(() => {
     setEditedContent(content);
@@ -127,7 +118,7 @@ export function EditableSection({
     const recognition = new SpeechRecognitionAPI();
     recognition.continuous = true;
     recognition.interimResults = true;
-    recognition.lang = selectedLanguage;
+    recognition.lang = "en-US";
 
     finalTranscriptRef.current = editedContent ? editedContent + " " : "";
 
@@ -147,13 +138,8 @@ export function EditableSection({
     };
 
     recognition.onerror = (event: Event) => {
-      const errorEvent = event as any;
       console.error("Speech recognition error:", event);
       setIsRecording(false);
-      
-      if (errorEvent.error === 'language-not-supported' || errorEvent.error === 'not-allowed') {
-        alert(`Speech recognition for ${SUPPORTED_LANGUAGES.find(l => l.code === selectedLanguage)?.name || selectedLanguage} may not be supported in your browser. Try using Chrome or Edge for best language support.`);
-      }
     };
 
     recognition.onend = () => {
@@ -198,12 +184,6 @@ export function EditableSection({
     accent: "bg-gradient-to-br from-emerald-50 to-teal-50/50 dark:from-emerald-900/20 dark:to-teal-900/10 border-emerald-200 dark:border-emerald-800",
   };
 
-  const iconStyles = {
-    default: "text-slate-500",
-    highlighted: "text-primary",
-    accent: "text-emerald-600 dark:text-emerald-400",
-  };
-
   return (
     <div className="relative group">
       <div className="flex items-center justify-between mb-3">
@@ -238,26 +218,6 @@ export function EditableSection({
             exit={{ opacity: 0, y: -5 }}
             className="space-y-3"
           >
-            <div className="flex items-center gap-2 mb-2">
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Languages className="w-3 h-3" />
-                <span>Voice Language:</span>
-              </div>
-              <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
-                <SelectTrigger className="h-7 w-[180px] text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="max-h-[300px]">
-                  {SUPPORTED_LANGUAGES.map((lang) => (
-                    <SelectItem key={lang.code} value={lang.code} className="text-xs">
-                      <span className="mr-2">{lang.flag}</span>
-                      {lang.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
             <div className="relative">
               <Textarea
                 value={editedContent}
@@ -291,7 +251,7 @@ export function EditableSection({
                 className="flex items-center gap-2 text-xs text-red-500"
               >
                 <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                Recording in {SUPPORTED_LANGUAGES.find(l => l.code === selectedLanguage)?.name}...
+                Recording...
               </motion.div>
             )}
 
@@ -335,7 +295,7 @@ export function EditableSection({
               )}
               data-testid={`text-${testId}`}
             >
-              {content || placeholder}
+              {formattedContent || placeholder}
             </p>
           </motion.div>
         )}
