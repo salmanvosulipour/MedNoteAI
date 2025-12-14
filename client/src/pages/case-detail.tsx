@@ -1,7 +1,7 @@
 import { MobileLayout } from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ChevronLeft, Share2, AlertTriangle, Pill, Mail, Plus, GraduationCap, Stethoscope, Activity, FlaskConical, FileImage, Loader2, CheckCircle } from "lucide-react";
+import { ChevronLeft, Share2, AlertTriangle, Pill, Mail, Plus, GraduationCap, Stethoscope, Activity, FlaskConical, FileImage, Loader2, CheckCircle, Download, Printer } from "lucide-react";
 import { Link, useRoute } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -116,6 +116,80 @@ export default function CaseDetailPage() {
     }
   };
 
+  const generateCaseSummaryText = () => {
+    if (!caseData) return "";
+    
+    let summary = `MEDICAL CASE SUMMARY\n`;
+    summary += `${"=".repeat(50)}\n\n`;
+    summary += `Patient: ${caseData.patientName}\n`;
+    summary += `Age: ${caseData.age} years | Gender: ${caseData.gender}\n`;
+    summary += `Date: ${caseData.recordedAt ? format(new Date(caseData.recordedAt), "MMMM d, yyyy - HH:mm") : "N/A"}\n`;
+    summary += `Status: ${caseData.status}\n\n`;
+    
+    summary += `CHIEF COMPLAINT\n${"-".repeat(30)}\n${caseData.chiefComplaint || "Not recorded"}\n\n`;
+    summary += `HISTORY OF PRESENT ILLNESS (HPI)\n${"-".repeat(30)}\n${caseData.hpi || "Not recorded"}\n\n`;
+    
+    if (caseData.ros && Object.keys(caseData.ros).length > 0) {
+      summary += `REVIEW OF SYSTEMS (ROS)\n${"-".repeat(30)}\n`;
+      Object.entries(caseData.ros).forEach(([system, findings]) => {
+        summary += `${system}: ${findings}\n`;
+      });
+      summary += "\n";
+    }
+    
+    summary += `PHYSICAL EXAM\n${"-".repeat(30)}\n${caseData.physicalExam || "Not recorded"}\n\n`;
+    
+    if (caseData.differentialDiagnosis && caseData.differentialDiagnosis.length > 0) {
+      summary += `DIFFERENTIAL DIAGNOSIS\n${"-".repeat(30)}\n`;
+      caseData.differentialDiagnosis.forEach((dx, i) => {
+        summary += `${i + 1}. ${dx.diagnosis} (${dx.icdCode})\n`;
+      });
+      summary += "\n";
+    }
+    
+    summary += `PLAN\n${"-".repeat(30)}\n${caseData.plan || "Not recorded"}\n\n`;
+    
+    if (medications.length > 0) {
+      summary += `MEDICATIONS\n${"-".repeat(30)}\n`;
+      medications.forEach((med) => {
+        summary += `• ${med.name} ${med.dose} - ${med.frequency} for ${med.duration}\n`;
+        if (med.instructions) summary += `  Instructions: ${med.instructions}\n`;
+      });
+      summary += "\n";
+    }
+    
+    if (patientEducation) {
+      summary += `PATIENT EDUCATION\n${"-".repeat(30)}\n${patientEducation}\n\n`;
+    }
+    
+    if (redFlags) {
+      summary += `WARNING SIGNS (RED FLAGS)\n${"-".repeat(30)}\n${redFlags}\n\n`;
+    }
+    
+    return summary;
+  };
+
+  const handleDownload = () => {
+    const summary = generateCaseSummaryText();
+    const blob = new Blob([summary], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `case-${caseData?.patientName?.replace(/\s+/g, "-") || id}-summary.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast({
+      title: "Downloaded",
+      description: "Case summary downloaded as text file.",
+    });
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
   const getStudyIcon = (type: string) => {
     switch (type.toLowerCase()) {
       case "x-ray": return <FileImage className="w-4 h-4" />;
@@ -196,9 +270,17 @@ export default function CaseDetailPage() {
           <ChevronLeft className="w-5 h-5 text-foreground" />
         </Link>
         <span className="font-semibold text-sm">Case #{id.slice(0, 8)}</span>
-        <Button variant="ghost" size="icon" className="h-9 w-9">
-          <Share2 className="w-4 h-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={handleDownload} data-testid="button-download">
+            <Download className="w-4 h-4" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={handlePrint} data-testid="button-print">
+            <Printer className="w-4 h-4" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-9 w-9" data-testid="button-share">
+            <Share2 className="w-4 h-4" />
+          </Button>
+        </div>
       </header>
 
       <ScrollArea className="flex-1">
