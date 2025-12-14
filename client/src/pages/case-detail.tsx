@@ -1,7 +1,7 @@
 import { MobileLayout } from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ChevronLeft, Share2, AlertTriangle, Pill, Plus, GraduationCap, Stethoscope, Activity, FlaskConical, FileImage, Loader2, CheckCircle, Download, Printer, Presentation, TrendingUp, Mic, MicOff, ClipboardCheck } from "lucide-react";
+import { ChevronLeft, Share2, AlertTriangle, Pill, Plus, GraduationCap, Stethoscope, Activity, FlaskConical, FileImage, Loader2, CheckCircle, Download, Printer, Presentation, TrendingUp, Mic, MicOff, ClipboardCheck, Pencil } from "lucide-react";
 import { EditableSection } from "@/components/EditableSection";
 import pptxgen from "pptxgenjs";
 import { Link, useRoute } from "wouter";
@@ -790,11 +790,27 @@ export default function CaseDetailPage() {
               {caseData.disposition ? (
                 <div className="space-y-3">
                   <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <CheckCircle className="w-5 h-5 text-green-600" />
-                      <span className="font-semibold text-green-700 dark:text-green-400">
-                        Case Finalized - {getDispositionLabel(caseData.disposition)}
-                      </span>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="w-5 h-5 text-green-600" />
+                        <span className="font-semibold text-green-700 dark:text-green-400">
+                          Case Finalized - {getDispositionLabel(caseData.disposition)}
+                        </span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-2 text-green-700 hover:text-green-800 hover:bg-green-100"
+                        onClick={() => {
+                          setDispositionText((caseData as ExtendedCase).finalNotes || "");
+                          setSelectedDisposition(caseData.disposition || "");
+                          setDispositionDialogOpen(true);
+                        }}
+                        data-testid="button-edit-disposition"
+                      >
+                        <Pencil className="w-4 h-4 mr-1" />
+                        Edit
+                      </Button>
                     </div>
                     {(caseData as ExtendedCase).finalNotes && (
                       <p className="text-sm text-muted-foreground mt-2">{(caseData as ExtendedCase).finalNotes}</p>
@@ -811,28 +827,28 @@ export default function CaseDetailPage() {
                   </Link>
                 </div>
               ) : (
-              <Dialog open={dispositionDialogOpen} onOpenChange={(open) => {
-                if (open) {
-                  setDispositionText("");
-                }
-                setDispositionDialogOpen(open);
-              }}>
-                <DialogTrigger asChild>
-                  <Button 
-                    className="w-full bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 text-white shadow-lg"
-                    data-testid="button-disposition"
-                  >
-                    <Mic className="w-4 h-4 mr-2" />
-                    Record Final Diagnosis & Disposition
-                  </Button>
-                </DialogTrigger>
+                <Button 
+                  className="w-full bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 text-white shadow-lg"
+                  onClick={() => {
+                    setDispositionText("");
+                    setSelectedDisposition("");
+                    setDispositionDialogOpen(true);
+                  }}
+                  data-testid="button-disposition"
+                >
+                  <Mic className="w-4 h-4 mr-2" />
+                  Record Final Diagnosis & Disposition
+                </Button>
+              )}
+              
+              <Dialog open={dispositionDialogOpen} onOpenChange={setDispositionDialogOpen}>
                 <DialogContent className="max-w-lg">
                   <DialogHeader>
-                    <DialogTitle>Final Diagnosis & Disposition</DialogTitle>
+                    <DialogTitle>{caseData.disposition ? "Edit" : "Record"} Final Diagnosis & Disposition</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
                     <p className="text-sm text-muted-foreground">
-                      Record the final diagnosis and patient disposition. If discharged, a summary will be generated including patient education, warning signs, and follow-up instructions.
+                      {caseData.disposition ? "Edit the final diagnosis and disposition." : "Record the final diagnosis and patient disposition. If discharged, a summary will be generated including patient education, warning signs, and follow-up instructions."}
                     </p>
                     
                     <div className="relative">
@@ -928,9 +944,9 @@ export default function CaseDetailPage() {
                         });
                         setDispositionDialogOpen(false);
                         toast({
-                          title: "Case Finalized",
+                          title: caseData.disposition ? "Disposition Updated" : "Case Finalized",
                           description: selectedDisposition === 'discharged' 
-                            ? "Case finalized with discharge summary."
+                            ? "Discharge summary updated."
                             : "Final diagnosis and disposition saved.",
                         });
                       }}
@@ -938,12 +954,11 @@ export default function CaseDetailPage() {
                       data-testid="button-save-disposition"
                     >
                       <CheckCircle className="w-4 h-4 mr-2" />
-                      Finalize Case
+                      {caseData.disposition ? "Update" : "Finalize Case"}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
-              )}
             </CardContent>
           </Card>
 
