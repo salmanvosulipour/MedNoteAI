@@ -1,33 +1,40 @@
 import { MobileLayout } from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Check, Star, X, Loader2, CreditCard, CheckCircle } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
 import premiumBg from "@assets/generated_images/premium_medical_subscription_background.png";
 
-function redirectToCheckout(url: string, showToast: (msg: string) => void) {
-  const isInIframe = window.self !== window.top;
-  if (isInIframe) {
-    showToast("Opening payment page in new tab...");
-    window.open(url, '_blank', 'noopener,noreferrer');
-  } else {
-    window.location.assign(url);
+declare global {
+  interface Window {
+    Paddle?: {
+      Initialize: (options: { token: string; environment?: string }) => void;
+      Checkout: {
+        open: (options: {
+          items: Array<{ priceId: string; quantity: number }>;
+          customer?: { email: string };
+          customData?: Record<string, string>;
+          settings?: { successUrl?: string };
+        }) => void;
+      };
+    };
   }
 }
 
-// Lemon Squeezy variant IDs - these will be set after creating products in Lemon Squeezy
-// The user needs to configure these in their Lemon Squeezy dashboard
-const VARIANT_IDS = {
-  monthly: import.meta.env.VITE_LEMONSQUEEZY_MONTHLY_VARIANT_ID || "",
-  yearly: import.meta.env.VITE_LEMONSQUEEZY_YEARLY_VARIANT_ID || "",
+const PRICE_IDS = {
+  monthly: import.meta.env.VITE_PADDLE_MONTHLY_PRICE_ID || "",
+  yearly: import.meta.env.VITE_PADDLE_YEARLY_PRICE_ID || "",
 };
+
+const PADDLE_CLIENT_TOKEN = import.meta.env.VITE_PADDLE_CLIENT_TOKEN || "";
+const PADDLE_ENVIRONMENT = import.meta.env.VITE_PADDLE_ENVIRONMENT || "sandbox";
 
 export default function SubscriptionPage() {
   const [isYearly, setIsYearly] = useState(false);
+  const [paddleReady, setPaddleReady] = useState(false);
   const [location, setLocation] = useLocation();
   const { toast } = useToast();
 
@@ -53,6 +60,42 @@ export default function SubscriptionPage() {
     }
   }, [success, canceled, toast]);
 
+  useEffect(() => {
+    if (!PADDLE_CLIENT_TOKEN) {
+      console.warn("Paddle client token not configured");
+      return;
+    }
+
+    if (window.Paddle) {
+      window.Paddle.Initialize({ 
+        token: PADDLE_CLIENT_TOKEN,
+        environment: PADDLE_ENVIRONMENT,
+      });
+      setPaddleReady(true);
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://cdn.paddle.com/paddle/v2/paddle.js";
+    script.async = true;
+    script.onload = () => {
+      if (window.Paddle) {
+        window.Paddle.Initialize({ 
+          token: PADDLE_CLIENT_TOKEN,
+          environment: PADDLE_ENVIRONMENT,
+        });
+        setPaddleReady(true);
+      }
+    };
+    document.body.appendChild(script);
+
+    return () => {
+      if (script.parentNode) {
+        script.parentNode.removeChild(script);
+      }
+    };
+  }, []);
+
   const { data: billingStatus, isLoading } = useQuery({
     queryKey: ["/api/billing/status"],
     queryFn: async () => {
@@ -73,7 +116,7 @@ export default function SubscriptionPage() {
   });
 
   const checkoutMutation = useMutation({
-    mutationFn: async (variantId: string) => {
+    mutationFn: async (priceId: string) => {
       const authToken = localStorage.getItem("authToken");
       const res = await fetch("/api/billing/checkout", {
         method: "POST",
@@ -81,7 +124,7 @@ export default function SubscriptionPage() {
           "Content-Type": "application/json",
           ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {})
         },
-        body: JSON.stringify({ variantId }),
+        body: JSON.stringify({ priceId }),
         credentials: "include",
       });
       if (!res.ok) {
@@ -94,9 +137,25 @@ export default function SubscriptionPage() {
       return res.json();
     },
     onSuccess: (data) => {
-      if (data.url) {
-        redirectToCheckout(data.url, (msg) => toast({ title: msg }));
+      if (!window.Paddle) {
+        toast({
+          title: "Error",
+          description: "Payment system is not ready. Please refresh and try again.",
+          variant: "destructive",
+        });
+        return;
       }
+
+      const baseUrl = window.location.origin;
+      
+      window.Paddle.Checkout.open({
+        items: [{ priceId: data.priceId, quantity: 1 }],
+        customer: data.email ? { email: data.email } : undefined,
+        customData: { userId: data.userId },
+        settings: {
+          successUrl: `${baseUrl}/subscription?success=true`,
+        },
+      });
     },
     onError: (error: Error) => {
       toast({
@@ -123,7 +182,7 @@ export default function SubscriptionPage() {
     },
     onSuccess: (data) => {
       if (data.url) {
-        redirectToCheckout(data.url, (msg) => toast({ title: msg }));
+        window.open(data.url, '_blank', 'noopener,noreferrer');
       }
     },
     onError: (error: Error) => {
@@ -135,9 +194,9 @@ export default function SubscriptionPage() {
     },
   });
 
-  const handleSubscribe = () => {
-    const variantId = isYearly ? VARIANT_IDS.yearly : VARIANT_IDS.monthly;
-    if (!variantId) {
+  const handleSubscribe = useCallback(() => {
+    const priceId = isYearly ? PRICE_IDS.yearly : PRICE_IDS.monthly;
+    if (!priceId) {
       toast({
         title: "Configuration needed",
         description: "Payment is not configured yet. Please contact support.",
@@ -145,8 +204,16 @@ export default function SubscriptionPage() {
       });
       return;
     }
-    checkoutMutation.mutate(variantId);
-  };
+    if (!paddleReady) {
+      toast({
+        title: "Please wait",
+        description: "Payment system is loading. Please try again in a moment.",
+        variant: "destructive",
+      });
+      return;
+    }
+    checkoutMutation.mutate(priceId);
+  }, [isYearly, paddleReady, checkoutMutation, toast]);
 
   const features = [
     "Unlimited AI Scribing",
@@ -201,7 +268,7 @@ export default function SubscriptionPage() {
                 <div>
                   <p className="font-semibold text-white">Pro Subscription</p>
                   <p className="text-sm text-slate-400 capitalize">
-                    {subscription?.status === 'on_trial' ? 'Trial Active' : 'Active'}
+                    {subscription?.status === 'trialing' ? 'Trial Active' : 'Active'}
                   </p>
                 </div>
               </div>
@@ -320,14 +387,19 @@ export default function SubscriptionPage() {
           <Button 
             size="lg" 
             onClick={handleSubscribe}
-            disabled={checkoutMutation.isPending || isLoading}
+            disabled={checkoutMutation.isPending || isLoading || !paddleReady}
             className="w-full h-14 text-lg bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 shadow-xl shadow-blue-500/20 border-t border-white/20"
             data-testid="button-subscribe"
           >
             {checkoutMutation.isPending ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                Redirecting...
+                Loading...
+              </>
+            ) : !paddleReady ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                Loading payment...
               </>
             ) : (
               isYearly ? "Start 7-Day Free Trial" : "Subscribe Now"

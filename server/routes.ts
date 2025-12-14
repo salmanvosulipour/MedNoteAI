@@ -10,7 +10,7 @@ import { z } from "zod";
 import multer from "multer";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
-import { createLemonSqueezyCheckout, verifyWebhookSignature, setupLemonSqueezy } from "./lemonSqueezyClient";
+import { getPaddleClient, verifyPaddleWebhook } from "./paddleClient";
 
 // Generate a signed auth token for terms acceptance
 function generateAuthToken(userId: string): string {
@@ -764,10 +764,7 @@ export async function registerRoutes(
     }
   });
 
-  // Billing Routes - Lemon Squeezy
-  
-  // Initialize Lemon Squeezy on server start
-  setupLemonSqueezy();
+  // Billing Routes - Paddle
 
   app.get('/api/billing/status', sessionAuth, async (req: any, res) => {
     try {
@@ -779,7 +776,7 @@ export async function registerRoutes(
       }
 
       const subscription = await storage.getSubscriptionByUserId(userId);
-      const isSubscribed = subscription && ['active', 'on_trial'].includes(subscription.status);
+      const isSubscribed = subscription && ['active', 'trialing'].includes(subscription.status);
 
       res.json({
         isEmailVerified: user.isEmailVerified,
@@ -789,7 +786,6 @@ export async function registerRoutes(
           status: subscription.status,
           currentPeriodEnd: subscription.currentPeriodEnd ? Math.floor(subscription.currentPeriodEnd.getTime() / 1000) : null,
           cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
-          customerPortalUrl: subscription.customerPortalUrl,
         } : null,
       });
     } catch (error) {
@@ -808,34 +804,22 @@ export async function registerRoutes(
       }
 
       const schema = z.object({
-        variantId: z.string(),
+        priceId: z.string(),
       });
       
       const parsed = schema.safeParse(req.body);
       if (!parsed.success) {
-        return res.status(400).json({ message: "Invalid request - variantId required" });
+        return res.status(400).json({ message: "Invalid request - priceId required" });
       }
 
-      const { variantId } = parsed.data;
-
-      const baseUrl = process.env.REPLIT_DEV_DOMAIN 
-        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-        : process.env.REPLIT_DOMAINS?.split(',')[0] 
-          ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
-          : 'http://localhost:5000';
-
-      const checkoutUrl = await createLemonSqueezyCheckout(
-        variantId,
-        user.email || '',
-        userId,
-        `${baseUrl}/subscription?success=true`,
-        `${baseUrl}/subscription?canceled=true`
-      );
-
-      res.json({ url: checkoutUrl });
+      res.json({ 
+        priceId: parsed.data.priceId,
+        email: user.email,
+        userId: userId,
+      });
     } catch (error) {
-      console.error("Error creating checkout session:", error);
-      res.status(500).json({ error: "Failed to create checkout session" });
+      console.error("Error preparing checkout:", error);
+      res.status(500).json({ error: "Failed to prepare checkout" });
     }
   });
 
@@ -844,83 +828,89 @@ export async function registerRoutes(
       const userId = req.authUserId;
       const subscription = await storage.getSubscriptionByUserId(userId);
       
-      if (!subscription || !subscription.customerPortalUrl) {
+      if (!subscription || !subscription.paddleCustomerId) {
         return res.status(400).json({ message: "No active subscription found" });
       }
 
-      res.json({ url: subscription.customerPortalUrl });
+      try {
+        const paddle = getPaddleClient();
+        const portalSession = await paddle.customers.generateAuthToken(subscription.paddleCustomerId);
+        
+        const baseUrl = process.env.PADDLE_VENDOR_ID 
+          ? `https://customer-portal.paddle.com/cpl_${process.env.PADDLE_VENDOR_ID}`
+          : 'https://customer-portal.paddle.com';
+        
+        res.json({ 
+          url: baseUrl,
+          authToken: portalSession,
+        });
+      } catch (paddleError) {
+        console.error("Paddle portal error:", paddleError);
+        res.status(500).json({ error: "Failed to get billing portal" });
+      }
     } catch (error) {
       console.error("Error getting portal URL:", error);
       res.status(500).json({ error: "Failed to get billing portal" });
     }
   });
 
-  // Lemon Squeezy Webhook Handler
-  app.post('/api/webhooks/lemonsqueezy', async (req, res) => {
+  // Paddle Webhook Handler
+  app.post('/api/webhooks/paddle', async (req, res) => {
     try {
-      const signature = req.headers['x-signature'] as string;
+      const signature = req.headers['paddle-signature'] as string;
       const rawBody = JSON.stringify(req.body);
       
-      if (!signature || !verifyWebhookSignature(rawBody, signature)) {
-        console.error('Invalid webhook signature');
+      let event;
+      try {
+        event = await verifyPaddleWebhook(rawBody, signature);
+      } catch (verifyError) {
+        console.error('Invalid Paddle webhook signature:', verifyError);
         return res.status(401).send('Invalid signature');
       }
 
-      const payload = req.body;
-      const eventName = payload.meta?.event_name;
-      const data = payload.data;
+      const eventType = event.eventType;
+      const data = event.data as any;
 
-      console.log('Lemon Squeezy webhook received:', eventName);
+      console.log('Paddle webhook received:', eventType);
 
-      if (!data?.attributes) {
-        return res.status(200).send('OK');
-      }
-
-      const attrs = data.attributes;
-      const customData = payload.meta?.custom_data || {};
-      const userId = customData.user_id;
-
-      switch (eventName) {
-        case 'subscription_created': {
+      switch (eventType) {
+        case 'subscription.created': {
+          const customData = data.customData || {};
+          const userId = customData.userId;
+          
           if (!userId) {
-            console.error('No user_id in webhook custom_data');
-            return res.status(400).send('Missing user_id');
+            console.error('No userId in webhook customData');
+            return res.status(400).send('Missing userId');
           }
 
           await storage.createSubscription({
             userId,
-            lemonSqueezySubscriptionId: data.id?.toString(),
-            lemonSqueezyCustomerId: attrs.customer_id?.toString(),
-            lemonSqueezyOrderId: attrs.order_id?.toString(),
-            productId: attrs.product_id?.toString(),
-            variantId: attrs.variant_id?.toString(),
-            status: attrs.status,
-            currentPeriodEnd: attrs.renews_at ? new Date(attrs.renews_at) : null,
-            cancelAtPeriodEnd: false,
-            customerPortalUrl: attrs.urls?.customer_portal,
+            paddleSubscriptionId: data.id,
+            paddleCustomerId: data.customerId,
+            priceId: data.items?.[0]?.price?.id,
+            status: data.status,
+            currentPeriodEnd: data.currentBillingPeriod?.endsAt ? new Date(data.currentBillingPeriod.endsAt) : null,
+            cancelAtPeriodEnd: data.scheduledChange?.action === 'cancel',
           });
 
-          // Update user with Lemon Squeezy customer ID
           await storage.updateUser(userId, {
-            lemonSqueezyCustomerId: attrs.customer_id?.toString(),
+            paddleCustomerId: data.customerId,
           });
           break;
         }
 
-        case 'subscription_updated': {
-          await storage.updateSubscription(data.id?.toString(), {
-            status: attrs.status,
-            currentPeriodEnd: attrs.renews_at ? new Date(attrs.renews_at) : null,
-            cancelAtPeriodEnd: attrs.cancelled === true,
-            customerPortalUrl: attrs.urls?.customer_portal,
+        case 'subscription.updated': {
+          await storage.updateSubscription(data.id, {
+            status: data.status,
+            currentPeriodEnd: data.currentBillingPeriod?.endsAt ? new Date(data.currentBillingPeriod.endsAt) : null,
+            cancelAtPeriodEnd: data.scheduledChange?.action === 'cancel',
           });
           break;
         }
 
-        case 'subscription_cancelled':
-        case 'subscription_expired': {
-          await storage.updateSubscription(data.id?.toString(), {
-            status: attrs.status || 'cancelled',
+        case 'subscription.canceled': {
+          await storage.updateSubscription(data.id, {
+            status: 'canceled',
             cancelAtPeriodEnd: true,
           });
           break;
