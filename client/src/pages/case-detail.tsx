@@ -66,6 +66,42 @@ export default function CaseDetailPage() {
                 <Separator />
 
                 <section>
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Review of Systems (ROS)</h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm text-foreground">
+                    <div>
+                      <span className="font-semibold text-xs text-muted-foreground block mb-1">General</span>
+                      <p>Negative for fever, chills, weight loss.</p>
+                    </div>
+                    <div>
+                      <span className="font-semibold text-xs text-muted-foreground block mb-1">HEENT</span>
+                      <p>Positive for photophobia. Negative for neck stiffness.</p>
+                    </div>
+                    <div>
+                      <span className="font-semibold text-xs text-muted-foreground block mb-1">Neurologic</span>
+                      <p>Positive for visual aura (flashing lights).</p>
+                    </div>
+                    <div>
+                      <span className="font-semibold text-xs text-muted-foreground block mb-1">GI</span>
+                      <p>Positive for nausea. Negative for vomiting.</p>
+                    </div>
+                  </div>
+                </section>
+
+                <Separator />
+
+                <section>
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Physical Exam</h3>
+                  <div className="bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-lg p-3 text-sm text-foreground space-y-2">
+                    <p><span className="font-semibold">Vitals:</span> BP 120/80, HR 72, RR 16, Temp 98.6°F</p>
+                    <p><span className="font-semibold">General:</span> Alert and oriented x3, in mild distress due to pain.</p>
+                    <p><span className="font-semibold">HEENT:</span> PERRL, EOMI. Fundoscopic exam normal. No papilledema.</p>
+                    <p><span className="font-semibold">Neuro:</span> Cranial nerves II-XII intact. Strength 5/5 in all extremities. Sensation intact. Gait normal. Negative Kernig/Brudzinski.</p>
+                  </div>
+                </section>
+
+                <Separator />
+
+                <section>
                   <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Assessment / Differential Diagnosis</h3>
                   <ul className="space-y-2">
                     <li className="flex items-start justify-between p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
