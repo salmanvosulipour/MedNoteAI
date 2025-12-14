@@ -69,7 +69,6 @@ export default function CaseDetailPage() {
       setPatientEducation(caseData.patientEducation || "");
       setMedications(caseData.dischargeMedications || []);
       setSelectedDisposition(caseData.disposition || "");
-      setDispositionText(caseData.assessment || "");
     }
   }, [caseData]);
 
@@ -811,7 +810,12 @@ export default function CaseDetailPage() {
                   </Link>
                 </div>
               ) : (
-              <Dialog open={dispositionDialogOpen} onOpenChange={setDispositionDialogOpen}>
+              <Dialog open={dispositionDialogOpen} onOpenChange={(open) => {
+                if (open) {
+                  setDispositionText("");
+                }
+                setDispositionDialogOpen(open);
+              }}>
                 <DialogTrigger asChild>
                   <Button 
                     className="w-full bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 text-white shadow-lg"
@@ -913,7 +917,7 @@ export default function CaseDetailPage() {
                       onClick={() => {
                         const dischargeSummary = selectedDisposition === 'discharged' 
                           ? generateDischargeSummary(selectedDisposition, dispositionText)
-                          : null;
+                          : undefined;
                         
                         updateMutation.mutate({ 
                           assessment: dispositionText,
