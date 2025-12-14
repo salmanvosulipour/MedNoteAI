@@ -12,7 +12,6 @@ import { apiRequest } from "@/lib/queryClient";
 export default function TermsPage() {
   const [, setLocation] = useLocation();
   const [hasReadTerms, setHasReadTerms] = useState(false);
-  const [isPhysician, setIsPhysician] = useState(false);
   const [understandsEducational, setUnderstandsEducational] = useState(false);
   const [understandsNotReplacement, setUnderstandsNotReplacement] = useState(false);
   const queryClient = useQueryClient();
@@ -27,7 +26,7 @@ export default function TermsPage() {
     },
   });
 
-  const allChecked = hasReadTerms && isPhysician && understandsEducational && understandsNotReplacement;
+  const allChecked = hasReadTerms && understandsEducational && understandsNotReplacement;
 
   return (
     <MobileLayout showNav={false} className="bg-slate-50 dark:bg-slate-950">
@@ -133,15 +132,6 @@ export default function TermsPage() {
                 data-testid="checkbox-read-terms"
               />
               <span className="text-sm">I have read and understood the Terms of Use</span>
-            </label>
-
-            <label className="flex items-start gap-3 cursor-pointer">
-              <Checkbox 
-                checked={isPhysician} 
-                onCheckedChange={(checked) => setIsPhysician(checked === true)}
-                data-testid="checkbox-physician"
-              />
-              <span className="text-sm">I am a licensed healthcare professional</span>
             </label>
 
             <label className="flex items-start gap-3 cursor-pointer">
