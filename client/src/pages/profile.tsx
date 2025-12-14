@@ -5,8 +5,10 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { ChevronRight, CreditCard, Shield, HelpCircle, LogOut, User, Bell, Camera, Check, X, Edit3, Lock, Server, ShieldCheck, FileCheck } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { ChevronDown } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
@@ -48,6 +50,7 @@ export default function ProfilePage() {
   const [isEditingName, setIsEditingName] = useState(false);
   const [editNameValue, setEditNameValue] = useState("");
   const [privacyDialogOpen, setPrivacyDialogOpen] = useState(false);
+  const [specialtyOpen, setSpecialtyOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -162,16 +165,41 @@ export default function ProfilePage() {
                 </button>
               </div>
             )}
-            <Select value={specialty} onValueChange={handleSpecialtyChange}>
-              <SelectTrigger className="w-full h-8 mt-1 text-sm text-muted-foreground border-none shadow-none px-0 hover:text-primary" data-testid="select-specialty">
-                <SelectValue placeholder="Select specialty" />
-              </SelectTrigger>
-              <SelectContent>
-                {SPECIALTIES.map((s) => (
-                  <SelectItem key={s} value={s} data-testid={`option-specialty-${s.toLowerCase().replace(/\s+/g, '-')}`}>{s}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={specialtyOpen} onOpenChange={setSpecialtyOpen}>
+              <PopoverTrigger asChild>
+                <button 
+                  className="w-full h-8 mt-1 text-sm text-muted-foreground hover:text-primary flex items-center gap-1 text-left"
+                  data-testid="select-specialty"
+                >
+                  {specialty || "Select specialty"}
+                  <ChevronDown className="w-3 h-3" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Search specialty..." data-testid="input-specialty-search" />
+                  <CommandList className="max-h-60">
+                    <CommandEmpty>No specialty found.</CommandEmpty>
+                    <CommandGroup>
+                      {SPECIALTIES.map((s) => (
+                        <CommandItem
+                          key={s}
+                          value={s}
+                          onSelect={() => {
+                            handleSpecialtyChange(s);
+                            setSpecialtyOpen(false);
+                          }}
+                          data-testid={`option-specialty-${s.toLowerCase().replace(/\s+/g, '-')}`}
+                        >
+                          <Check className={`w-4 h-4 mr-2 ${specialty === s ? 'opacity-100' : 'opacity-0'}`} />
+                          {s}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
             <div className="mt-2 inline-flex items-center px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-semibold">
               Pro Plan
             </div>
