@@ -8,6 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { motion } from "framer-motion";
 import { Shield, AlertTriangle, FileText, CheckCircle } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { storeUser, clearStoredUser } from "@/hooks/useAuth";
 
 export default function TermsPage() {
   const [, setLocation] = useLocation();
@@ -19,11 +20,13 @@ export default function TermsPage() {
   const acceptTermsMutation = useMutation({
     mutationFn: async () => {
       const authToken = localStorage.getItem("authToken");
-      await apiRequest("POST", "/api/auth/accept-terms", { authToken });
+      const res = await apiRequest("POST", "/api/auth/accept-terms", { authToken });
+      return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (updatedUser) => {
       localStorage.removeItem("authToken");
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      storeUser(updatedUser);
+      queryClient.setQueryData(["/api/auth/user"], updatedUser);
       setLocation("/home");
     },
   });
@@ -179,6 +182,7 @@ export default function TermsPage() {
               } catch (e) {
                 // Ignore errors
               }
+              clearStoredUser();
               queryClient.clear();
               setLocation("/auth");
             }}
