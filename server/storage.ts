@@ -1,6 +1,6 @@
-import { users, cases, passwordResetTokens, emailVerificationTokens, type User, type UpsertUser, type Case, type InsertCase, type PasswordResetToken, type EmailVerificationToken } from "@shared/schema";
+import { users, cases, passwordResetTokens, emailVerificationTokens, subscriptions, type User, type UpsertUser, type Case, type InsertCase, type PasswordResetToken, type EmailVerificationToken, type Subscription, type InsertSubscription } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, gt, sql } from "drizzle-orm";
+import { eq, desc, and, gt, sql, or } from "drizzle-orm";
 
 export interface IStorage {
   // User methods
@@ -20,9 +20,11 @@ export interface IStorage {
   getValidEmailVerificationToken(token: string): Promise<EmailVerificationToken | undefined>;
   markEmailVerificationTokenUsed(token: string): Promise<void>;
   
-  // Stripe methods - query from stripe schema
-  getSubscriptionByCustomerId(customerId: string): Promise<any>;
-  getUserByStripeCustomerId(customerId: string): Promise<User | undefined>;
+  // Lemon Squeezy subscription methods
+  getSubscriptionByUserId(userId: string): Promise<Subscription | undefined>;
+  getSubscriptionByLemonSqueezyId(lemonSqueezySubscriptionId: string): Promise<Subscription | undefined>;
+  createSubscription(data: InsertSubscription): Promise<Subscription>;
+  updateSubscription(lemonSqueezySubscriptionId: string, data: Partial<InsertSubscription>): Promise<Subscription | undefined>;
   
   // Free token methods
   decrementFreeTokens(userId: string): Promise<User | undefined>;
@@ -148,17 +150,48 @@ export class DatabaseStorage implements IStorage {
       .where(eq(emailVerificationTokens.token, token));
   }
 
-  // Stripe methods - query from stripe schema
-  async getSubscriptionByCustomerId(customerId: string): Promise<any> {
-    const result = await db.execute(
-      sql`SELECT * FROM stripe.subscriptions WHERE customer = ${customerId} AND status IN ('active', 'trialing') ORDER BY created DESC LIMIT 1`
-    );
-    return result.rows[0] || null;
+  // Lemon Squeezy subscription methods
+  async getSubscriptionByUserId(userId: string): Promise<Subscription | undefined> {
+    const [subscription] = await db
+      .select()
+      .from(subscriptions)
+      .where(
+        and(
+          eq(subscriptions.userId, userId),
+          or(
+            eq(subscriptions.status, 'active'),
+            eq(subscriptions.status, 'on_trial')
+          )
+        )
+      )
+      .orderBy(desc(subscriptions.createdAt))
+      .limit(1);
+    return subscription || undefined;
   }
 
-  async getUserByStripeCustomerId(customerId: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.stripeCustomerId, customerId));
-    return user || undefined;
+  async getSubscriptionByLemonSqueezyId(lemonSqueezySubscriptionId: string): Promise<Subscription | undefined> {
+    const [subscription] = await db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.lemonSqueezySubscriptionId, lemonSqueezySubscriptionId));
+    return subscription || undefined;
+  }
+
+  async createSubscription(data: InsertSubscription): Promise<Subscription> {
+    const [subscription] = await db
+      .insert(subscriptions)
+      .values(data)
+      .returning();
+    return subscription;
+  }
+
+  async updateSubscription(lemonSqueezySubscriptionId: string, data: Partial<InsertSubscription>): Promise<Subscription | undefined> {
+    const [updated] = await db
+      .update(subscriptions)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(subscriptions.lemonSqueezySubscriptionId, lemonSqueezySubscriptionId))
+      .returning();
+    return updated || undefined;
   }
 
   // Free token methods

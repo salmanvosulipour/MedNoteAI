@@ -27,8 +27,8 @@ export const users = pgTable("users", {
   emailVerifiedAt: timestamp("email_verified_at"),
   // Free token system - 1 free use for new users
   freeTokensRemaining: integer("free_tokens_remaining").default(1),
-  // Stripe integration
-  stripeCustomerId: varchar("stripe_customer_id"),
+  // Lemon Squeezy integration (replaces Stripe)
+  lemonSqueezyCustomerId: varchar("lemonsqueezy_customer_id"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -58,6 +58,26 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
 });
 
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+
+// Lemon Squeezy subscriptions table
+export const subscriptions = pgTable("subscriptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  lemonSqueezySubscriptionId: varchar("lemonsqueezy_subscription_id").unique(),
+  lemonSqueezyCustomerId: varchar("lemonsqueezy_customer_id"),
+  lemonSqueezyOrderId: varchar("lemonsqueezy_order_id"),
+  productId: varchar("product_id"),
+  variantId: varchar("variant_id"),
+  status: varchar("status").notNull(), // active, past_due, on_trial, paused, cancelled, expired
+  currentPeriodEnd: timestamp("current_period_end"),
+  cancelAtPeriodEnd: boolean("cancel_at_period_end").default(false),
+  customerPortalUrl: varchar("customer_portal_url"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type Subscription = typeof subscriptions.$inferSelect;
+export type InsertSubscription = typeof subscriptions.$inferInsert;
 
 // Medical cases table
 export const cases = pgTable("cases", {
