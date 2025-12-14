@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useAuth } from "@/hooks/useAuth";
 
 // Web Speech API types
 interface SpeechRecognitionEvent extends Event {
@@ -57,6 +58,7 @@ declare global {
 
 
 export default function RecordPage() {
+  const { user } = useAuth();
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [duration, setDuration] = useState(0);
@@ -245,7 +247,7 @@ export default function RecordPage() {
 
     try {
       const newCase = await createCase({
-        userId: "demo-user",
+        userId: user?.id ? String(user.id) : "",
         patientName: patientName.trim(),
         mrn: patientMrn.trim() || undefined,
         age: parseInt(patientAge),

@@ -6,13 +6,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery } from "@tanstack/react-query";
 import { fetchCases, type Case } from "@/lib/api";
 import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function CasesPage() {
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   
   const { data: cases = [], isLoading } = useQuery({
-    queryKey: ["cases"],
-    queryFn: () => fetchCases("demo-user"),
+    queryKey: ["cases", user?.id],
+    queryFn: () => fetchCases(user?.id ? String(user.id) : ""),
+    enabled: !!user?.id,
   });
 
   const filteredCases = cases.filter((c: Case) => 

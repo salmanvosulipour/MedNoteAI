@@ -7,34 +7,47 @@ import heroBg from "@assets/generated_images/futuristic_medical_hero_gradient.pn
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchCases, type Case } from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function HomePage() {
+  const { user } = useAuth();
   const [avatar, setAvatar] = useState("https://api.dicebear.com/7.x/avataaars/svg?seed=Felix");
-  const [userName, setUserName] = useState("Dr. Smith");
+  const [userName, setUserName] = useState("Doctor");
 
   const { data: cases = [], isLoading } = useQuery({
-    queryKey: ["cases"],
-    queryFn: () => fetchCases("demo-user"),
+    queryKey: ["cases", user?.id],
+    queryFn: () => fetchCases(user?.id ? String(user.id) : ""),
+    enabled: !!user?.id,
   });
 
   const recentCases = cases.slice(0, 3);
 
   useEffect(() => {
-    const savedAvatar = localStorage.getItem("user-avatar");
-    const savedName = localStorage.getItem("user-fullname");
-    if (savedAvatar) setAvatar(savedAvatar);
-    if (savedName) setUserName(savedName.split(" ").pop() || "Doctor");
+    if (!user?.id) return;
+    
+    const savedAvatar = localStorage.getItem(`user-avatar-${user.id}`);
+    const savedName = localStorage.getItem(`user-fullname-${user.id}`);
+    
+    if (savedAvatar) {
+      setAvatar(savedAvatar);
+    }
+    if (savedName) {
+      setUserName(savedName.split(" ").pop() || "Doctor");
+    } else {
+      const defaultName = user.firstName || user.lastName || "Doctor";
+      setUserName(defaultName);
+    }
 
     const handleStorageChange = () => {
-       const updated = localStorage.getItem("user-avatar");
-       const updatedName = localStorage.getItem("user-fullname");
+       const updated = localStorage.getItem(`user-avatar-${user.id}`);
+       const updatedName = localStorage.getItem(`user-fullname-${user.id}`);
        if (updated) setAvatar(updated);
        if (updatedName) setUserName(updatedName.split(" ").pop() || "Doctor");
     };
 
     window.addEventListener("storage", handleStorageChange);
     return () => window.removeEventListener("storage", handleStorageChange);
-  }, []);
+  }, [user]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
