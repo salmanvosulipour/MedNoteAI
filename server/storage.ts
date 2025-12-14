@@ -20,11 +20,11 @@ export interface IStorage {
   getValidEmailVerificationToken(token: string): Promise<EmailVerificationToken | undefined>;
   markEmailVerificationTokenUsed(token: string): Promise<void>;
   
-  // Lemon Squeezy subscription methods
+  // Paddle subscription methods
   getSubscriptionByUserId(userId: string): Promise<Subscription | undefined>;
-  getSubscriptionByLemonSqueezyId(lemonSqueezySubscriptionId: string): Promise<Subscription | undefined>;
+  getSubscriptionByPaddleId(paddleSubscriptionId: string): Promise<Subscription | undefined>;
   createSubscription(data: InsertSubscription): Promise<Subscription>;
-  updateSubscription(lemonSqueezySubscriptionId: string, data: Partial<InsertSubscription>): Promise<Subscription | undefined>;
+  updateSubscription(paddleSubscriptionId: string, data: Partial<InsertSubscription>): Promise<Subscription | undefined>;
   
   // Free token methods
   decrementFreeTokens(userId: string): Promise<User | undefined>;
@@ -150,7 +150,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(emailVerificationTokens.token, token));
   }
 
-  // Lemon Squeezy subscription methods
+  // Paddle subscription methods
   async getSubscriptionByUserId(userId: string): Promise<Subscription | undefined> {
     const [subscription] = await db
       .select()
@@ -160,7 +160,7 @@ export class DatabaseStorage implements IStorage {
           eq(subscriptions.userId, userId),
           or(
             eq(subscriptions.status, 'active'),
-            eq(subscriptions.status, 'on_trial')
+            eq(subscriptions.status, 'trialing')
           )
         )
       )
@@ -169,11 +169,11 @@ export class DatabaseStorage implements IStorage {
     return subscription || undefined;
   }
 
-  async getSubscriptionByLemonSqueezyId(lemonSqueezySubscriptionId: string): Promise<Subscription | undefined> {
+  async getSubscriptionByPaddleId(paddleSubscriptionId: string): Promise<Subscription | undefined> {
     const [subscription] = await db
       .select()
       .from(subscriptions)
-      .where(eq(subscriptions.lemonSqueezySubscriptionId, lemonSqueezySubscriptionId));
+      .where(eq(subscriptions.paddleSubscriptionId, paddleSubscriptionId));
     return subscription || undefined;
   }
 
@@ -185,11 +185,11 @@ export class DatabaseStorage implements IStorage {
     return subscription;
   }
 
-  async updateSubscription(lemonSqueezySubscriptionId: string, data: Partial<InsertSubscription>): Promise<Subscription | undefined> {
+  async updateSubscription(paddleSubscriptionId: string, data: Partial<InsertSubscription>): Promise<Subscription | undefined> {
     const [updated] = await db
       .update(subscriptions)
       .set({ ...data, updatedAt: new Date() })
-      .where(eq(subscriptions.lemonSqueezySubscriptionId, lemonSqueezySubscriptionId))
+      .where(eq(subscriptions.paddleSubscriptionId, paddleSubscriptionId))
       .returning();
     return updated || undefined;
   }
