@@ -290,15 +290,47 @@ export function EditableSection({
               !content && "border-dashed"
             )}
           >
-            <p 
+            <div 
               className={cn(
                 "text-sm leading-relaxed whitespace-pre-wrap",
-                content ? "text-foreground" : "text-muted-foreground italic"
+                content ? "text-foreground" : "text-muted-foreground italic",
+                (variant === "accent" || variant === "highlighted") && "font-medium"
               )}
               data-testid={`text-${testId}`}
             >
-              {formattedContent || placeholder}
-            </p>
+              {formattedContent ? (
+                <div className="space-y-2">
+                  {formattedContent.split('\n').map((line, idx) => {
+                    const trimmedLine = line.trim();
+                    if (!trimmedLine) return null;
+                    
+                    const isNumberedItem = /^\d+\./.test(trimmedLine);
+                    const isBulletItem = /^[-•]/.test(trimmedLine);
+                    const isHeaderLike = trimmedLine.endsWith(':') && trimmedLine.length < 50;
+                    
+                    if (isHeaderLike) {
+                      return (
+                        <p key={idx} className="font-semibold text-foreground mt-3 first:mt-0">
+                          {trimmedLine}
+                        </p>
+                      );
+                    }
+                    
+                    if (isNumberedItem || isBulletItem) {
+                      return (
+                        <p key={idx} className="pl-4 text-foreground/90">
+                          {trimmedLine}
+                        </p>
+                      );
+                    }
+                    
+                    return <p key={idx}>{trimmedLine}</p>;
+                  })}
+                </div>
+              ) : (
+                placeholder
+              )}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
