@@ -228,6 +228,15 @@ export async function registerRoutes(
     const sessionUserId = req.session?.userId;
     const replitUserId = req.user?.claims?.sub;
     
+    // Debug logging
+    console.log('sessionAuth debug:', {
+      hasSession: !!req.session,
+      sessionId: req.session?.id,
+      sessionUserId,
+      replitUserId,
+      cookies: req.headers.cookie
+    });
+    
     if (sessionUserId) {
       req.authUserId = sessionUserId;
       return next();
