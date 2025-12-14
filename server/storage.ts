@@ -1,6 +1,6 @@
-import { users, cases, passwordResetTokens, type User, type UpsertUser, type Case, type InsertCase, type PasswordResetToken } from "@shared/schema";
+import { users, cases, passwordResetTokens, emailVerificationTokens, type User, type UpsertUser, type Case, type InsertCase, type PasswordResetToken, type EmailVerificationToken } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, gt } from "drizzle-orm";
+import { eq, desc, and, gt, sql } from "drizzle-orm";
 
 export interface IStorage {
   // User methods
@@ -14,6 +14,15 @@ export interface IStorage {
   createPasswordResetToken(userId: string, token: string, expiresAt: Date): Promise<PasswordResetToken>;
   getValidPasswordResetToken(token: string): Promise<PasswordResetToken | undefined>;
   markPasswordResetTokenUsed(token: string): Promise<void>;
+  
+  // Email verification methods
+  createEmailVerificationToken(userId: string, token: string, expiresAt: Date): Promise<EmailVerificationToken>;
+  getValidEmailVerificationToken(token: string): Promise<EmailVerificationToken | undefined>;
+  markEmailVerificationTokenUsed(token: string): Promise<void>;
+  
+  // Stripe methods - query from stripe schema
+  getSubscriptionByCustomerId(customerId: string): Promise<any>;
+  getUserByStripeCustomerId(customerId: string): Promise<User | undefined>;
   
   // Case methods
   getCase(id: string): Promise<Case | undefined>;
@@ -104,6 +113,49 @@ export class DatabaseStorage implements IStorage {
       .update(passwordResetTokens)
       .set({ usedAt: new Date() })
       .where(eq(passwordResetTokens.token, token));
+  }
+
+  // Email verification methods
+  async createEmailVerificationToken(userId: string, token: string, expiresAt: Date): Promise<EmailVerificationToken> {
+    const [verificationToken] = await db
+      .insert(emailVerificationTokens)
+      .values({ userId, token, expiresAt })
+      .returning();
+    return verificationToken;
+  }
+
+  async getValidEmailVerificationToken(token: string): Promise<EmailVerificationToken | undefined> {
+    const [verificationToken] = await db
+      .select()
+      .from(emailVerificationTokens)
+      .where(
+        and(
+          eq(emailVerificationTokens.token, token),
+          gt(emailVerificationTokens.expiresAt, new Date())
+        )
+      );
+    if (verificationToken && verificationToken.usedAt) return undefined;
+    return verificationToken || undefined;
+  }
+
+  async markEmailVerificationTokenUsed(token: string): Promise<void> {
+    await db
+      .update(emailVerificationTokens)
+      .set({ usedAt: new Date() })
+      .where(eq(emailVerificationTokens.token, token));
+  }
+
+  // Stripe methods - query from stripe schema
+  async getSubscriptionByCustomerId(customerId: string): Promise<any> {
+    const result = await db.execute(
+      sql`SELECT * FROM stripe.subscriptions WHERE customer = ${customerId} AND status IN ('active', 'trialing') ORDER BY created DESC LIMIT 1`
+    );
+    return result.rows[0] || null;
+  }
+
+  async getUserByStripeCustomerId(customerId: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.stripeCustomerId, customerId));
+    return user || undefined;
   }
 
   // Case methods

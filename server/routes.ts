@@ -4,12 +4,13 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { generateMedicalSummary, generateDiagnosticInterpretation } from "./services/openai";
 import { transcribeAudio } from "./services/gemini";
-import { sendCaseSummaryEmail, sendPasswordResetEmail } from "./services/resend";
+import { sendCaseSummaryEmail, sendPasswordResetEmail, sendVerificationEmail } from "./services/resend";
 import { insertCaseSchema } from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
+import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
 
 // Generate a signed auth token for terms acceptance
 function generateAuthToken(userId: string): string {
@@ -635,6 +636,213 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("Error sending email:", error);
       res.status(502).json({ error: error.message || "Failed to send email" });
+    }
+  });
+
+  // Email Verification Routes
+  app.post('/api/auth/send-verification', sessionAuth, async (req: any, res) => {
+    try {
+      const userId = req.authUserId;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (user.isEmailVerified) {
+        return res.status(400).json({ message: "Email already verified" });
+      }
+
+      if (!user.email) {
+        return res.status(400).json({ message: "No email address on account" });
+      }
+
+      const token = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      
+      await storage.createEmailVerificationToken(userId, token, expiresAt);
+      
+      const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+        : process.env.REPLIT_DOMAINS?.split(',')[0] 
+          ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
+          : 'http://localhost:5000';
+      const verificationLink = `${baseUrl}/verify-email?token=${token}`;
+      
+      await sendVerificationEmail({
+        email: user.email,
+        userName: user.firstName || 'there',
+        verificationLink,
+      });
+
+      res.json({ message: "Verification email sent" });
+    } catch (error) {
+      console.error("Send verification error:", error);
+      res.status(500).json({ message: "Failed to send verification email" });
+    }
+  });
+
+  app.post('/api/auth/verify-email', async (req, res) => {
+    try {
+      const schema = z.object({
+        token: z.string(),
+      });
+      
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid request" });
+      }
+
+      const { token } = parsed.data;
+      
+      const verificationToken = await storage.getValidEmailVerificationToken(token);
+      if (!verificationToken) {
+        return res.status(400).json({ message: "Invalid or expired verification link" });
+      }
+
+      await storage.updateUser(verificationToken.userId, {
+        isEmailVerified: true,
+        emailVerifiedAt: new Date(),
+      });
+      await storage.markEmailVerificationTokenUsed(token);
+
+      res.json({ message: "Email verified successfully" });
+    } catch (error) {
+      console.error("Verify email error:", error);
+      res.status(500).json({ message: "Failed to verify email" });
+    }
+  });
+
+  // Billing Routes
+  app.get('/api/billing/config', async (req, res) => {
+    try {
+      const publishableKey = await getStripePublishableKey();
+      res.json({ publishableKey });
+    } catch (error) {
+      console.error("Error getting Stripe config:", error);
+      res.status(500).json({ error: "Failed to get payment configuration" });
+    }
+  });
+
+  app.get('/api/billing/status', sessionAuth, async (req: any, res) => {
+    try {
+      const userId = req.authUserId;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      let subscription = null;
+      if (user.stripeCustomerId) {
+        subscription = await storage.getSubscriptionByCustomerId(user.stripeCustomerId);
+      }
+
+      const isSubscribed = subscription && ['active', 'trialing'].includes(subscription.status);
+
+      res.json({
+        isEmailVerified: user.isEmailVerified,
+        freeTokensRemaining: user.freeTokensRemaining || 0,
+        isSubscribed,
+        subscription: subscription ? {
+          status: subscription.status,
+          currentPeriodEnd: subscription.current_period_end,
+          cancelAtPeriodEnd: subscription.cancel_at_period_end,
+        } : null,
+      });
+    } catch (error) {
+      console.error("Error getting billing status:", error);
+      res.status(500).json({ error: "Failed to get billing status" });
+    }
+  });
+
+  app.post('/api/billing/checkout', sessionAuth, async (req: any, res) => {
+    try {
+      const userId = req.authUserId;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const schema = z.object({
+        priceId: z.string(),
+      });
+      
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid request" });
+      }
+
+      const { priceId } = parsed.data;
+      const stripe = await getUncachableStripeClient();
+
+      let customerId = user.stripeCustomerId;
+      if (!customerId) {
+        const customer = await stripe.customers.create({
+          email: user.email || undefined,
+          name: [user.firstName, user.lastName].filter(Boolean).join(' ') || undefined,
+          metadata: { userId: user.id },
+        });
+        customerId = customer.id;
+        await storage.updateUser(userId, { stripeCustomerId: customerId });
+      }
+
+      const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+        : process.env.REPLIT_DOMAINS?.split(',')[0] 
+          ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
+          : 'http://localhost:5000';
+
+      const session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        payment_method_types: ['card'],
+        line_items: [{ price: priceId, quantity: 1 }],
+        mode: 'subscription',
+        subscription_data: {
+          trial_period_days: 7,
+        },
+        success_url: `${baseUrl}/subscription?success=true`,
+        cancel_url: `${baseUrl}/subscription?canceled=true`,
+      });
+
+      res.json({ url: session.url });
+    } catch (error) {
+      console.error("Error creating checkout session:", error);
+      res.status(500).json({ error: "Failed to create checkout session" });
+    }
+  });
+
+  app.post('/api/billing/portal', sessionAuth, async (req: any, res) => {
+    try {
+      const userId = req.authUserId;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (!user.stripeCustomerId) {
+        return res.status(400).json({ message: "No billing account found" });
+      }
+
+      const stripe = await getUncachableStripeClient();
+
+      const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+        : process.env.REPLIT_DOMAINS?.split(',')[0] 
+          ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
+          : 'http://localhost:5000';
+
+      const portalSession = await stripe.billingPortal.sessions.create({
+        customer: user.stripeCustomerId,
+        return_url: `${baseUrl}/subscription`,
+      });
+
+      res.json({ url: portalSession.url });
+    } catch (error) {
+      console.error("Error creating portal session:", error);
+      res.status(500).json({ error: "Failed to create billing portal" });
     }
   });
 
