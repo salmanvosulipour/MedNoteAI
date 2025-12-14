@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import type { User } from "@shared/schema";
 
 // Get stored user from localStorage
@@ -23,8 +23,6 @@ export function clearStoredUser() {
 }
 
 export function useAuth() {
-  const queryClient = useQueryClient();
-  
   const { data: user, isLoading } = useQuery<User | null>({
     queryKey: ["/api/auth/user"],
     queryFn: async () => {
@@ -53,10 +51,5 @@ export function useAuth() {
     user,
     isLoading,
     isAuthenticated: !!user,
-    logout: () => {
-      clearStoredUser();
-      queryClient.setQueryData(["/api/auth/user"], null);
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-    },
   };
 }
