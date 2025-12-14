@@ -171,7 +171,15 @@ export default function TermsPage() {
 
           <Button
             variant="ghost"
-            onClick={() => window.location.href = "/api/logout"}
+            onClick={async () => {
+              try {
+                await apiRequest("POST", "/api/auth/logout");
+              } catch (e) {
+                // Ignore errors
+              }
+              queryClient.clear();
+              setLocation("/auth");
+            }}
             className="w-full"
             data-testid="button-decline-logout"
           >

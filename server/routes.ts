@@ -53,7 +53,13 @@ export async function registerRoutes(
       });
 
       (req.session as any).userId = user.id;
-      res.json({ user, needsTerms: true });
+      req.session.save((err) => {
+        if (err) {
+          console.error("Session save error:", err);
+          return res.status(500).json({ message: "Failed to create session" });
+        }
+        res.json({ user, needsTerms: true });
+      });
     } catch (error) {
       console.error("Signup error:", error);
       res.status(500).json({ message: "Failed to create account" });
@@ -87,7 +93,13 @@ export async function registerRoutes(
 
       (req.session as any).userId = user.id;
       const needsTerms = !user.termsAcceptedAt;
-      res.json({ user, needsTerms });
+      req.session.save((err) => {
+        if (err) {
+          console.error("Session save error:", err);
+          return res.status(500).json({ message: "Failed to create session" });
+        }
+        res.json({ user, needsTerms });
+      });
     } catch (error) {
       console.error("Login error:", error);
       res.status(500).json({ message: "Failed to login" });
