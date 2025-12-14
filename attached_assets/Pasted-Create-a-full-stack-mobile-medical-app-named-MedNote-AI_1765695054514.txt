@@ -1,0 +1,20 @@
+Create a full-stack mobile medical app named MedNote AI using Replit as the development environment. Build it as a cross-platform app with React Native (using Expo for easy iOS/Android builds and previews). Use Firebase for the backend (Authentication, Firestore, Storage, and Cloud Functions).
+The app is an AI-powered physician assistant that runs on iOS and Android phones/tablets with a responsive, professional, premium-looking UI that feels high-end and trustworthy.
+Core Features:
+	•	Authentication: Implement Firebase Authentication with email/password and Google/Apple sign-in. Every user must have an account.
+	•	Subscription: Integrate Stripe for in-app subscriptions ($15/month or $99/year). Use Firebase Cloud Functions to validate subscriptions and gate premium features (e.g., unlimited recordings, exports).
+	•	Audio Recording: Use Expo AV to record doctor-patient conversations via device microphone. Support recording in all languages (no language restriction).
+	•	Transcription: Upload recordings to Firebase Storage, then use a multilingual transcription service (OpenAI Whisper API or Google Cloud Speech-to-Text) via Cloud Functions to transcribe the audio with automatic language detection.
+	•	AI Summary Generation: Pass the transcription (in any language) to an AI model (e.g., GPT-4o or Gemini via API in Cloud Functions). Prompt the model to translate content if necessary and generate a structured medical note always in English:
+	◦	CC (Chief Complaint)
+	◦	HPI (History of Present Illness)
+	◦	PMH (Past Medical History)
+	◦	Differential Diagnosis (DDx)
+	◦	Treatment Plan (based on latest guidelines) Allow physicians to edit the generated summary before saving.
+	•	Image Capture: Use Expo ImagePicker and Camera to capture and upload photos (e.g., physical exams, scans) to Firebase Storage, linked to specific cases.
+	•	Exports:
+	◦	Generate downloadable PDF of the full English summary + embedded images (use a library like react-native-pdf-lib or server-side PDF generation in Cloud Functions).
+	◦	Generate downloadable PowerPoint-style presentation (.pptx) with summary slides and images (use server-side library like PptxGenJS in Cloud Functions).
+	•	Case Management: Store and organize anonymized patient cases in Firestore with search, filtering, and list views.
+	•	UI/UX: Design a clean, modern, premium interface using high-quality components (e.g., NativeBase, React Native Paper, or custom with Tailwind via NativeWind). Include smooth animations, dark/light mode, intuitive bottom navigation (Home, Cases, Record, Profile), and premium touches like subtle gradients and polished typography.
+Prioritize HIPAA-compliant practices: encrypt data in transit/rest, avoid logging sensitive info, and anonymize patient data. Set up Replit project with clear folder structure, environment variables for API keys, and instructions for running/building with Expo. Include necessary dependencies and example Cloud Functions code for transcription, translation/summarization, and file generation.
