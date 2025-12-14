@@ -12,7 +12,7 @@ import { ChevronDown } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
-import { clearStoredUser } from "@/hooks/useAuth";
+import { clearStoredUser, useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 
 const SPECIALTIES = [
@@ -47,8 +47,10 @@ const SPECIALTIES = [
 
 export default function ProfilePage() {
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
+  const defaultName = user ? `${user.firstName || ''}${user.lastName ? ' ' + user.lastName : ''}`.trim() || 'User' : 'User';
   const [avatar, setAvatar] = useState("https://api.dicebear.com/7.x/avataaars/svg?seed=Felix");
-  const [fullName, setFullName] = useState("Dr. John Smith");
+  const [fullName, setFullName] = useState(defaultName);
   const [specialty, setSpecialty] = useState("Emergency Medicine");
   const [isEditingName, setIsEditingName] = useState(false);
   const [editNameValue, setEditNameValue] = useState("");
@@ -69,14 +71,19 @@ export default function ProfilePage() {
   };
 
   useEffect(() => {
-    const savedAvatar = localStorage.getItem("user-avatar");
-    const savedName = localStorage.getItem("user-fullname");
-    const savedSpecialty = localStorage.getItem("user-specialty");
+    const savedAvatar = localStorage.getItem(`user-avatar-${user?.id}`);
+    const savedName = localStorage.getItem(`user-fullname-${user?.id}`);
+    const savedSpecialty = localStorage.getItem(`user-specialty-${user?.id}`);
     
     if (savedAvatar) setAvatar(savedAvatar);
-    if (savedName) setFullName(savedName);
+    if (savedName) {
+      setFullName(savedName);
+    } else if (user) {
+      const userName = `${user.firstName || ''}${user.lastName ? ' ' + user.lastName : ''}`.trim() || 'User';
+      setFullName(userName);
+    }
     if (savedSpecialty) setSpecialty(savedSpecialty);
-  }, []);
+  }, [user]);
 
   const handleAvatarClick = () => {
     fileInputRef.current?.click();
@@ -89,7 +96,7 @@ export default function ProfilePage() {
       reader.onloadend = () => {
         const result = reader.result as string;
         setAvatar(result);
-        localStorage.setItem("user-avatar", result);
+        localStorage.setItem(`user-avatar-${user?.id}`, result);
         toast({
           title: "Profile Photo Updated",
           description: "Your new profile photo has been saved.",
@@ -109,7 +116,7 @@ export default function ProfilePage() {
   const saveName = () => {
     if (editNameValue.trim()) {
       setFullName(editNameValue.trim());
-      localStorage.setItem("user-fullname", editNameValue.trim());
+      localStorage.setItem(`user-fullname-${user?.id}`, editNameValue.trim());
       toast({ title: "Name Updated", description: "Your profile name has been saved." });
       window.dispatchEvent(new Event("storage"));
     }
@@ -118,7 +125,7 @@ export default function ProfilePage() {
 
   const handleSpecialtyChange = (value: string) => {
     setSpecialty(value);
-    localStorage.setItem("user-specialty", value);
+    localStorage.setItem(`user-specialty-${user?.id}`, value);
     toast({ title: "Specialty Updated", description: `Your specialty is now ${value}.` });
     window.dispatchEvent(new Event("storage"));
   };
