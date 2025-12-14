@@ -48,6 +48,22 @@ export const cases = pgTable("cases", {
   
   // Attachments
   attachmentUrls: text("attachment_urls").array(), // Array of image URLs
+  
+  // Diagnostic Studies Analysis (X-ray, ECG, Lab results)
+  diagnosticStudies: jsonb("diagnostic_studies"), // Array of {type, imageUrl, interpretation, aiAssisted}
+  
+  // Physician-provided content
+  patientEducation: text("patient_education"), // Patient education content
+  treatmentRedFlags: text("treatment_red_flags"), // Warning signs to watch for
+  
+  // Discharge medications
+  dischargeMedications: jsonb("discharge_medications"), // Array of {name, dose, frequency, duration, instructions}
+  
+  // Patient contact info for email
+  patientEmail: text("patient_email"),
+  
+  // Email delivery status
+  emailStatus: jsonb("email_status"), // {sentAt, recipient, status, messageId}
 });
 
 export const insertCaseSchema = createInsertSchema(cases).omit({
