@@ -146,8 +146,14 @@ export function EditableSection({
       setEditedContent(finalTranscriptRef.current + interimTranscript);
     };
 
-    recognition.onerror = () => {
+    recognition.onerror = (event: Event) => {
+      const errorEvent = event as any;
+      console.error("Speech recognition error:", event);
       setIsRecording(false);
+      
+      if (errorEvent.error === 'language-not-supported' || errorEvent.error === 'not-allowed') {
+        alert(`Speech recognition for ${SUPPORTED_LANGUAGES.find(l => l.code === selectedLanguage)?.name || selectedLanguage} may not be supported in your browser. Try using Chrome or Edge for best language support.`);
+      }
     };
 
     recognition.onend = () => {

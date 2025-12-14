@@ -182,9 +182,16 @@ export default function RecordPage() {
 
       recognition.onerror = (event: Event) => {
         console.error("Speech recognition error:", event);
-        // Don't show error for "no-speech" as it's common
         const errorEvent = event as any;
-        if (errorEvent.error !== 'no-speech') {
+        
+        if (errorEvent.error === 'language-not-supported') {
+          const langName = SUPPORTED_LANGUAGES.find(l => l.code === selectedLanguage)?.name || selectedLanguage;
+          toast({
+            title: "Language Not Supported",
+            description: `${langName} speech recognition is not supported in this browser. Try using Chrome or Edge.`,
+            variant: "destructive",
+          });
+        } else if (errorEvent.error !== 'no-speech' && errorEvent.error !== 'aborted') {
           toast({
             title: "Recognition Error",
             description: "There was an issue with speech recognition. Please try again.",
