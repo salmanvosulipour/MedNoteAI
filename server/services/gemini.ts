@@ -1,44 +1,35 @@
-import OpenAI from "openai";
+import { GoogleGenAI } from "@google/genai";
 
-const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+const genAI = new GoogleGenAI({ 
+  apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY!,
 });
 
 export async function transcribeAudio(audioBase64: string, mimeType: string): Promise<string> {
-  // Determine audio format for GPT-4o
-  let format: "wav" | "mp3" = "mp3";
-  if (mimeType.includes("wav")) {
-    format = "wav";
-  }
-
-  // Use GPT-4o with audio input capability
-  const response = await openai.chat.completions.create({
-    model: "gpt-4o-audio-preview",
-    modalities: ["text"],
-    messages: [
+  const model = genAI.models.generateContent({
+    model: "gemini-2.0-flash",
+    contents: [
       {
         role: "user",
-        content: [
+        parts: [
           {
-            type: "input_audio",
-            input_audio: {
+            inlineData: {
+              mimeType: mimeType || "audio/webm",
               data: audioBase64,
-              format: format,
             },
           },
           {
-            type: "text",
-            text: "Please transcribe this audio recording word for word. This is a physician dictating a medical note for a patient encounter. Preserve all medical terminology and details accurately.",
+            text: "Please transcribe this audio recording word for word. This is a physician dictating medical notes. Preserve all medical terminology and details accurately. Return only the transcription text, no additional commentary.",
           },
         ],
       },
     ],
   });
 
-  const text = response.choices[0]?.message?.content;
+  const response = await model;
+  const text = response.text;
+  
   if (!text) {
-    throw new Error("No transcription returned from OpenAI");
+    throw new Error("No transcription returned from Gemini");
   }
   
   return text;
