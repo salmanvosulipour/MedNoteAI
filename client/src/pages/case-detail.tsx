@@ -67,10 +67,19 @@ export default function CaseDetailPage() {
 
                 <section>
                   <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Assessment / Differential Diagnosis</h3>
-                  <ul className="list-disc list-inside text-sm text-foreground space-y-1">
-                    <li>Migraine with aura (primary suspect)</li>
-                    <li>Tension-type headache</li>
-                    <li>Cluster headache (less likely)</li>
+                  <ul className="space-y-2">
+                    <li className="flex items-start justify-between p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                      <span className="text-sm text-foreground">Migraine with aura (primary suspect)</span>
+                      <span className="text-xs font-mono bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-0.5 rounded">G43.109</span>
+                    </li>
+                    <li className="flex items-start justify-between p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                      <span className="text-sm text-foreground">Tension-type headache</span>
+                      <span className="text-xs font-mono bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 px-2 py-0.5 rounded">G44.209</span>
+                    </li>
+                    <li className="flex items-start justify-between p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                      <span className="text-sm text-foreground">Cluster headache</span>
+                      <span className="text-xs font-mono bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 px-2 py-0.5 rounded">G44.009</span>
+                    </li>
                   </ul>
                 </section>
 
