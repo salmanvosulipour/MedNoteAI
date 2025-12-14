@@ -44,14 +44,35 @@ export default function SubscriptionPage() {
   const { data: billingStatus, isLoading } = useQuery({
     queryKey: ["/api/billing/status"],
     queryFn: async () => {
-      const res = await apiRequest("GET", "/api/billing/status");
+      const res = await fetch("/api/billing/status", {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        if (res.status === 401) {
+          return { isEmailVerified: false, freeTokensRemaining: 0, isSubscribed: false, subscription: null };
+        }
+        throw new Error("Failed to fetch billing status");
+      }
       return res.json();
     },
+    retry: false,
   });
 
   const checkoutMutation = useMutation({
     mutationFn: async (priceId: string) => {
-      const res = await apiRequest("POST", "/api/billing/checkout", { priceId });
+      const res = await fetch("/api/billing/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ priceId }),
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 401) {
+          throw new Error("Please log in again to continue.");
+        }
+        throw new Error(data.error || "Failed to start checkout");
+      }
       return res.json();
     },
     onSuccess: (data) => {
@@ -59,10 +80,10 @@ export default function SubscriptionPage() {
         window.location.href = data.url;
       }
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: "Failed to start checkout. Please try again.",
+        description: error.message || "Failed to start checkout. Please try again.",
         variant: "destructive",
       });
     },
@@ -70,7 +91,14 @@ export default function SubscriptionPage() {
 
   const portalMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/billing/portal");
+      const res = await fetch("/api/billing/portal", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to open billing portal");
+      }
       return res.json();
     },
     onSuccess: (data) => {
@@ -78,10 +106,10 @@ export default function SubscriptionPage() {
         window.location.href = data.url;
       }
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: "Failed to open billing portal. Please try again.",
+        description: error.message || "Failed to open billing portal. Please try again.",
         variant: "destructive",
       });
     },
@@ -118,10 +146,8 @@ export default function SubscriptionPage() {
 
         <div className="relative z-20 flex flex-col h-full p-6">
           <div className="flex justify-end">
-            <Link href="/home">
-              <a className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors" data-testid="button-close">
-                <X className="w-6 h-6" />
-              </a>
+            <Link href="/home" className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors" data-testid="button-close">
+              <X className="w-6 h-6" />
             </Link>
           </div>
 
@@ -196,10 +222,8 @@ export default function SubscriptionPage() {
 
       <div className="relative z-20 flex flex-col h-full p-6">
         <div className="flex justify-end">
-          <Link href="/home">
-            <a className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors" data-testid="button-close">
-              <X className="w-6 h-6" />
-            </a>
+          <Link href="/home" className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors" data-testid="button-close">
+            <X className="w-6 h-6" />
           </Link>
         </div>
 
