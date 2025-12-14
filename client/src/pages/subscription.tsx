@@ -83,7 +83,8 @@ export default function SubscriptionPage() {
     },
     onSuccess: (data) => {
       if (data.url) {
-        window.location.href = data.url;
+        console.log("Redirecting to Stripe:", data.url);
+        window.location.replace(data.url);
       }
     },
     onError: (error: Error) => {
