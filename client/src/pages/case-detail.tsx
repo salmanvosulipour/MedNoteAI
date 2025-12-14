@@ -34,14 +34,19 @@ type Medication = {
   instructions: string;
 };
 
+type ExtendedCase = Case & {
+  disposition?: string;
+  dischargeSummary?: string;
+};
+
 export default function CaseDetailPage() {
   const [, params] = useRoute("/cases/:id");
   const id = params?.id || "new";
   const { toast } = useToast();
 
-  const { data: caseData, isLoading, error } = useQuery({
+  const { data: caseData, isLoading, error } = useQuery<ExtendedCase>({
     queryKey: ["case", id],
-    queryFn: () => fetchCase(id),
+    queryFn: () => fetchCase(id) as Promise<ExtendedCase>,
     enabled: id !== "new",
   });
 
@@ -69,7 +74,7 @@ export default function CaseDetailPage() {
   }, [caseData]);
 
   const updateMutation = useMutation({
-    mutationFn: (data: Partial<Case>) => updateCase(id, data),
+    mutationFn: (data: Partial<ExtendedCase>) => updateCase(id, data as Partial<Case>),
     onSuccess: () => {
       invalidateCase(id);
     },
@@ -773,8 +778,39 @@ export default function CaseDetailPage() {
                   <ClipboardCheck className="w-4 h-4 text-indigo-500" />
                   Final Diagnosis & Disposition
                 </h3>
+                {caseData.disposition && (
+                  <Link href={`/cases/${id}/disposition`}>
+                    <Badge className="bg-green-100 text-green-700 hover:bg-green-200 cursor-pointer">
+                      View Summary
+                    </Badge>
+                  </Link>
+                )}
               </div>
               
+              {caseData.disposition ? (
+                <div className="space-y-3">
+                  <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <CheckCircle className="w-5 h-5 text-green-600" />
+                      <span className="font-semibold text-green-700 dark:text-green-400">
+                        Case Finalized - {getDispositionLabel(caseData.disposition)}
+                      </span>
+                    </div>
+                    {caseData.assessment && (
+                      <p className="text-sm text-muted-foreground mt-2">{caseData.assessment}</p>
+                    )}
+                  </div>
+                  <Link href={`/cases/${id}/disposition`}>
+                    <Button 
+                      className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg"
+                      data-testid="button-view-disposition"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      View & Download Disposition Summary
+                    </Button>
+                  </Link>
+                </div>
+              ) : (
               <Dialog open={dispositionDialogOpen} onOpenChange={setDispositionDialogOpen}>
                 <DialogTrigger asChild>
                   <Button 
@@ -902,6 +938,7 @@ export default function CaseDetailPage() {
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
+              )}
             </CardContent>
           </Card>
 
