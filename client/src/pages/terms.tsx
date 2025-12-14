@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { MobileLayout } from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -15,7 +15,6 @@ export default function TermsPage() {
   const [hasReadTerms, setHasReadTerms] = useState(false);
   const [understandsEducational, setUnderstandsEducational] = useState(false);
   const [understandsNotReplacement, setUnderstandsNotReplacement] = useState(false);
-  const queryClient = useQueryClient();
 
   const acceptTermsMutation = useMutation({
     mutationFn: async () => {
@@ -26,7 +25,6 @@ export default function TermsPage() {
     onSuccess: (updatedUser) => {
       localStorage.removeItem("authToken");
       storeUser(updatedUser);
-      queryClient.setQueryData(["/api/auth/user"], updatedUser);
       setLocation("/home");
     },
   });
@@ -183,7 +181,6 @@ export default function TermsPage() {
                 // Ignore errors
               }
               clearStoredUser();
-              queryClient.clear();
               setLocation("/auth");
             }}
             className="w-full"

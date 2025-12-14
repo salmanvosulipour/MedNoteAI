@@ -1,7 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
 import type { User } from "@shared/schema";
 
-// Get stored user from localStorage
 function getStoredUser(): User | null {
   try {
     const stored = localStorage.getItem("user");
@@ -11,41 +10,37 @@ function getStoredUser(): User | null {
   }
 }
 
-// Store user in localStorage
 export function storeUser(user: User) {
   localStorage.setItem("user", JSON.stringify(user));
+  window.dispatchEvent(new Event('authChange'));
 }
 
-// Clear stored user
 export function clearStoredUser() {
   localStorage.removeItem("user");
   localStorage.removeItem("authToken");
+  window.dispatchEvent(new Event('authChange'));
 }
 
 export function useAuth() {
-  const { data: user, isLoading } = useQuery<User | null>({
-    queryKey: ["/api/auth/user"],
-    queryFn: async () => {
-      // First try to get user from server (with session)
-      try {
-        const res = await fetch("/api/auth/user", {
-          credentials: "include",
-        });
-        if (res.ok) {
-          const serverUser = await res.json();
-          storeUser(serverUser);
-          return serverUser;
-        }
-      } catch {
-        // Server auth failed, fall back to localStorage
-      }
-      
-      // Fall back to localStorage
-      return getStoredUser();
-    },
-    retry: false,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-  });
+  const [user, setUser] = useState<User | null>(() => getStoredUser());
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    setUser(getStoredUser());
+    setIsLoading(false);
+    
+    const handleAuthChange = () => {
+      setUser(getStoredUser());
+    };
+    
+    window.addEventListener('authChange', handleAuthChange);
+    window.addEventListener('storage', handleAuthChange);
+    
+    return () => {
+      window.removeEventListener('authChange', handleAuthChange);
+      window.removeEventListener('storage', handleAuthChange);
+    };
+  }, []);
 
   return {
     user,

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion } from "framer-motion";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { storeUser } from "@/hooks/useAuth";
 import logoIcon from "@assets/generated_images/minimalist_medical_ai_logo_icon.png";
@@ -14,7 +14,6 @@ import logoIcon from "@assets/generated_images/minimalist_medical_ai_logo_icon.p
 export default function AuthPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [signupName, setSignupName] = useState("");
@@ -37,7 +36,6 @@ export default function AuthPage() {
     },
     onSuccess: (data) => {
       storeUser(data.user);
-      queryClient.setQueryData(["/api/auth/user"], data.user);
       if (data.needsTerms) {
         localStorage.setItem("authToken", data.authToken);
         setLocation("/terms");
@@ -66,7 +64,6 @@ export default function AuthPage() {
     },
     onSuccess: (data) => {
       storeUser(data.user);
-      queryClient.setQueryData(["/api/auth/user"], data.user);
       localStorage.setItem("authToken", data.authToken);
       setLocation("/terms");
     },
