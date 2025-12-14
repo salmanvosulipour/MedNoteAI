@@ -18,9 +18,11 @@ export default function TermsPage() {
 
   const acceptTermsMutation = useMutation({
     mutationFn: async () => {
-      await apiRequest("POST", "/api/auth/accept-terms");
+      const authToken = localStorage.getItem("authToken");
+      await apiRequest("POST", "/api/auth/accept-terms", { authToken });
     },
     onSuccess: () => {
+      localStorage.removeItem("authToken");
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       setLocation("/home");
     },

@@ -35,6 +35,7 @@ export default function AuthPage() {
     },
     onSuccess: (data) => {
       if (data.needsTerms) {
+        localStorage.setItem("authToken", data.authToken);
         setLocation("/terms");
       } else {
         setLocation("/");
@@ -59,7 +60,8 @@ export default function AuthPage() {
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      localStorage.setItem("authToken", data.authToken);
       setLocation("/terms");
     },
     onError: (error: Error) => {

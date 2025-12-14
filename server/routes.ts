@@ -11,6 +11,37 @@ import multer from "multer";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 
+// Generate a signed auth token for terms acceptance
+function generateAuthToken(userId: string): string {
+  const expiry = Date.now() + 10 * 60 * 1000; // 10 minutes
+  const payload = `${userId}:${expiry}`;
+  const signature = crypto.createHmac('sha256', process.env.SESSION_SECRET || 'fallback-secret')
+    .update(payload)
+    .digest('hex');
+  return Buffer.from(`${payload}:${signature}`).toString('base64');
+}
+
+// Verify and decode auth token
+function verifyAuthToken(token: string): string | null {
+  try {
+    const decoded = Buffer.from(token, 'base64').toString('utf-8');
+    const [userId, expiryStr, signature] = decoded.split(':');
+    const expiry = parseInt(expiryStr, 10);
+    
+    if (Date.now() > expiry) return null;
+    
+    const expectedSignature = crypto.createHmac('sha256', process.env.SESSION_SECRET || 'fallback-secret')
+      .update(`${userId}:${expiryStr}`)
+      .digest('hex');
+    
+    if (signature !== expectedSignature) return null;
+    
+    return userId;
+  } catch {
+    return null;
+  }
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -53,12 +84,13 @@ export async function registerRoutes(
       });
 
       (req.session as any).userId = user.id;
+      const authToken = generateAuthToken(user.id);
       req.session.save((err) => {
         if (err) {
           console.error("Session save error:", err);
           return res.status(500).json({ message: "Failed to create session" });
         }
-        res.json({ user, needsTerms: true });
+        res.json({ user, needsTerms: true, authToken });
       });
     } catch (error) {
       console.error("Signup error:", error);
@@ -93,12 +125,13 @@ export async function registerRoutes(
 
       (req.session as any).userId = user.id;
       const needsTerms = !user.termsAcceptedAt;
+      const authToken = needsTerms ? generateAuthToken(user.id) : undefined;
       req.session.save((err) => {
         if (err) {
           console.error("Session save error:", err);
           return res.status(500).json({ message: "Failed to create session" });
         }
-        res.json({ user, needsTerms });
+        res.json({ user, needsTerms, authToken });
       });
     } catch (error) {
       console.error("Login error:", error);
@@ -221,9 +254,20 @@ export async function registerRoutes(
   });
 
   // Accept terms of use
-  app.post('/api/auth/accept-terms', sessionAuth, async (req: any, res) => {
+  app.post('/api/auth/accept-terms', async (req: any, res) => {
     try {
-      const userId = req.authUserId;
+      // Try session auth first
+      let userId = req.session?.userId || req.user?.claims?.sub;
+      
+      // Fall back to token-based auth
+      if (!userId && req.body.authToken) {
+        userId = verifyAuthToken(req.body.authToken);
+      }
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
       const updated = await storage.updateUser(userId, {
         termsAcceptedAt: new Date(),
       });
