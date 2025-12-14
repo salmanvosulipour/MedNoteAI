@@ -55,33 +55,6 @@ declare global {
   }
 }
 
-const SUPPORTED_LANGUAGES = [
-  { code: "en-US", name: "English (US)", flag: "🇺🇸" },
-  { code: "en-GB", name: "English (UK)", flag: "🇬🇧" },
-  { code: "fa-IR", name: "Persian (Farsi)", flag: "🇮🇷" },
-  { code: "ar-SA", name: "Arabic", flag: "🇸🇦" },
-  { code: "es-ES", name: "Spanish", flag: "🇪🇸" },
-  { code: "fr-FR", name: "French", flag: "🇫🇷" },
-  { code: "de-DE", name: "German", flag: "🇩🇪" },
-  { code: "it-IT", name: "Italian", flag: "🇮🇹" },
-  { code: "pt-BR", name: "Portuguese (Brazil)", flag: "🇧🇷" },
-  { code: "ru-RU", name: "Russian", flag: "🇷🇺" },
-  { code: "zh-CN", name: "Chinese (Mandarin)", flag: "🇨🇳" },
-  { code: "ja-JP", name: "Japanese", flag: "🇯🇵" },
-  { code: "ko-KR", name: "Korean", flag: "🇰🇷" },
-  { code: "hi-IN", name: "Hindi", flag: "🇮🇳" },
-  { code: "tr-TR", name: "Turkish", flag: "🇹🇷" },
-  { code: "nl-NL", name: "Dutch", flag: "🇳🇱" },
-  { code: "pl-PL", name: "Polish", flag: "🇵🇱" },
-  { code: "uk-UA", name: "Ukrainian", flag: "🇺🇦" },
-  { code: "he-IL", name: "Hebrew", flag: "🇮🇱" },
-  { code: "th-TH", name: "Thai", flag: "🇹🇭" },
-  { code: "vi-VN", name: "Vietnamese", flag: "🇻🇳" },
-  { code: "id-ID", name: "Indonesian", flag: "🇮🇩" },
-  { code: "sv-SE", name: "Swedish", flag: "🇸🇪" },
-  { code: "da-DK", name: "Danish", flag: "🇩🇰" },
-  { code: "fi-FI", name: "Finnish", flag: "🇫🇮" },
-];
 
 export default function RecordPage() {
   const [isRecording, setIsRecording] = useState(false);
@@ -96,7 +69,6 @@ export default function RecordPage() {
   const [patientAge, setPatientAge] = useState("");
   const [patientGender, setPatientGender] = useState("M");
   const [chiefComplaint, setChiefComplaint] = useState("");
-  const [selectedLanguage, setSelectedLanguage] = useState("en-US");
   
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -161,7 +133,7 @@ export default function RecordPage() {
       const recognition = new SpeechRecognition();
       recognition.continuous = true;
       recognition.interimResults = true;
-      recognition.lang = selectedLanguage;
+      recognition.lang = "en-US";
 
       let finalTranscript = "";
 
@@ -183,22 +155,15 @@ export default function RecordPage() {
       recognition.onerror = (event: Event) => {
         const errorEvent = event as any;
         const errorType = errorEvent.error || 'unknown';
-        const langName = SUPPORTED_LANGUAGES.find(l => l.code === selectedLanguage)?.name || selectedLanguage;
-        console.error("Speech recognition error:", errorType, "for language:", selectedLanguage);
+        console.error("Speech recognition error:", errorType);
         
-        if (errorType === 'language-not-supported' || errorType === 'not-allowed') {
-          toast({
-            title: "Language Not Supported",
-            description: `${langName} speech recognition is not supported in this browser. Try using Chrome on desktop.`,
-            variant: "destructive",
-          });
-        } else if (errorType === 'network') {
+        if (errorType === 'network') {
           toast({
             title: "Network Error",
             description: "Speech recognition requires an internet connection. Please check your connection.",
             variant: "destructive",
           });
-        } else if (errorType === 'audio-capture') {
+        } else if (errorType === 'audio-capture' || errorType === 'not-allowed') {
           toast({
             title: "Microphone Error",
             description: "Could not access your microphone. Please check permissions.",
@@ -207,7 +172,7 @@ export default function RecordPage() {
         } else if (errorType !== 'no-speech' && errorType !== 'aborted') {
           toast({
             title: "Recognition Issue",
-            description: `Speech recognition error (${errorType}). For ${langName}, try speaking clearly or use English.`,
+            description: "There was an issue with speech recognition. Please try again.",
             variant: "destructive",
           });
         }
@@ -494,22 +459,6 @@ export default function RecordPage() {
                 onChange={(e) => setChiefComplaint(e.target.value)}
                 data-testid="input-chief-complaint"
               />
-            </div>
-            <div>
-              <Label>Recording Language</Label>
-              <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
-                <SelectTrigger data-testid="select-language">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="max-h-[200px]">
-                  {SUPPORTED_LANGUAGES.map((lang) => (
-                    <SelectItem key={lang.code} value={lang.code}>
-                      <span className="mr-2">{lang.flag}</span>
-                      {lang.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
           </div>
           <DialogFooter>
