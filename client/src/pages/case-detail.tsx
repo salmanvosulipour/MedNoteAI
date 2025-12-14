@@ -1,7 +1,7 @@
 import { MobileLayout } from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ChevronLeft, Share2, AlertTriangle, Pill, Mail, Plus, GraduationCap, Stethoscope, Activity, FlaskConical, FileImage, Loader2, CheckCircle, Download, Printer, Presentation, TrendingUp } from "lucide-react";
+import { ChevronLeft, Share2, AlertTriangle, Pill, Plus, GraduationCap, Stethoscope, Activity, FlaskConical, FileImage, Loader2, CheckCircle, Download, Printer, Presentation, TrendingUp } from "lucide-react";
 import { EditableSection } from "@/components/EditableSection";
 import pptxgen from "pptxgenjs";
 import { Link, useRoute } from "wouter";
@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { fetchCase, updateCase, sendEmailSummary, invalidateCase, type Case } from "@/lib/api";
+import { fetchCase, updateCase, invalidateCase, type Case } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 
@@ -49,8 +49,6 @@ export default function CaseDetailPage() {
   const [patientEducation, setPatientEducation] = useState("");
   const [redFlags, setRedFlags] = useState("");
   const [medications, setMedications] = useState<Medication[]>([]);
-  const [patientEmail, setPatientEmail] = useState("");
-  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [medDialogOpen, setMedDialogOpen] = useState(false);
   const [studyDialogOpen, setStudyDialogOpen] = useState(false);
   const [newMed, setNewMed] = useState<Medication>({ name: "", dose: "", frequency: "", duration: "", instructions: "" });
@@ -62,7 +60,6 @@ export default function CaseDetailPage() {
       setPatientEducation(caseData.patientEducation || "");
       setRedFlags(caseData.treatmentRedFlags || "");
       setMedications(caseData.dischargeMedications || []);
-      setPatientEmail(caseData.patientEmail || "");
     }
   }, [caseData]);
 
@@ -70,25 +67,6 @@ export default function CaseDetailPage() {
     mutationFn: (data: Partial<Case>) => updateCase(id, data),
     onSuccess: () => {
       invalidateCase(id);
-    },
-  });
-
-  const emailMutation = useMutation({
-    mutationFn: ({ email }: { email: string }) => sendEmailSummary(id, email, "Dr. Provider"),
-    onSuccess: () => {
-      toast({
-        title: "Email Sent",
-        description: `Case summary sent to ${patientEmail}`,
-      });
-      setEmailDialogOpen(false);
-      invalidateCase(id);
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Failed to Send Email",
-        description: error.message,
-        variant: "destructive",
-      });
     },
   });
 
@@ -109,12 +87,6 @@ export default function CaseDetailPage() {
       updateMutation.mutate({ diagnosticStudies: updated });
       setNewStudy({ type: "", interpretation: "", aiAssisted: false });
       setStudyDialogOpen(false);
-    }
-  };
-
-  const handleSendEmail = () => {
-    if (patientEmail) {
-      emailMutation.mutate({ email: patientEmail });
     }
   };
 
@@ -731,91 +703,6 @@ export default function CaseDetailPage() {
                 ) : (
                   <p className="text-sm text-muted-foreground text-center py-4">No medications added</p>
                 )}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-none shadow-md bg-white dark:bg-slate-900 mb-6 overflow-hidden">
-            <div className="h-1 bg-gradient-to-r from-sky-500 to-blue-500" />
-            <CardContent className="p-5">
-              <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
-                <Mail className="w-4 h-4 text-sky-500" />
-                Send to Patient
-              </h3>
-              
-              {caseData.emailStatus?.sentAt && (
-                <div className="flex items-center gap-2 mb-3 p-2 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                  <CheckCircle className="w-4 h-4 text-green-600" />
-                  <span className="text-sm text-green-700 dark:text-green-400">
-                    Sent to {caseData.emailStatus.recipient} on {format(new Date(caseData.emailStatus.sentAt), "MMM d, yyyy")}
-                  </span>
-                </div>
-              )}
-              
-              <div className="flex gap-2">
-                <Input 
-                  type="email"
-                  placeholder="patient@email.com"
-                  value={patientEmail}
-                  onChange={(e) => setPatientEmail(e.target.value)}
-                  className="flex-1"
-                  data-testid="input-patient-email"
-                />
-                <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button className="bg-sky-500 hover:bg-sky-600" disabled={!patientEmail} data-testid="button-send-email">
-                      <Mail className="w-4 h-4 mr-2" />
-                      Send
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Send Case Summary to Patient</DialogTitle>
-                    </DialogHeader>
-                    <div className="py-4">
-                      <p className="text-sm text-muted-foreground mb-4">
-                        This will send a summary including:
-                      </p>
-                      <ul className="text-sm space-y-2">
-                        <li className="flex items-center gap-2">
-                          <Badge variant="secondary" className="w-5 h-5 p-0 flex items-center justify-center">✓</Badge>
-                          Diagnosis and treatment plan
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <Badge variant="secondary" className="w-5 h-5 p-0 flex items-center justify-center">✓</Badge>
-                          Discharge medications list
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <Badge variant="secondary" className="w-5 h-5 p-0 flex items-center justify-center">✓</Badge>
-                          Patient education materials
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <Badge variant="secondary" className="w-5 h-5 p-0 flex items-center justify-center">✓</Badge>
-                          Warning signs to watch for
-                        </li>
-                      </ul>
-                    </div>
-                    <DialogFooter>
-                      <Button 
-                        onClick={handleSendEmail} 
-                        disabled={emailMutation.isPending}
-                        data-testid="button-confirm-send-email"
-                      >
-                        {emailMutation.isPending ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Sending...
-                          </>
-                        ) : (
-                          <>
-                            <Mail className="w-4 h-4 mr-2" />
-                            Send Summary
-                          </>
-                        )}
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
               </div>
             </CardContent>
           </Card>
