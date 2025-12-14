@@ -9,6 +9,7 @@ import HomePage from "@/pages/home";
 import RecordPage from "@/pages/record";
 import CasesPage from "@/pages/cases";
 import CaseDetailPage from "@/pages/case-detail";
+import SubscriptionPage from "@/pages/subscription";
 import ProfilePage from "@/pages/profile";
 
 function Router() {
@@ -20,6 +21,7 @@ function Router() {
       <Route path="/cases" component={CasesPage} />
       <Route path="/cases/:id" component={CaseDetailPage} />
       <Route path="/profile" component={ProfilePage} />
+      <Route path="/subscription" component={SubscriptionPage} />
       <Route component={NotFound} />
     </Switch>
   );
