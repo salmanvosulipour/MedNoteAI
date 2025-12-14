@@ -181,20 +181,33 @@ export default function RecordPage() {
       };
 
       recognition.onerror = (event: Event) => {
-        console.error("Speech recognition error:", event);
         const errorEvent = event as any;
+        const errorType = errorEvent.error || 'unknown';
+        const langName = SUPPORTED_LANGUAGES.find(l => l.code === selectedLanguage)?.name || selectedLanguage;
+        console.error("Speech recognition error:", errorType, "for language:", selectedLanguage);
         
-        if (errorEvent.error === 'language-not-supported') {
-          const langName = SUPPORTED_LANGUAGES.find(l => l.code === selectedLanguage)?.name || selectedLanguage;
+        if (errorType === 'language-not-supported' || errorType === 'not-allowed') {
           toast({
             title: "Language Not Supported",
-            description: `${langName} speech recognition is not supported in this browser. Try using Chrome or Edge.`,
+            description: `${langName} speech recognition is not supported in this browser. Try using Chrome on desktop.`,
             variant: "destructive",
           });
-        } else if (errorEvent.error !== 'no-speech' && errorEvent.error !== 'aborted') {
+        } else if (errorType === 'network') {
           toast({
-            title: "Recognition Error",
-            description: "There was an issue with speech recognition. Please try again.",
+            title: "Network Error",
+            description: "Speech recognition requires an internet connection. Please check your connection.",
+            variant: "destructive",
+          });
+        } else if (errorType === 'audio-capture') {
+          toast({
+            title: "Microphone Error",
+            description: "Could not access your microphone. Please check permissions.",
+            variant: "destructive",
+          });
+        } else if (errorType !== 'no-speech' && errorType !== 'aborted') {
+          toast({
+            title: "Recognition Issue",
+            description: `Speech recognition error (${errorType}). For ${langName}, try speaking clearly or use English.`,
             variant: "destructive",
           });
         }
