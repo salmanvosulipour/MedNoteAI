@@ -1,33 +1,39 @@
-import { GoogleGenAI } from "@google/genai";
+import OpenAI from "openai";
 
-const ai = new GoogleGenAI({
-  apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY!,
-  httpOptions: {
-    baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL,
-  },
+const openai = new OpenAI({
+  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
 });
 
 export async function transcribeAudio(audioBase64: string, mimeType: string): Promise<string> {
-  const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash",
-    contents: [
-      {
-        inlineData: {
-          data: audioBase64,
-          mimeType: mimeType,
-        },
-      },
-      {
-        text: "Please transcribe this audio recording. This is a physician dictating a medical note for a patient encounter. Transcribe it word for word, preserving all medical terminology and details.",
-      },
-    ],
+  // Convert base64 to buffer for Whisper API
+  const audioBuffer = Buffer.from(audioBase64, "base64");
+  
+  // Determine file extension from mime type
+  let extension = "webm";
+  if (mimeType.includes("mp3") || mimeType.includes("mpeg")) {
+    extension = "mp3";
+  } else if (mimeType.includes("wav")) {
+    extension = "wav";
+  } else if (mimeType.includes("m4a")) {
+    extension = "m4a";
+  } else if (mimeType.includes("ogg")) {
+    extension = "ogg";
+  }
+
+  // Create a File object for the Whisper API
+  const file = new File([audioBuffer], `audio.${extension}`, { type: mimeType });
+
+  const response = await openai.audio.transcriptions.create({
+    file: file,
+    model: "whisper-1",
+    language: "en",
+    prompt: "This is a physician dictating a medical note for a patient encounter. Transcribe accurately preserving all medical terminology.",
   });
 
-  const text = response.text;
-  if (!text) {
-    throw new Error("No transcription returned from Gemini");
+  if (!response.text) {
+    throw new Error("No transcription returned from OpenAI Whisper");
   }
-  return text;
+  
+  return response.text;
 }
-
-export { ai as gemini };
