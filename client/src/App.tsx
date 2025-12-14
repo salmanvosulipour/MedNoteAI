@@ -32,6 +32,7 @@ function Router() {
     return (
       <Switch>
         <Route path="/" component={AuthPage} />
+        <Route path="/terms" component={TermsPage} />
         <Route component={AuthPage} />
       </Switch>
     );
@@ -41,6 +42,7 @@ function Router() {
     return (
       <Switch>
         <Route path="/" component={TermsPage} />
+        <Route path="/terms" component={TermsPage} />
         <Route component={TermsPage} />
       </Switch>
     );

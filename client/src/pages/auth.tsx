@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { MobileLayout } from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,22 +9,23 @@ import { motion } from "framer-motion";
 import logoIcon from "@assets/generated_images/minimalist_medical_ai_logo_icon.png";
 
 export default function AuthPage() {
+  const [, setLocation] = useLocation();
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSocialLogin = () => {
-    window.location.href = "/api/login";
+    setLocation("/terms");
   };
 
   const handleEmailLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    window.location.href = "/api/login";
+    setLocation("/terms");
   };
 
   const handleSignup = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    window.location.href = "/api/login";
+    setLocation("/terms");
   };
 
   return (
