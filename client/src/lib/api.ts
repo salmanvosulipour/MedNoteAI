@@ -84,6 +84,19 @@ export async function processAudio(caseId: string, audioBlob: Blob): Promise<Cas
   return res.json();
 }
 
+export async function processText(caseId: string, dictation: string): Promise<Case> {
+  const res = await fetch(`${API_BASE}/cases/${caseId}/process-text`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ dictation }),
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || "Failed to process dictation");
+  }
+  return res.json();
+}
+
 export async function generateSummary(caseId: string): Promise<Case> {
   const res = await fetch(`${API_BASE}/cases/${caseId}/generate-summary`, {
     method: "POST",

@@ -248,6 +248,59 @@ export async function registerRoutes(
     }
   });
 
+  // Process text dictation and generate summary
+  app.post("/api/cases/:id/process-text", async (req, res) => {
+    try {
+      const caseRecord = await storage.getCase(req.params.id);
+      if (!caseRecord) {
+        return res.status(404).json({ error: "Case not found" });
+      }
+
+      const schema = z.object({
+        dictation: z.string().min(1),
+      });
+
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Dictation text is required" });
+      }
+
+      // Update status to processing
+      await storage.updateCase(req.params.id, { status: "processing" });
+
+      const transcription = parsed.data.dictation;
+
+      // Generate medical summary with OpenAI
+      const summary = await generateMedicalSummary({
+        patientName: caseRecord.patientName,
+        age: caseRecord.age,
+        gender: caseRecord.gender,
+        transcription,
+      });
+
+      // Update case with all data
+      const updated = await storage.updateCase(req.params.id, {
+        transcription,
+        chiefComplaint: summary.chiefComplaint,
+        hpi: summary.hpi,
+        ros: summary.ros,
+        physicalExam: summary.physicalExam,
+        assessment: summary.assessment,
+        differentialDiagnosis: summary.differentialDiagnosis,
+        plan: summary.plan,
+        patientEducation: summary.patientEducation,
+        treatmentRedFlags: summary.treatmentRedFlags,
+        status: "completed",
+      });
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error processing text:", error);
+      await storage.updateCase(req.params.id, { status: "draft" });
+      res.status(500).json({ error: "Failed to generate medical note" });
+    }
+  });
+
   // Send case summary email to patient
   app.post("/api/cases/:id/email-summary", async (req, res) => {
     try {
