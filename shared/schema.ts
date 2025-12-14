@@ -70,6 +70,10 @@ export const cases = pgTable("cases", {
   
   // Email delivery status
   emailStatus: jsonb("email_status"), // {sentAt, recipient, status, messageId}
+  
+  // Final disposition
+  disposition: text("disposition"), // discharged, admitted, transferred, ama, observation
+  dischargeSummary: text("discharge_summary"), // Generated discharge summary text
 });
 
 export const insertCaseSchema = createInsertSchema(cases).omit({

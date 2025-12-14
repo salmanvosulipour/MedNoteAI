@@ -50,6 +50,7 @@ export default function CaseDetailPage() {
   const [dispositionDialogOpen, setDispositionDialogOpen] = useState(false);
   const [isRecordingDisposition, setIsRecordingDisposition] = useState(false);
   const [dispositionText, setDispositionText] = useState("");
+  const [selectedDisposition, setSelectedDisposition] = useState("");
   const dispositionRecognitionRef = useRef<any>(null);
   const [medications, setMedications] = useState<Medication[]>([]);
   const [medDialogOpen, setMedDialogOpen] = useState(false);
@@ -62,6 +63,8 @@ export default function CaseDetailPage() {
       setDiagnosticStudies(caseData.diagnosticStudies || []);
       setPatientEducation(caseData.patientEducation || "");
       setMedications(caseData.dischargeMedications || []);
+      setSelectedDisposition(caseData.disposition || "");
+      setDispositionText(caseData.assessment || "");
     }
   }, [caseData]);
 
@@ -92,10 +95,33 @@ export default function CaseDetailPage() {
     }
   };
 
-  const generateDischargeSummary = () => {
+  const getDispositionLabel = (value: string) => {
+    const labels: Record<string, string> = {
+      'discharged': 'Discharged Home',
+      'admitted': 'Admitted',
+      'transferred': 'Transferred',
+      'ama': 'Left AMA',
+      'observation': 'Observation'
+    };
+    return labels[value] || value;
+  };
+
+  const generateDischargeSummary = (disposition?: string, notes?: string) => {
     if (!caseData) return "";
     
     let summary = "";
+    
+    // Disposition
+    const disp = disposition || selectedDisposition;
+    if (disp) {
+      summary += `DISPOSITION: ${getDispositionLabel(disp)}\n\n`;
+    }
+    
+    // Notes from voice/text input
+    const dictatedNotes = notes || dispositionText;
+    if (dictatedNotes && dictatedNotes.trim()) {
+      summary += "FINAL NOTES:\n" + dictatedNotes.trim() + "\n\n";
+    }
     
     // Diagnosis
     if (caseData.differentialDiagnosis && caseData.differentialDiagnosis.length > 0) {
@@ -785,6 +811,7 @@ export default function CaseDetailPage() {
                             }
                             setIsRecordingDisposition(false);
                           } else {
+                            if (typeof window === "undefined") return;
                             const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
                             if (!SpeechRecognitionAPI) {
                               alert("Speech recognition not supported");
@@ -827,11 +854,8 @@ export default function CaseDetailPage() {
 
                     <div className="space-y-2">
                       <Label>Disposition</Label>
-                      <Select onValueChange={(value) => {
-                        if (value === 'discharged') {
-                          const summary = generateDischargeSummary();
-                          setDispositionText(prev => prev + "\n\n--- DISCHARGE SUMMARY ---\n" + summary);
-                        }
+                      <Select value={selectedDisposition} onValueChange={(value) => {
+                        setSelectedDisposition(value);
                       }}>
                         <SelectTrigger data-testid="select-disposition">
                           <SelectValue placeholder="Select disposition" />
@@ -849,16 +873,25 @@ export default function CaseDetailPage() {
                   <DialogFooter>
                     <Button 
                       onClick={() => {
+                        const dischargeSummary = selectedDisposition === 'discharged' 
+                          ? generateDischargeSummary(selectedDisposition, dispositionText)
+                          : null;
+                        
                         updateMutation.mutate({ 
                           assessment: dispositionText,
+                          disposition: selectedDisposition,
+                          dischargeSummary: dischargeSummary,
                           status: 'completed'
                         });
                         setDispositionDialogOpen(false);
                         toast({
                           title: "Case Finalized",
-                          description: "Final diagnosis and disposition saved.",
+                          description: selectedDisposition === 'discharged' 
+                            ? "Case finalized with discharge summary."
+                            : "Final diagnosis and disposition saved.",
                         });
                       }}
+                      disabled={!selectedDisposition}
                       data-testid="button-save-disposition"
                     >
                       <CheckCircle className="w-4 h-4 mr-2" />
