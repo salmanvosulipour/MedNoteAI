@@ -11,7 +11,9 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { ChevronDown } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
+import { clearStoredUser } from "@/hooks/useAuth";
+import { apiRequest } from "@/lib/queryClient";
 
 const SPECIALTIES = [
   "Emergency Medicine",
@@ -44,6 +46,7 @@ const SPECIALTIES = [
 ];
 
 export default function ProfilePage() {
+  const [, setLocation] = useLocation();
   const [avatar, setAvatar] = useState("https://api.dicebear.com/7.x/avataaars/svg?seed=Felix");
   const [fullName, setFullName] = useState("Dr. John Smith");
   const [specialty, setSpecialty] = useState("Emergency Medicine");
@@ -54,6 +57,16 @@ export default function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  const handleSignOut = async () => {
+    try {
+      await apiRequest("POST", "/api/auth/logout");
+    } catch (e) {
+      // Ignore errors
+    }
+    clearStoredUser();
+    setLocation("/auth");
+  };
 
   useEffect(() => {
     const savedAvatar = localStorage.getItem("user-avatar");
@@ -343,7 +356,12 @@ export default function ProfilePage() {
            </div>
         </section>
 
-        <Button variant="destructive" className="w-full h-12 mt-4">
+        <Button 
+          variant="destructive" 
+          className="w-full h-12 mt-4"
+          onClick={handleSignOut}
+          data-testid="button-signout"
+        >
           <LogOut className="w-4 h-4 mr-2" />
           Sign Out
         </Button>
