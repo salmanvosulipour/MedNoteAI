@@ -44,8 +44,10 @@ export default function SubscriptionPage() {
   const { data: billingStatus, isLoading } = useQuery({
     queryKey: ["/api/billing/status"],
     queryFn: async () => {
+      const authToken = localStorage.getItem("authToken");
       const res = await fetch("/api/billing/status", {
         credentials: "include",
+        headers: authToken ? { "Authorization": `Bearer ${authToken}` } : {},
       });
       if (!res.ok) {
         if (res.status === 401) {
@@ -60,9 +62,13 @@ export default function SubscriptionPage() {
 
   const checkoutMutation = useMutation({
     mutationFn: async (priceId: string) => {
+      const authToken = localStorage.getItem("authToken");
       const res = await fetch("/api/billing/checkout", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {})
+        },
         body: JSON.stringify({ priceId }),
         credentials: "include",
       });
@@ -91,9 +97,11 @@ export default function SubscriptionPage() {
 
   const portalMutation = useMutation({
     mutationFn: async () => {
+      const authToken = localStorage.getItem("authToken");
       const res = await fetch("/api/billing/portal", {
         method: "POST",
         credentials: "include",
+        headers: authToken ? { "Authorization": `Bearer ${authToken}` } : {},
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));

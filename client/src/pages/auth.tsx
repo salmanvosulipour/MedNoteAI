@@ -37,8 +37,10 @@ export default function AuthPage() {
     onSuccess: (data) => {
       clearOldProfileKeys();
       storeUser(data.user);
-      if (data.needsTerms) {
+      if (data.authToken) {
         localStorage.setItem("authToken", data.authToken);
+      }
+      if (data.needsTerms) {
         setLocation("/terms");
       } else {
         setLocation("/home");

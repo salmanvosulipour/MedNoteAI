@@ -126,7 +126,7 @@ export async function registerRoutes(
 
       (req.session as any).userId = user.id;
       const needsTerms = !user.termsAcceptedAt;
-      const authToken = needsTerms ? generateAuthToken(user.id) : undefined;
+      const authToken = generateAuthToken(user.id);
       req.session.save((err) => {
         if (err) {
           console.error("Session save error:", err);
@@ -223,19 +223,21 @@ export async function registerRoutes(
     }
   });
 
-  // Custom session auth middleware
+  // Custom session auth middleware with token fallback
   const sessionAuth = (req: any, res: any, next: any) => {
     const sessionUserId = req.session?.userId;
     const replitUserId = req.user?.claims?.sub;
     
-    // Debug logging
-    console.log('sessionAuth debug:', {
-      hasSession: !!req.session,
-      sessionId: req.session?.id,
-      sessionUserId,
-      replitUserId,
-      cookies: req.headers.cookie
-    });
+    // Check Authorization header for token fallback
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith('Bearer ')) {
+      const token = authHeader.slice(7);
+      const tokenUserId = verifyAuthToken(token);
+      if (tokenUserId) {
+        req.authUserId = tokenUserId;
+        return next();
+      }
+    }
     
     if (sessionUserId) {
       req.authUserId = sessionUserId;
