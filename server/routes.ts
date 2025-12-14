@@ -4,10 +4,12 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { generateMedicalSummary, generateDiagnosticInterpretation } from "./services/openai";
 import { transcribeAudio } from "./services/gemini";
-import { sendCaseSummaryEmail } from "./services/resend";
+import { sendCaseSummaryEmail, sendPasswordResetEmail } from "./services/resend";
 import { insertCaseSchema } from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
+import bcrypt from "bcryptjs";
+import crypto from "crypto";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -16,6 +18,164 @@ export async function registerRoutes(
   
   // Setup Replit Auth
   await setupAuth(app);
+
+  // Email/Password Signup
+  app.post('/api/auth/signup', async (req, res) => {
+    try {
+      const schema = z.object({
+        name: z.string().min(1),
+        email: z.string().email(),
+        password: z.string().min(6),
+      });
+      
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid signup data" });
+      }
+
+      const { name, email, password } = parsed.data;
+      
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ message: "Email already registered" });
+      }
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const nameParts = name.split(' ');
+      const firstName = nameParts[0];
+      const lastName = nameParts.slice(1).join(' ') || undefined;
+
+      const user = await storage.createUser({
+        email,
+        password: hashedPassword,
+        firstName,
+        lastName,
+      });
+
+      (req.session as any).userId = user.id;
+      res.json({ user, needsTerms: true });
+    } catch (error) {
+      console.error("Signup error:", error);
+      res.status(500).json({ message: "Failed to create account" });
+    }
+  });
+
+  // Email/Password Login
+  app.post('/api/auth/login', async (req, res) => {
+    try {
+      const schema = z.object({
+        email: z.string().email(),
+        password: z.string(),
+      });
+      
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid login data" });
+      }
+
+      const { email, password } = parsed.data;
+      
+      const user = await storage.getUserByEmail(email);
+      if (!user || !user.password) {
+        return res.status(401).json({ message: "Invalid email or password" });
+      }
+
+      const isValidPassword = await bcrypt.compare(password, user.password);
+      if (!isValidPassword) {
+        return res.status(401).json({ message: "Invalid email or password" });
+      }
+
+      (req.session as any).userId = user.id;
+      const needsTerms = !user.termsAcceptedAt;
+      res.json({ user, needsTerms });
+    } catch (error) {
+      console.error("Login error:", error);
+      res.status(500).json({ message: "Failed to login" });
+    }
+  });
+
+  // Logout
+  app.post('/api/auth/logout', (req, res) => {
+    req.session.destroy((err) => {
+      if (err) {
+        return res.status(500).json({ message: "Failed to logout" });
+      }
+      res.json({ success: true });
+    });
+  });
+
+  // Request password reset
+  app.post('/api/auth/forgot-password', async (req, res) => {
+    try {
+      const schema = z.object({
+        email: z.string().email(),
+      });
+      
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid email" });
+      }
+
+      const { email } = parsed.data;
+      const user = await storage.getUserByEmail(email);
+      
+      if (user) {
+        const token = crypto.randomBytes(32).toString('hex');
+        const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+        
+        await storage.createPasswordResetToken(user.id, token, expiresAt);
+        
+        const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+          ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+          : process.env.REPLIT_DOMAINS?.split(',')[0] 
+            ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
+            : 'http://localhost:5000';
+        const resetLink = `${baseUrl}/reset-password?token=${token}`;
+        
+        try {
+          await sendPasswordResetEmail({ email, resetLink });
+        } catch (emailError) {
+          console.error("Failed to send reset email:", emailError);
+        }
+      }
+      
+      res.json({ message: "If an account exists with that email, a password reset link has been sent." });
+    } catch (error) {
+      console.error("Forgot password error:", error);
+      res.status(500).json({ message: "Failed to process request" });
+    }
+  });
+
+  // Reset password with token
+  app.post('/api/auth/reset-password', async (req, res) => {
+    try {
+      const schema = z.object({
+        token: z.string(),
+        password: z.string().min(6),
+      });
+      
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid request" });
+      }
+
+      const { token, password } = parsed.data;
+      
+      const resetToken = await storage.getValidPasswordResetToken(token);
+      if (!resetToken) {
+        return res.status(400).json({ message: "Invalid or expired reset link" });
+      }
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+      await storage.updateUser(resetToken.userId, { password: hashedPassword });
+      await storage.markPasswordResetTokenUsed(token);
+
+      res.json({ message: "Password reset successfully" });
+    } catch (error) {
+      console.error("Reset password error:", error);
+      res.status(500).json({ message: "Failed to reset password" });
+    }
+  });
 
   // Get authenticated user
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {

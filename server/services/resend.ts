@@ -60,6 +60,73 @@ export interface CaseSummaryEmailData {
   physicianName?: string;
 }
 
+export interface PasswordResetEmailData {
+  email: string;
+  resetLink: string;
+}
+
+export async function sendPasswordResetEmail(data: PasswordResetEmailData): Promise<{id: string; status: string}> {
+  const { client, fromEmail } = await getResendClient();
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Reset Your Password</title>
+    </head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
+      <div style="background: linear-gradient(135deg, #3b82f6, #8b5cf6); padding: 24px; border-radius: 12px 12px 0 0; color: white;">
+        <h1 style="margin: 0; font-size: 24px;">Password Reset Request</h1>
+      </div>
+      
+      <div style="background: #f8fafc; padding: 24px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 12px 12px;">
+        <p>We received a request to reset your password for your MedNote AI account.</p>
+        
+        <p>Click the button below to reset your password:</p>
+        
+        <div style="text-align: center; margin: 32px 0;">
+          <a href="${data.resetLink}" style="display: inline-block; background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600;">
+            Reset Password
+          </a>
+        </div>
+        
+        <p style="color: #64748b; font-size: 14px;">
+          This link will expire in 1 hour. If you didn't request this password reset, you can safely ignore this email.
+        </p>
+        
+        <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+        
+        <p style="color: #94a3b8; font-size: 12px;">
+          If the button doesn't work, copy and paste this link into your browser:<br/>
+          <span style="word-break: break-all;">${data.resetLink}</span>
+        </p>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const result = await client.emails.send({
+    from: fromEmail,
+    to: data.email,
+    subject: 'Reset Your MedNote AI Password',
+    html: htmlContent,
+  });
+
+  if (result.error) {
+    throw new Error(`Failed to send email: ${result.error.message}`);
+  }
+
+  if (!result.data?.id) {
+    throw new Error('Email sent but no message ID returned');
+  }
+
+  return {
+    id: result.data.id,
+    status: 'sent'
+  };
+}
+
 export async function sendCaseSummaryEmail(data: CaseSummaryEmailData): Promise<{id: string; status: string}> {
   const { client, fromEmail } = await getResendClient();
 

@@ -7,6 +7,8 @@ import { useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth";
 import TermsPage from "@/pages/terms";
+import ForgotPasswordPage from "@/pages/forgot-password";
+import ResetPasswordPage from "@/pages/reset-password";
 import HomePage from "@/pages/home";
 import RecordPage from "@/pages/record";
 import CasesPage from "@/pages/cases";
@@ -33,6 +35,8 @@ function Router() {
       <Switch>
         <Route path="/" component={AuthPage} />
         <Route path="/terms" component={TermsPage} />
+        <Route path="/forgot-password" component={ForgotPasswordPage} />
+        <Route path="/reset-password" component={ResetPasswordPage} />
         <Route component={AuthPage} />
       </Switch>
     );
