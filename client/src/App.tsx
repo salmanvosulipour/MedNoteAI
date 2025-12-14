@@ -19,9 +19,16 @@ import SubscriptionPage from "@/pages/subscription";
 import ProfilePage from "@/pages/profile";
 import SecurityPage from "@/pages/security";
 import VerifyEmailPage from "@/pages/verify-email";
+import MaintenancePage from "@/pages/maintenance";
+
+const MAINTENANCE_MODE = false;
 
 function Router() {
   const { user, isLoading, isAuthenticated } = useAuth();
+
+  if (MAINTENANCE_MODE) {
+    return <MaintenancePage />;
+  }
 
   if (isLoading) {
     return (
