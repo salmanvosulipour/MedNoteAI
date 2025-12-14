@@ -3,9 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { ChevronRight, CreditCard, Shield, HelpCircle, LogOut, User, Bell, Camera, Check, X, Edit3 } from "lucide-react";
+import { ChevronRight, CreditCard, Shield, HelpCircle, LogOut, User, Bell, Camera, Check, X, Edit3, Lock, Server, ShieldCheck, FileCheck } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { useState, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
@@ -46,6 +47,7 @@ export default function ProfilePage() {
   const [specialty, setSpecialty] = useState("Emergency Medicine");
   const [isEditingName, setIsEditingName] = useState(false);
   const [editNameValue, setEditNameValue] = useState("");
+  const [privacyDialogOpen, setPrivacyDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -203,13 +205,77 @@ export default function ProfilePage() {
               <ChevronRight className="w-4 h-4 text-slate-300" />
             </Link>
              <Separator />
-             <button className="w-full flex items-center justify-between p-4 hover:bg-slate-50 transition-colors" data-testid="button-security">
-              <div className="flex items-center gap-3">
-                <Shield className="w-5 h-5 text-slate-400" />
-                <span className="text-sm font-medium">Security & Privacy (HIPAA)</span>
-              </div>
-              <ChevronRight className="w-4 h-4 text-slate-300" />
-            </button>
+             <Dialog open={privacyDialogOpen} onOpenChange={setPrivacyDialogOpen}>
+               <DialogTrigger asChild>
+                 <button className="w-full flex items-center justify-between p-4 hover:bg-slate-50 transition-colors" data-testid="button-security">
+                   <div className="flex items-center gap-3">
+                     <Shield className="w-5 h-5 text-slate-400" />
+                     <span className="text-sm font-medium">Security & Privacy (HIPAA)</span>
+                   </div>
+                   <ChevronRight className="w-4 h-4 text-slate-300" />
+                 </button>
+               </DialogTrigger>
+               <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
+                 <DialogHeader>
+                   <DialogTitle className="flex items-center gap-2">
+                     <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                     HIPAA Compliance
+                   </DialogTitle>
+                   <DialogDescription>
+                     Your data security and privacy are our top priority
+                   </DialogDescription>
+                 </DialogHeader>
+                 <div className="space-y-4 py-4">
+                   <div className="flex items-start gap-3 p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
+                     <Lock className="w-5 h-5 text-emerald-600 mt-0.5" />
+                     <div>
+                       <h4 className="font-medium text-sm">End-to-End Encryption</h4>
+                       <p className="text-xs text-muted-foreground mt-1">
+                         All audio recordings and patient data are encrypted using AES-256 encryption both in transit and at rest.
+                       </p>
+                     </div>
+                   </div>
+                   
+                   <div className="flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                     <Server className="w-5 h-5 text-blue-600 mt-0.5" />
+                     <div>
+                       <h4 className="font-medium text-sm">HIPAA-Compliant Infrastructure</h4>
+                       <p className="text-xs text-muted-foreground mt-1">
+                         Our servers are hosted in SOC 2 Type II certified data centers with BAA agreements in place.
+                       </p>
+                     </div>
+                   </div>
+                   
+                   <div className="flex items-start gap-3 p-3 bg-violet-50 dark:bg-violet-900/20 rounded-lg">
+                     <FileCheck className="w-5 h-5 text-violet-600 mt-0.5" />
+                     <div>
+                       <h4 className="font-medium text-sm">Access Controls</h4>
+                       <p className="text-xs text-muted-foreground mt-1">
+                         Role-based access controls ensure only authorized personnel can access patient information.
+                       </p>
+                     </div>
+                   </div>
+                   
+                   <div className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
+                     <Shield className="w-5 h-5 text-amber-600 mt-0.5" />
+                     <div>
+                       <h4 className="font-medium text-sm">Audit Logging</h4>
+                       <p className="text-xs text-muted-foreground mt-1">
+                         All access to PHI is logged and auditable for compliance reporting.
+                       </p>
+                     </div>
+                   </div>
+                   
+                   <Separator />
+                   
+                   <div className="text-xs text-muted-foreground space-y-2">
+                     <p><strong>Data Retention:</strong> Audio recordings are automatically deleted after 30 days. Case notes are retained for 7 years per HIPAA requirements.</p>
+                     <p><strong>Data Export:</strong> You can export or delete your data at any time from the case management screen.</p>
+                     <p><strong>Breach Notification:</strong> In the unlikely event of a data breach, we will notify affected users within 60 days per HIPAA guidelines.</p>
+                   </div>
+                 </div>
+               </DialogContent>
+             </Dialog>
           </div>
         </section>
 
