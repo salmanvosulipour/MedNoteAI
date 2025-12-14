@@ -177,11 +177,30 @@ export async function registerRoutes(
     }
   });
 
+  // Custom session auth middleware
+  const sessionAuth = (req: any, res: any, next: any) => {
+    const sessionUserId = req.session?.userId;
+    const replitUserId = req.user?.claims?.sub;
+    
+    if (sessionUserId) {
+      req.authUserId = sessionUserId;
+      return next();
+    }
+    if (replitUserId) {
+      req.authUserId = replitUserId;
+      return next();
+    }
+    return res.status(401).json({ message: "Unauthorized" });
+  };
+
   // Get authenticated user
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  app.get('/api/auth/user', sessionAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.authUserId;
       const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -190,9 +209,9 @@ export async function registerRoutes(
   });
 
   // Accept terms of use
-  app.post('/api/auth/accept-terms', isAuthenticated, async (req: any, res) => {
+  app.post('/api/auth/accept-terms', sessionAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.authUserId;
       const updated = await storage.updateUser(userId, {
         termsAcceptedAt: new Date(),
       });
