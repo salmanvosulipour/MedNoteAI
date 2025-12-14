@@ -12,6 +12,7 @@ import { format } from "date-fns";
 type ExtendedCase = Case & {
   disposition?: string;
   dischargeSummary?: string;
+  finalNotes?: string;
 };
 
 export default function DispositionSummaryPage() {
@@ -63,8 +64,8 @@ export default function DispositionSummaryPage() {
       summary += `DISPOSITION: ${getDispositionLabel(caseData.disposition)}\n\n`;
     }
     
-    if (caseData.assessment) {
-      summary += `FINAL NOTES:\n${"-".repeat(30)}\n${caseData.assessment}\n\n`;
+    if (caseData.finalNotes) {
+      summary += `FINAL NOTES:\n${"-".repeat(30)}\n${caseData.finalNotes}\n\n`;
     }
     
     if (caseData.differentialDiagnosis && caseData.differentialDiagnosis.length > 0) {
@@ -185,11 +186,11 @@ export default function DispositionSummaryPage() {
             </p>
           </CardHeader>
           <CardContent className="space-y-6">
-            {caseData.assessment && (
+            {caseData.finalNotes && (
               <div>
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Final Notes</h3>
                 <p className="text-sm text-foreground bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3">
-                  {caseData.assessment}
+                  {caseData.finalNotes}
                 </p>
               </div>
             )}

@@ -37,6 +37,7 @@ type Medication = {
 type ExtendedCase = Case & {
   disposition?: string;
   dischargeSummary?: string;
+  finalNotes?: string;
 };
 
 export default function CaseDetailPage() {
@@ -121,7 +122,7 @@ export default function CaseDetailPage() {
       summary += `DISPOSITION: ${getDispositionLabel(disp)}\n\n`;
     }
     
-    // Notes from voice/text input
+    // Notes from voice/text input (use finalNotes field, NOT assessment)
     const dictatedNotes = notes || dispositionText;
     if (dictatedNotes && dictatedNotes.trim()) {
       summary += "FINAL NOTES:\n" + dictatedNotes.trim() + "\n\n";
@@ -795,8 +796,8 @@ export default function CaseDetailPage() {
                         Case Finalized - {getDispositionLabel(caseData.disposition)}
                       </span>
                     </div>
-                    {caseData.assessment && (
-                      <p className="text-sm text-muted-foreground mt-2">{caseData.assessment}</p>
+                    {(caseData as ExtendedCase).finalNotes && (
+                      <p className="text-sm text-muted-foreground mt-2">{(caseData as ExtendedCase).finalNotes}</p>
                     )}
                   </div>
                   <Link href={`/cases/${id}/disposition`}>
@@ -920,7 +921,7 @@ export default function CaseDetailPage() {
                           : undefined;
                         
                         updateMutation.mutate({ 
-                          assessment: dispositionText,
+                          finalNotes: dispositionText,
                           disposition: selectedDisposition,
                           dischargeSummary: dischargeSummary,
                           status: 'completed'
