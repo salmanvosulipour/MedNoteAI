@@ -2,18 +2,73 @@ import { MobileLayout } from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { ChevronRight, CreditCard, Shield, HelpCircle, LogOut, User, Bell } from "lucide-react";
+import { ChevronRight, CreditCard, Shield, HelpCircle, LogOut, User, Bell, Camera } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { useState, useEffect, useRef } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 export default function ProfilePage() {
+  const [avatar, setAvatar] = useState("https://api.dicebear.com/7.x/avataaars/svg?seed=Felix");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const savedAvatar = localStorage.getItem("user-avatar");
+    if (savedAvatar) {
+      setAvatar(savedAvatar);
+    }
+  }, []);
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        setAvatar(result);
+        localStorage.setItem("user-avatar", result);
+        toast({
+          title: "Profile Photo Updated",
+          description: "Your new profile photo has been saved.",
+        });
+        
+        // Dispatch a storage event so other components can listen
+        window.dispatchEvent(new Event("storage"));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   return (
     <MobileLayout>
       <header className="px-6 pt-12 pb-6">
         <h1 className="text-2xl font-heading font-bold mb-6">Settings</h1>
         
         <div className="flex items-center gap-4 mb-8">
-          <div className="w-16 h-16 rounded-full bg-slate-200 overflow-hidden border-2 border-white shadow-md">
-             <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="Avatar" />
+          <div className="relative group">
+            <div 
+              className="w-16 h-16 rounded-full bg-slate-200 overflow-hidden border-2 border-white shadow-md cursor-pointer relative"
+              onClick={handleAvatarClick}
+            >
+              <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <Camera className="w-6 h-6 text-white" />
+              </div>
+            </div>
+            <div className="absolute -bottom-1 -right-1 bg-primary text-white p-1 rounded-full border-2 border-white shadow-sm pointer-events-none">
+              <Camera className="w-3 h-3" />
+            </div>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              className="hidden" 
+              accept="image/*"
+              onChange={handleFileChange}
+            />
           </div>
           <div>
             <h2 className="text-lg font-bold">Dr. John Smith</h2>

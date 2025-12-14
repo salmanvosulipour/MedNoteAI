@@ -4,6 +4,7 @@ import { Mic, Search, Plus } from "lucide-react";
 import { Link } from "wouter";
 import { Input } from "@/components/ui/input";
 import heroBg from "@assets/generated_images/futuristic_medical_hero_gradient.png"; // Will use generated image
+import { useState, useEffect } from "react";
 
 const RECENT_CASES: Case[] = [
   { id: "1", patientName: "Sarah Connor", age: 34, gender: "F", chiefComplaint: "Persistent migraine and visual aura", date: "Today", status: "completed" },
@@ -12,6 +13,24 @@ const RECENT_CASES: Case[] = [
 ];
 
 export default function HomePage() {
+  const [avatar, setAvatar] = useState("https://api.dicebear.com/7.x/avataaars/svg?seed=Felix");
+
+  useEffect(() => {
+    const savedAvatar = localStorage.getItem("user-avatar");
+    if (savedAvatar) {
+      setAvatar(savedAvatar);
+    }
+
+    // Listen for changes from other components (like ProfilePage)
+    const handleStorageChange = () => {
+       const updated = localStorage.getItem("user-avatar");
+       if (updated) setAvatar(updated);
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
+
   return (
     <MobileLayout>
       {/* Creative Hero Header */}
@@ -29,7 +48,7 @@ export default function HomePage() {
             </div>
             <Link href="/profile">
               <a className="w-12 h-12 rounded-2xl bg-white/50 backdrop-blur-md border border-white/60 shadow-lg overflow-hidden p-0.5 hover:scale-105 transition-transform duration-300">
-                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="Avatar" className="w-full h-full rounded-xl" />
+                <img src={avatar} alt="Avatar" className="w-full h-full rounded-xl object-cover" />
               </a>
             </Link>
           </div>
