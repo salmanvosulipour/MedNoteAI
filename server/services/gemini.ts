@@ -1,37 +1,33 @@
-import OpenAI from "openai";
+import { GoogleGenAI } from "@google/genai";
 
-const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL,
+const ai = new GoogleGenAI({
+  apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY!,
+  httpOptions: {
+    baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL,
+  },
 });
 
 export async function transcribeAudio(audioBase64: string, mimeType: string): Promise<string> {
-  const response = await openai.chat.completions.create({
+  const response = await ai.models.generateContent({
     model: "gemini-2.5-flash",
-    messages: [
+    contents: [
       {
-        role: "user",
-        content: [
-          {
-            type: "image_url",
-            image_url: {
-              url: `data:${mimeType};base64,${audioBase64}`,
-            },
-          },
-          {
-            type: "text",
-            text: "Please transcribe this audio recording. This is a physician dictating a medical note for a patient encounter. Transcribe it word for word, preserving all medical terminology and details.",
-          },
-        ],
+        inlineData: {
+          data: audioBase64,
+          mimeType: mimeType,
+        },
+      },
+      {
+        text: "Please transcribe this audio recording. This is a physician dictating a medical note for a patient encounter. Transcribe it word for word, preserving all medical terminology and details.",
       },
     ],
   });
 
-  const text = response.choices[0]?.message?.content;
+  const text = response.text;
   if (!text) {
     throw new Error("No transcription returned from Gemini");
   }
   return text;
 }
 
-export { openai as gemini };
+export { ai as gemini };
