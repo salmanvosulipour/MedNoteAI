@@ -11,6 +11,7 @@ import CasesPage from "@/pages/cases";
 import CaseDetailPage from "@/pages/case-detail";
 import SubscriptionPage from "@/pages/subscription";
 import ProfilePage from "@/pages/profile";
+import SecurityPage from "@/pages/security";
 
 function Router() {
   return (
@@ -22,6 +23,7 @@ function Router() {
       <Route path="/cases/:id" component={CaseDetailPage} />
       <Route path="/profile" component={ProfilePage} />
       <Route path="/subscription" component={SubscriptionPage} />
+      <Route path="/security" component={SecurityPage} />
       <Route component={NotFound} />
     </Switch>
   );

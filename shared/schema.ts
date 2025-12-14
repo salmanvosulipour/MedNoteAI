@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, timestamp, jsonb, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -9,6 +9,11 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   fullName: text("full_name"),
   avatarUrl: text("avatar_url"),
+  twoFactorEnabled: boolean("two_factor_enabled").default(false),
+  twoFactorMethod: text("two_factor_method"),
+  totpSecret: text("totp_secret"),
+  webauthnCredentials: jsonb("webauthn_credentials"),
+  backupCodes: text("backup_codes").array(),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
