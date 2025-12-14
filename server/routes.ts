@@ -316,14 +316,54 @@ export async function registerRoutes(
     }
   });
 
-  // Create new case
-  app.post("/api/cases", async (req, res) => {
+  // Create new case (with free token gating)
+  app.post("/api/cases", sessionAuth, async (req: any, res) => {
     try {
+      const userId = req.authUserId;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Check email verification
+      if (!user.isEmailVerified) {
+        return res.status(403).json({ 
+          error: "EMAIL_NOT_VERIFIED",
+          message: "Please verify your email before creating cases" 
+        });
+      }
+
+      // Check subscription or free tokens
+      let hasActiveSubscription = false;
+      if (user.stripeCustomerId) {
+        const subscription = await storage.getSubscriptionByCustomerId(user.stripeCustomerId);
+        hasActiveSubscription = subscription && ['active', 'trialing'].includes(subscription.status);
+      }
+
+      const hasFreeTokens = (user.freeTokensRemaining || 0) > 0;
+
+      if (!hasActiveSubscription && !hasFreeTokens) {
+        return res.status(403).json({ 
+          error: "SUBSCRIPTION_REQUIRED",
+          message: "You've used your free case. Subscribe to continue creating cases." 
+        });
+      }
+
       const parsed = insertCaseSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid case data", details: parsed.error.format() });
       }
-      const newCase = await storage.createCase(parsed.data);
+      
+      // Enforce server-side ownership - always use authenticated user's ID
+      const caseData = { ...parsed.data, userId };
+      const newCase = await storage.createCase(caseData);
+
+      // Decrement free token if not subscribed
+      if (!hasActiveSubscription && hasFreeTokens) {
+        await storage.decrementFreeTokens(userId);
+      }
+
       res.status(201).json(newCase);
     } catch (error) {
       console.error("Error creating case:", error);

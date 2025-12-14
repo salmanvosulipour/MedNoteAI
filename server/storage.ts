@@ -24,6 +24,9 @@ export interface IStorage {
   getSubscriptionByCustomerId(customerId: string): Promise<any>;
   getUserByStripeCustomerId(customerId: string): Promise<User | undefined>;
   
+  // Free token methods
+  decrementFreeTokens(userId: string): Promise<User | undefined>;
+  
   // Case methods
   getCase(id: string): Promise<Case | undefined>;
   getCasesByUserId(userId: string, limit?: number): Promise<Case[]>;
@@ -156,6 +159,19 @@ export class DatabaseStorage implements IStorage {
   async getUserByStripeCustomerId(customerId: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.stripeCustomerId, customerId));
     return user || undefined;
+  }
+
+  // Free token methods
+  async decrementFreeTokens(userId: string): Promise<User | undefined> {
+    const [updated] = await db
+      .update(users)
+      .set({ 
+        freeTokensRemaining: sql`GREATEST(${users.freeTokensRemaining} - 1, 0)`,
+        updatedAt: new Date() 
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return updated || undefined;
   }
 
   // Case methods

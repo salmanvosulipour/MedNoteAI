@@ -18,6 +18,7 @@ import PatientProgressionPage from "@/pages/patient-progression";
 import SubscriptionPage from "@/pages/subscription";
 import ProfilePage from "@/pages/profile";
 import SecurityPage from "@/pages/security";
+import VerifyEmailPage from "@/pages/verify-email";
 
 function Router() {
   const { user, isLoading, isAuthenticated } = useAuth();
@@ -39,6 +40,7 @@ function Router() {
         <Route path="/terms" component={TermsPage} />
         <Route path="/forgot-password" component={ForgotPasswordPage} />
         <Route path="/reset-password" component={ResetPasswordPage} />
+        <Route path="/verify-email" component={VerifyEmailPage} />
         <Route component={AuthPage} />
       </Switch>
     );
@@ -68,6 +70,7 @@ function Router() {
       <Route path="/profile" component={ProfilePage} />
       <Route path="/subscription" component={SubscriptionPage} />
       <Route path="/security" component={SecurityPage} />
+      <Route path="/verify-email" component={VerifyEmailPage} />
       <Route component={NotFound} />
     </Switch>
   );
