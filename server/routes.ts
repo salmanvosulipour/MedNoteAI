@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { generateMedicalSummary, generateDiagnosticInterpretation } from "./services/openai";
 import { transcribeAudio } from "./services/gemini";
+import { translateToEnglish } from "./services/translation";
 import { sendCaseSummaryEmail } from "./services/resend";
 import { 
   generateTOTPSecret, 
@@ -106,11 +107,15 @@ export async function registerRoutes(
       // Update status to processing
       await storage.updateCase(req.params.id, { status: "processing" });
 
+      // Translate to English if needed (for multilingual support)
+      const { translatedText, detectedLanguage } = await translateToEnglish(caseRecord.transcription);
+      console.log(`Detected language: ${detectedLanguage}, translating to English for medical note generation`);
+
       const summary = await generateMedicalSummary({
         patientName: caseRecord.patientName,
         age: caseRecord.age,
         gender: caseRecord.gender,
-        transcription: caseRecord.transcription,
+        transcription: translatedText,
       });
 
       // Update case with AI-generated content
@@ -217,12 +222,16 @@ export async function registerRoutes(
       // Step 1: Transcribe with Gemini
       const transcription = await transcribeAudio(audioBase64, mimeType);
 
-      // Step 2: Generate medical summary with OpenAI
+      // Step 2: Translate to English if needed (for multilingual support)
+      const { translatedText, detectedLanguage } = await translateToEnglish(transcription);
+      console.log(`Detected language: ${detectedLanguage}, translating to English for medical note generation`);
+
+      // Step 3: Generate medical summary with OpenAI using English text
       const summary = await generateMedicalSummary({
         patientName: caseRecord.patientName,
         age: caseRecord.age,
         gender: caseRecord.gender,
-        transcription,
+        transcription: translatedText,
       });
 
       // Update case with all data
@@ -270,12 +279,16 @@ export async function registerRoutes(
 
       const transcription = parsed.data.dictation;
 
-      // Generate medical summary with OpenAI
+      // Translate to English if needed (for multilingual support)
+      const { translatedText, detectedLanguage } = await translateToEnglish(transcription);
+      console.log(`Detected language: ${detectedLanguage}, translating to English for medical note generation`);
+
+      // Generate medical summary with OpenAI using English text
       const summary = await generateMedicalSummary({
         patientName: caseRecord.patientName,
         age: caseRecord.age,
         gender: caseRecord.gender,
-        transcription,
+        transcription: translatedText,
       });
 
       // Update case with all data
