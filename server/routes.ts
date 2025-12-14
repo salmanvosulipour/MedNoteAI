@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { generateMedicalSummary, generateDiagnosticInterpretation } from "./services/openai";
 import { transcribeAudio } from "./services/gemini";
+import { sendCaseSummaryEmail } from "./services/resend";
 import { insertCaseSchema } from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
@@ -235,6 +236,76 @@ export async function registerRoutes(
       console.error("Error processing audio:", error);
       await storage.updateCase(req.params.id, { status: "draft" });
       res.status(500).json({ error: "Failed to process audio" });
+    }
+  });
+
+  // Send case summary email to patient
+  app.post("/api/cases/:id/email-summary", async (req, res) => {
+    try {
+      const caseRecord = await storage.getCase(req.params.id);
+      if (!caseRecord) {
+        return res.status(404).json({ error: "Case not found" });
+      }
+
+      const schema = z.object({
+        patientEmail: z.string().email(),
+        physicianName: z.string().optional(),
+      });
+
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid email address" });
+      }
+
+      const medications = caseRecord.dischargeMedications as Array<{
+        name: string;
+        dose: string;
+        frequency: string;
+        duration: string;
+        instructions: string;
+      }> | null;
+
+      try {
+        const result = await sendCaseSummaryEmail({
+          patientName: caseRecord.patientName,
+          patientEmail: parsed.data.patientEmail,
+          chiefComplaint: caseRecord.chiefComplaint,
+          assessment: caseRecord.assessment || undefined,
+          plan: caseRecord.plan || undefined,
+          patientEducation: caseRecord.patientEducation || undefined,
+          treatmentRedFlags: caseRecord.treatmentRedFlags || undefined,
+          medications: medications || undefined,
+          physicianName: parsed.data.physicianName,
+        });
+
+        // Update case with successful email status
+        const updated = await storage.updateCase(req.params.id, {
+          patientEmail: parsed.data.patientEmail,
+          emailStatus: {
+            sentAt: new Date().toISOString(),
+            recipient: parsed.data.patientEmail,
+            status: 'sent',
+            messageId: result.id,
+          },
+        });
+
+        res.json({ success: true, messageId: result.id, case: updated });
+      } catch (emailError: any) {
+        // Update case with failed email status
+        await storage.updateCase(req.params.id, {
+          patientEmail: parsed.data.patientEmail,
+          emailStatus: {
+            sentAt: new Date().toISOString(),
+            recipient: parsed.data.patientEmail,
+            status: 'failed',
+            error: emailError.message,
+          },
+        });
+        throw emailError;
+      }
+    } catch (error: any) {
+      console.error("Error sending email:", error);
+      res.status(502).json({ error: error.message || "Failed to send email" });
     }
   });
 
