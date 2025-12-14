@@ -2,6 +2,7 @@ import { MobileLayout } from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ChevronLeft, Share2, AlertTriangle, Pill, Mail, Plus, GraduationCap, Stethoscope, Activity, FlaskConical, FileImage, Loader2, CheckCircle, Download, Printer, Presentation } from "lucide-react";
+import { EditableSection } from "@/components/EditableSection";
 import pptxgen from "pptxgenjs";
 import { Link, useRoute } from "wouter";
 import { Badge } from "@/components/ui/badge";
@@ -425,74 +426,91 @@ export default function CaseDetailPage() {
 
               <Separator />
 
-              <section>
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">History of Present Illness (HPI)</h3>
-                <p className="text-sm leading-relaxed text-foreground" data-testid="text-hpi">
-                  {caseData.hpi || "No HPI recorded"}
-                </p>
-              </section>
+              <EditableSection
+                title="History of Present Illness (HPI)"
+                content={caseData.hpi || ""}
+                onSave={(content) => updateMutation.mutate({ hpi: content })}
+                placeholder="No HPI recorded"
+                variant="highlighted"
+                testId="hpi"
+              />
 
               <Separator />
 
               <section>
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Review of Systems (ROS)</h3>
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                  Review of Systems (ROS)
+                </h3>
                 {Object.keys(ros).length > 0 ? (
-                  <div className="grid grid-cols-2 gap-4 text-sm text-foreground">
+                  <div className="grid grid-cols-2 gap-3">
                     {Object.entries(ros).map(([system, findings]) => (
-                      <div key={system}>
-                        <span className="font-semibold text-xs text-muted-foreground block mb-1">{system}</span>
-                        <p>{findings}</p>
+                      <div key={system} className="bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-900/50 dark:to-slate-800/30 border border-slate-200 dark:border-slate-700 rounded-xl p-3">
+                        <span className="font-semibold text-xs text-primary block mb-1">{system}</span>
+                        <p className="text-sm text-foreground">{findings}</p>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground">No ROS recorded</p>
+                  <div className="bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-900/50 dark:to-slate-800/30 border border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-4">
+                    <p className="text-sm text-muted-foreground italic">No ROS recorded</p>
+                  </div>
                 )}
               </section>
 
               <Separator />
 
-              <section>
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Physical Exam</h3>
-                <div className="bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-lg p-3 text-sm text-foreground">
-                  <p className="whitespace-pre-wrap" data-testid="text-physical-exam">
-                    {caseData.physicalExam || "No physical exam recorded"}
-                  </p>
-                </div>
-              </section>
+              <EditableSection
+                title="Physical Examination"
+                content={caseData.physicalExam || ""}
+                onSave={(content) => updateMutation.mutate({ physicalExam: content })}
+                placeholder="No physical exam recorded"
+                variant="default"
+                testId="physical-exam"
+              />
 
               <Separator />
 
               <section>
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Assessment / Differential Diagnosis</h3>
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+                  Assessment / Differential Diagnosis
+                </h3>
                 {ddx.length > 0 ? (
-                  <ul className="space-y-2">
+                  <div className="space-y-2">
                     {ddx.map((dx, idx) => (
-                      <li key={idx} className="flex items-start justify-between p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                        <span className="text-sm text-foreground">{dx.diagnosis}</span>
-                        <span className={`text-xs font-mono px-2 py-0.5 rounded ${idx === 0 ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"}`}>
+                      <div key={idx} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${idx === 0 ? "bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20" : "bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-900/50 dark:to-slate-800/30 border-slate-200 dark:border-slate-700"}`}>
+                        <div className="flex items-center gap-3">
+                          <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${idx === 0 ? "bg-primary text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"}`}>
+                            {idx + 1}
+                          </span>
+                          <span className="text-sm font-medium text-foreground">{dx.diagnosis}</span>
+                        </div>
+                        <span className={`text-xs font-mono px-3 py-1 rounded-full ${idx === 0 ? "bg-primary/20 text-primary font-semibold" : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"}`}>
                           {dx.icdCode}
                         </span>
-                      </li>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground">
-                    {caseData.assessment || "No assessment recorded"}
-                  </p>
+                  <div className="bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-900/50 dark:to-slate-800/30 border border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-4">
+                    <p className="text-sm text-muted-foreground italic">
+                      {caseData.assessment || "No assessment recorded"}
+                    </p>
+                  </div>
                 )}
               </section>
 
               <Separator />
 
-              <section>
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Plan</h3>
-                <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-md text-sm font-mono text-foreground">
-                  <p className="whitespace-pre-wrap" data-testid="text-plan">
-                    {caseData.plan || "No plan recorded"}
-                  </p>
-                </div>
-              </section>
+              <EditableSection
+                title="Treatment Plan"
+                content={caseData.plan || ""}
+                onSave={(content) => updateMutation.mutate({ plan: content })}
+                placeholder="No plan recorded"
+                variant="accent"
+                testId="plan"
+              />
             </CardContent>
           </Card>
 

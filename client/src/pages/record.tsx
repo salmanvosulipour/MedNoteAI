@@ -55,6 +55,34 @@ declare global {
   }
 }
 
+const SUPPORTED_LANGUAGES = [
+  { code: "en-US", name: "English (US)", flag: "🇺🇸" },
+  { code: "en-GB", name: "English (UK)", flag: "🇬🇧" },
+  { code: "fa-IR", name: "Persian (Farsi)", flag: "🇮🇷" },
+  { code: "ar-SA", name: "Arabic", flag: "🇸🇦" },
+  { code: "es-ES", name: "Spanish", flag: "🇪🇸" },
+  { code: "fr-FR", name: "French", flag: "🇫🇷" },
+  { code: "de-DE", name: "German", flag: "🇩🇪" },
+  { code: "it-IT", name: "Italian", flag: "🇮🇹" },
+  { code: "pt-BR", name: "Portuguese (Brazil)", flag: "🇧🇷" },
+  { code: "ru-RU", name: "Russian", flag: "🇷🇺" },
+  { code: "zh-CN", name: "Chinese (Mandarin)", flag: "🇨🇳" },
+  { code: "ja-JP", name: "Japanese", flag: "🇯🇵" },
+  { code: "ko-KR", name: "Korean", flag: "🇰🇷" },
+  { code: "hi-IN", name: "Hindi", flag: "🇮🇳" },
+  { code: "tr-TR", name: "Turkish", flag: "🇹🇷" },
+  { code: "nl-NL", name: "Dutch", flag: "🇳🇱" },
+  { code: "pl-PL", name: "Polish", flag: "🇵🇱" },
+  { code: "uk-UA", name: "Ukrainian", flag: "🇺🇦" },
+  { code: "he-IL", name: "Hebrew", flag: "🇮🇱" },
+  { code: "th-TH", name: "Thai", flag: "🇹🇭" },
+  { code: "vi-VN", name: "Vietnamese", flag: "🇻🇳" },
+  { code: "id-ID", name: "Indonesian", flag: "🇮🇩" },
+  { code: "sv-SE", name: "Swedish", flag: "🇸🇪" },
+  { code: "da-DK", name: "Danish", flag: "🇩🇰" },
+  { code: "fi-FI", name: "Finnish", flag: "🇫🇮" },
+];
+
 export default function RecordPage() {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -68,6 +96,7 @@ export default function RecordPage() {
   const [patientAge, setPatientAge] = useState("");
   const [patientGender, setPatientGender] = useState("M");
   const [chiefComplaint, setChiefComplaint] = useState("");
+  const [selectedLanguage, setSelectedLanguage] = useState("en-US");
   
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -132,7 +161,7 @@ export default function RecordPage() {
       const recognition = new SpeechRecognition();
       recognition.continuous = true;
       recognition.interimResults = true;
-      recognition.lang = 'en-US';
+      recognition.lang = selectedLanguage;
 
       let finalTranscript = "";
 
@@ -445,6 +474,22 @@ export default function RecordPage() {
                 onChange={(e) => setChiefComplaint(e.target.value)}
                 data-testid="input-chief-complaint"
               />
+            </div>
+            <div>
+              <Label>Recording Language</Label>
+              <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
+                <SelectTrigger data-testid="select-language">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="max-h-[200px]">
+                  {SUPPORTED_LANGUAGES.map((lang) => (
+                    <SelectItem key={lang.code} value={lang.code}>
+                      <span className="mr-2">{lang.flag}</span>
+                      {lang.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <DialogFooter>
