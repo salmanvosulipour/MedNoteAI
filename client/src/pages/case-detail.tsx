@@ -55,9 +55,12 @@ export default function CaseDetailPage() {
   const [patientEducation, setPatientEducation] = useState("");
   const [dispositionDialogOpen, setDispositionDialogOpen] = useState(false);
   const [isRecordingDisposition, setIsRecordingDisposition] = useState(false);
+  const [isTranscribingDisposition, setIsTranscribingDisposition] = useState(false);
   const [dispositionText, setDispositionText] = useState("");
   const [selectedDisposition, setSelectedDisposition] = useState("");
-  const dispositionRecognitionRef = useRef<any>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
   const [medications, setMedications] = useState<Medication[]>([]);
   const [medDialogOpen, setMedDialogOpen] = useState(false);
   const [studyDialogOpen, setStudyDialogOpen] = useState(false);
@@ -841,7 +844,18 @@ export default function CaseDetailPage() {
                 </Button>
               )}
               
-              <Dialog open={dispositionDialogOpen} onOpenChange={setDispositionDialogOpen}>
+              <Dialog open={dispositionDialogOpen} onOpenChange={(open) => {
+                if (!open) {
+                  if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+                    mediaRecorderRef.current.stop();
+                  }
+                  if (streamRef.current) {
+                    streamRef.current.getTracks().forEach(track => track.stop());
+                  }
+                  setIsRecordingDisposition(false);
+                }
+                setDispositionDialogOpen(open);
+              }}>
                 <DialogContent className="max-w-lg">
                   <DialogHeader>
                     <DialogTitle>{caseData.disposition ? "Edit" : "Record"} Final Diagnosis & Disposition</DialogTitle>
@@ -863,51 +877,98 @@ export default function CaseDetailPage() {
                         type="button"
                         variant={isRecordingDisposition ? "destructive" : "secondary"}
                         size="icon"
-                        onClick={() => {
+                        onClick={async () => {
                           if (isRecordingDisposition) {
-                            if (dispositionRecognitionRef.current) {
-                              dispositionRecognitionRef.current.stop();
+                            if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+                              mediaRecorderRef.current.stop();
                             }
-                            setIsRecordingDisposition(false);
                           } else {
-                            if (typeof window === "undefined") return;
-                            const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-                            if (!SpeechRecognitionAPI) {
-                              alert("Speech recognition not supported");
-                              return;
-                            }
-                            const recognition = new SpeechRecognitionAPI();
-                            recognition.continuous = true;
-                            recognition.interimResults = true;
-                            let finalText = dispositionText;
-                            recognition.onresult = (event: any) => {
-                              let interim = "";
-                              for (let i = event.resultIndex; i < event.results.length; i++) {
-                                if (event.results[i].isFinal) {
-                                  finalText += event.results[i][0].transcript + " ";
-                                } else {
-                                  interim += event.results[i][0].transcript;
+                            try {
+                              const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                              streamRef.current = stream;
+                              audioChunksRef.current = [];
+                              
+                              const mimeTypes = ['audio/webm', 'audio/mp4', 'audio/ogg', 'audio/wav'];
+                              let selectedMimeType = '';
+                              for (const mime of mimeTypes) {
+                                if (MediaRecorder.isTypeSupported(mime)) {
+                                  selectedMimeType = mime;
+                                  break;
                                 }
                               }
-                              setDispositionText(finalText + interim);
-                            };
-                            recognition.onend = () => setIsRecordingDisposition(false);
-                            dispositionRecognitionRef.current = recognition;
-                            recognition.start();
-                            setIsRecordingDisposition(true);
+                              
+                              const mediaRecorder = selectedMimeType 
+                                ? new MediaRecorder(stream, { mimeType: selectedMimeType })
+                                : new MediaRecorder(stream);
+                              mediaRecorderRef.current = mediaRecorder;
+                              
+                              mediaRecorder.ondataavailable = (event) => {
+                                if (event.data.size > 0) {
+                                  audioChunksRef.current.push(event.data);
+                                }
+                              };
+                              
+                              const actualMimeType = mediaRecorder.mimeType || 'audio/webm';
+                              const fileExtension = actualMimeType.includes('mp4') ? 'mp4' : actualMimeType.includes('ogg') ? 'ogg' : 'webm';
+                              
+                              mediaRecorder.onstop = async () => {
+                                setIsRecordingDisposition(false);
+                                if (streamRef.current) {
+                                  streamRef.current.getTracks().forEach(track => track.stop());
+                                }
+                                
+                                if (audioChunksRef.current.length === 0) {
+                                  toast({ title: "No audio recorded", variant: "destructive" });
+                                  return;
+                                }
+                                
+                                setIsTranscribingDisposition(true);
+                                const audioBlob = new Blob(audioChunksRef.current, { type: actualMimeType });
+                                
+                                try {
+                                  const formData = new FormData();
+                                  formData.append("audio", audioBlob, `disposition.${fileExtension}`);
+                                  
+                                  const response = await fetch(`/api/cases/${id}/process-audio`, {
+                                    method: "POST",
+                                    body: formData,
+                                  });
+                                  
+                                  if (!response.ok) {
+                                    throw new Error("Transcription failed");
+                                  }
+                                  
+                                  const data = await response.json();
+                                  const newText = dispositionText ? dispositionText + " " + data.transcription : data.transcription;
+                                  setDispositionText(newText);
+                                  toast({ title: "Transcription complete" });
+                                } catch (err) {
+                                  toast({ title: "Failed to transcribe audio", variant: "destructive" });
+                                } finally {
+                                  setIsTranscribingDisposition(false);
+                                }
+                              };
+                              
+                              mediaRecorder.start();
+                              setIsRecordingDisposition(true);
+                              toast({ title: "Recording started", description: "Speak clearly, then tap the mic again to stop." });
+                            } catch (err) {
+                              toast({ title: "Microphone access denied", variant: "destructive" });
+                            }
                           }
                         }}
                         className={`absolute right-2 top-2 h-8 w-8 ${isRecordingDisposition ? 'animate-pulse' : ''}`}
                         data-testid="button-voice-disposition"
+                        disabled={isTranscribingDisposition}
                       >
-                        {isRecordingDisposition ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                        {isTranscribingDisposition ? <Loader2 className="w-4 h-4 animate-spin" /> : isRecordingDisposition ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
                       </Button>
                     </div>
 
-                    {isRecordingDisposition && (
-                      <div className="flex items-center gap-2 text-xs text-red-500">
-                        <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                        Recording...
+                    {(isRecordingDisposition || isTranscribingDisposition) && (
+                      <div className={`flex items-center gap-2 text-xs ${isTranscribingDisposition ? 'text-blue-500' : 'text-red-500'}`}>
+                        <span className={`w-2 h-2 rounded-full animate-pulse ${isTranscribingDisposition ? 'bg-blue-500' : 'bg-red-500'}`} />
+                        {isTranscribingDisposition ? "Transcribing with AI..." : "Recording..."}
                       </div>
                     )}
 
