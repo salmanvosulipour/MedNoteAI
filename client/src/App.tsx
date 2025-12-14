@@ -9,6 +9,7 @@ import HomePage from "@/pages/home";
 import RecordPage from "@/pages/record";
 import CasesPage from "@/pages/cases";
 import CaseDetailPage from "@/pages/case-detail";
+import PatientProgressionPage from "@/pages/patient-progression";
 import SubscriptionPage from "@/pages/subscription";
 import ProfilePage from "@/pages/profile";
 import SecurityPage from "@/pages/security";
@@ -21,6 +22,7 @@ function Router() {
       <Route path="/record" component={RecordPage} />
       <Route path="/cases" component={CasesPage} />
       <Route path="/cases/:id" component={CaseDetailPage} />
+      <Route path="/patients/:mrn" component={PatientProgressionPage} />
       <Route path="/profile" component={ProfilePage} />
       <Route path="/subscription" component={SubscriptionPage} />
       <Route path="/security" component={SecurityPage} />

@@ -34,6 +34,17 @@ export async function registerRoutes(
     }
   });
 
+  // Get all cases for a patient by MRN
+  app.get("/api/patients/:mrn/cases", async (req, res) => {
+    try {
+      const cases = await storage.getCasesByMrn(req.params.mrn);
+      res.json(cases);
+    } catch (error) {
+      console.error("Error fetching patient cases:", error);
+      res.status(500).json({ error: "Failed to fetch patient cases" });
+    }
+  });
+
   // Get single case by ID
   app.get("/api/cases/:id", async (req, res) => {
     try {

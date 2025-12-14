@@ -66,6 +66,7 @@ export default function RecordPage() {
   
   const [showPatientDialog, setShowPatientDialog] = useState(false);
   const [patientName, setPatientName] = useState("");
+  const [patientMrn, setPatientMrn] = useState("");
   const [patientAge, setPatientAge] = useState("");
   const [patientGender, setPatientGender] = useState("M");
   const [chiefComplaint, setChiefComplaint] = useState("");
@@ -246,6 +247,7 @@ export default function RecordPage() {
       const newCase = await createCase({
         userId: "demo-user",
         patientName: patientName.trim(),
+        mrn: patientMrn.trim() || undefined,
         age: parseInt(patientAge),
         gender: patientGender,
         chiefComplaint: chiefComplaint.trim(),
@@ -424,6 +426,15 @@ export default function RecordPage() {
                 value={patientName}
                 onChange={(e) => setPatientName(e.target.value)}
                 data-testid="input-patient-name"
+              />
+            </div>
+            <div>
+              <Label>MRN (Optional)</Label>
+              <Input 
+                placeholder="e.g., MRN-12345"
+                value={patientMrn}
+                onChange={(e) => setPatientMrn(e.target.value)}
+                data-testid="input-patient-mrn"
               />
             </div>
             <div className="grid grid-cols-2 gap-3">

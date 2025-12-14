@@ -1,7 +1,7 @@
 import { MobileLayout } from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ChevronLeft, Share2, AlertTriangle, Pill, Mail, Plus, GraduationCap, Stethoscope, Activity, FlaskConical, FileImage, Loader2, CheckCircle, Download, Printer, Presentation } from "lucide-react";
+import { ChevronLeft, Share2, AlertTriangle, Pill, Mail, Plus, GraduationCap, Stethoscope, Activity, FlaskConical, FileImage, Loader2, CheckCircle, Download, Printer, Presentation, TrendingUp } from "lucide-react";
 import { EditableSection } from "@/components/EditableSection";
 import pptxgen from "pptxgenjs";
 import { Link, useRoute } from "wouter";
@@ -412,17 +412,28 @@ export default function CaseDetailPage() {
               <span>•</span>
               <span>{format(recordedDate, "MMM d, yyyy - HH:mm")}</span>
             </div>
+            {caseData.mrn && (
+              <Link href={`/patients/${encodeURIComponent(caseData.mrn)}`}>
+                <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary rounded-full text-xs font-medium hover:bg-primary/20 transition-colors cursor-pointer" data-testid="link-patient-progression">
+                  <TrendingUp className="w-3 h-3" />
+                  <span>MRN: {caseData.mrn}</span>
+                  <span className="text-primary/60">View History</span>
+                </div>
+              </Link>
+            )}
           </div>
 
           <Card className="border-none shadow-md bg-white dark:bg-slate-900 mb-6 overflow-hidden">
             <div className="h-1 bg-gradient-to-r from-primary to-accent" />
             <CardContent className="p-5 space-y-6">
-              <section>
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Chief Complaint (CC)</h3>
-                <p className="text-sm leading-relaxed text-foreground" data-testid="text-chief-complaint">
-                  {caseData.chiefComplaint || "No chief complaint recorded"}
-                </p>
-              </section>
+              <EditableSection
+                title="Chief Complaint (CC)"
+                content={caseData.chiefComplaint || ""}
+                onSave={(content) => updateMutation.mutate({ chiefComplaint: content })}
+                placeholder="No chief complaint recorded"
+                variant="default"
+                testId="chief-complaint"
+              />
 
               <Separator />
 
@@ -593,17 +604,16 @@ export default function CaseDetailPage() {
           <Card className="border-none shadow-md bg-white dark:bg-slate-900 mb-6 overflow-hidden">
             <div className="h-1 bg-gradient-to-r from-green-500 to-emerald-500" />
             <CardContent className="p-5">
-              <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
-                <GraduationCap className="w-4 h-4 text-green-500" />
-                Patient Education
-              </h3>
-              <Textarea 
-                value={patientEducation}
-                onChange={(e) => setPatientEducation(e.target.value)}
-                onBlur={() => updateMutation.mutate({ patientEducation })}
-                className="min-h-[100px] bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700"
+              <EditableSection
+                title="Patient Education"
+                content={patientEducation}
+                onSave={(content) => {
+                  setPatientEducation(content);
+                  updateMutation.mutate({ patientEducation: content });
+                }}
                 placeholder="Add patient education notes..."
-                data-testid="input-patient-education"
+                variant="default"
+                testId="patient-education"
               />
             </CardContent>
           </Card>
@@ -611,17 +621,16 @@ export default function CaseDetailPage() {
           <Card className="border-none shadow-md bg-white dark:bg-slate-900 mb-6 overflow-hidden">
             <div className="h-1 bg-gradient-to-r from-red-500 to-orange-500" />
             <CardContent className="p-5">
-              <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
-                <AlertTriangle className="w-4 h-4 text-red-500" />
-                Warning Signs (Red Flags)
-              </h3>
-              <Textarea 
-                value={redFlags}
-                onChange={(e) => setRedFlags(e.target.value)}
-                onBlur={() => updateMutation.mutate({ treatmentRedFlags: redFlags })}
-                className="min-h-[140px] bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800/30 text-sm"
+              <EditableSection
+                title="Warning Signs (Red Flags)"
+                content={redFlags}
+                onSave={(content) => {
+                  setRedFlags(content);
+                  updateMutation.mutate({ treatmentRedFlags: content });
+                }}
                 placeholder="List warning signs that require immediate medical attention..."
-                data-testid="input-red-flags"
+                variant="warning"
+                testId="red-flags"
               />
             </CardContent>
           </Card>

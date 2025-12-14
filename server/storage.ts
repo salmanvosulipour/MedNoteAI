@@ -12,6 +12,7 @@ export interface IStorage {
   // Case methods
   getCase(id: string): Promise<Case | undefined>;
   getCasesByUserId(userId: string, limit?: number): Promise<Case[]>;
+  getCasesByMrn(mrn: string): Promise<Case[]>;
   createCase(caseData: InsertCase): Promise<Case>;
   updateCase(id: string, caseData: Partial<InsertCase>): Promise<Case | undefined>;
   deleteCase(id: string): Promise<boolean>;
@@ -59,6 +60,14 @@ export class DatabaseStorage implements IStorage {
       .where(eq(cases.userId, userId))
       .orderBy(desc(cases.recordedAt))
       .limit(limit);
+  }
+
+  async getCasesByMrn(mrn: string): Promise<Case[]> {
+    return await db
+      .select()
+      .from(cases)
+      .where(eq(cases.mrn, mrn))
+      .orderBy(desc(cases.recordedAt));
   }
 
   async createCase(caseData: InsertCase): Promise<Case> {

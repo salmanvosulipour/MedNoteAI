@@ -71,7 +71,7 @@ interface EditableSectionProps {
   content: string;
   onSave: (content: string) => void;
   placeholder?: string;
-  variant?: "default" | "highlighted" | "accent";
+  variant?: "default" | "highlighted" | "accent" | "warning";
   testId?: string;
 }
 
@@ -182,6 +182,7 @@ export function EditableSection({
     default: "bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-900/50 dark:to-slate-800/30 border-slate-200 dark:border-slate-700",
     highlighted: "bg-gradient-to-br from-primary/5 to-primary/10 dark:from-primary/10 dark:to-primary/5 border-primary/20",
     accent: "bg-gradient-to-br from-emerald-50 to-teal-50/50 dark:from-emerald-900/20 dark:to-teal-900/10 border-emerald-200 dark:border-emerald-800",
+    warning: "bg-gradient-to-br from-red-50 to-orange-50/50 dark:from-red-900/20 dark:to-orange-900/10 border-red-200 dark:border-red-800",
   };
 
   return (
@@ -192,6 +193,7 @@ export function EditableSection({
             "bg-slate-400": variant === "default",
             "bg-primary": variant === "highlighted",
             "bg-emerald-500": variant === "accent",
+            "bg-red-500": variant === "warning",
           })} />
           {title}
         </h3>

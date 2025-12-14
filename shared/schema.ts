@@ -31,6 +31,7 @@ export const cases = pgTable("cases", {
   
   // Patient demographics
   patientName: text("patient_name").notNull(),
+  mrn: text("mrn"), // Medical Record Number to link patient visits
   age: integer("age").notNull(),
   gender: text("gender").notNull(), // M, F, Other
   

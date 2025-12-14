@@ -6,6 +6,7 @@ export interface Case {
   id: string;
   userId: string;
   patientName: string;
+  mrn?: string;
   age: number;
   gender: string;
   chiefComplaint: string;
@@ -41,6 +42,7 @@ export async function fetchCase(id: string): Promise<Case> {
 export async function createCase(data: {
   userId: string;
   patientName: string;
+  mrn?: string;
   age: number;
   gender: string;
   chiefComplaint: string;
@@ -124,4 +126,10 @@ export function invalidateCases() {
 
 export function invalidateCase(id: string) {
   queryClient.invalidateQueries({ queryKey: ["case", id] });
+}
+
+export async function fetchCasesByMrn(mrn: string): Promise<Case[]> {
+  const res = await fetch(`${API_BASE}/patients/${encodeURIComponent(mrn)}/cases`);
+  if (!res.ok) throw new Error("Failed to fetch patient cases");
+  return res.json();
 }
