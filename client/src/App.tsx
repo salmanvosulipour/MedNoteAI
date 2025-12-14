@@ -21,7 +21,7 @@ import SecurityPage from "@/pages/security";
 import VerifyEmailPage from "@/pages/verify-email";
 import MaintenancePage from "@/pages/maintenance";
 
-const MAINTENANCE_MODE = false;
+const MAINTENANCE_MODE = true;
 
 function Router() {
   const { user, isLoading, isAuthenticated } = useAuth();
