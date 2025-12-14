@@ -9,6 +9,16 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import premiumBg from "@assets/generated_images/premium_medical_subscription_background.png";
 
+function redirectToCheckout(url: string, showToast: (msg: string) => void) {
+  const isInIframe = window.self !== window.top;
+  if (isInIframe) {
+    showToast("Opening payment page in new tab...");
+    window.open(url, '_blank', 'noopener,noreferrer');
+  } else {
+    window.location.assign(url);
+  }
+}
+
 const PRICE_IDS = {
   monthly: "price_1SeG93BSUOePdLSHdZCAfoTm",
   yearly: "price_1SeG93BSUOePdLSHXrpYYN2x",
@@ -83,8 +93,7 @@ export default function SubscriptionPage() {
     },
     onSuccess: (data) => {
       if (data.url) {
-        console.log("Redirecting to Stripe:", data.url);
-        window.location.replace(data.url);
+        redirectToCheckout(data.url, (msg) => toast({ title: msg }));
       }
     },
     onError: (error: Error) => {
@@ -112,7 +121,7 @@ export default function SubscriptionPage() {
     },
     onSuccess: (data) => {
       if (data.url) {
-        window.location.href = data.url;
+        redirectToCheckout(data.url, (msg) => toast({ title: msg }));
       }
     },
     onError: (error: Error) => {
