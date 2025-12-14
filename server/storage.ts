@@ -1,12 +1,11 @@
-import { users, cases, type User, type InsertUser, type Case, type InsertCase } from "@shared/schema";
+import { users, cases, type User, type UpsertUser, type Case, type InsertCase } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc } from "drizzle-orm";
 
 export interface IStorage {
-  // User methods
+  // User methods (Replit Auth)
   getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  upsertUser(user: UpsertUser): Promise<User>;
   updateUser(id: string, userData: Partial<User>): Promise<User | undefined>;
   
   // Case methods
@@ -19,29 +18,34 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  // User methods
+  // User methods (Replit Auth)
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user || undefined;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
-    return user || undefined;
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
+  async upsertUser(userData: UpsertUser): Promise<User> {
     const [user] = await db
       .insert(users)
-      .values(insertUser)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
       .returning();
     return user;
   }
 
   async updateUser(id: string, userData: Partial<User>): Promise<User | undefined> {
+    const cleanedData = Object.fromEntries(
+      Object.entries(userData).filter(([_, v]) => v !== undefined)
+    );
     const [updated] = await db
       .update(users)
-      .set(userData)
+      .set({ ...cleanedData, updatedAt: new Date() })
       .where(eq(users.id, id))
       .returning();
     return updated || undefined;
