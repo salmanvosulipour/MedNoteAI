@@ -2,21 +2,62 @@ import { MobileLayout } from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { ChevronRight, CreditCard, Shield, HelpCircle, LogOut, User, Bell, Camera } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { ChevronRight, CreditCard, Shield, HelpCircle, LogOut, User, Bell, Camera, Check, X, Edit3 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { Link } from "wouter";
+
+const SPECIALTIES = [
+  "Emergency Medicine",
+  "Family Medicine", 
+  "Internal Medicine",
+  "Cardiology",
+  "Dermatology",
+  "Endocrinology",
+  "Gastroenterology",
+  "Geriatrics",
+  "Hematology",
+  "Infectious Disease",
+  "Nephrology",
+  "Neurology",
+  "Obstetrics & Gynecology",
+  "Oncology",
+  "Ophthalmology",
+  "Orthopedics",
+  "Otolaryngology (ENT)",
+  "Pathology",
+  "Pediatrics",
+  "Physical Medicine",
+  "Psychiatry",
+  "Pulmonology",
+  "Radiology",
+  "Rheumatology",
+  "Surgery",
+  "Urology",
+  "Other"
+];
 
 export default function ProfilePage() {
   const [avatar, setAvatar] = useState("https://api.dicebear.com/7.x/avataaars/svg?seed=Felix");
+  const [fullName, setFullName] = useState("Dr. John Smith");
+  const [specialty, setSpecialty] = useState("Emergency Medicine");
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editNameValue, setEditNameValue] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     const savedAvatar = localStorage.getItem("user-avatar");
-    if (savedAvatar) {
-      setAvatar(savedAvatar);
-    }
+    const savedName = localStorage.getItem("user-fullname");
+    const savedSpecialty = localStorage.getItem("user-specialty");
+    
+    if (savedAvatar) setAvatar(savedAvatar);
+    if (savedName) setFullName(savedName);
+    if (savedSpecialty) setSpecialty(savedSpecialty);
   }, []);
 
   const handleAvatarClick = () => {
@@ -35,12 +76,33 @@ export default function ProfilePage() {
           title: "Profile Photo Updated",
           description: "Your new profile photo has been saved.",
         });
-        
-        // Dispatch a storage event so other components can listen
         window.dispatchEvent(new Event("storage"));
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const startEditingName = () => {
+    setEditNameValue(fullName);
+    setIsEditingName(true);
+    setTimeout(() => nameInputRef.current?.focus(), 100);
+  };
+
+  const saveName = () => {
+    if (editNameValue.trim()) {
+      setFullName(editNameValue.trim());
+      localStorage.setItem("user-fullname", editNameValue.trim());
+      toast({ title: "Name Updated", description: "Your profile name has been saved." });
+      window.dispatchEvent(new Event("storage"));
+    }
+    setIsEditingName(false);
+  };
+
+  const handleSpecialtyChange = (value: string) => {
+    setSpecialty(value);
+    localStorage.setItem("user-specialty", value);
+    toast({ title: "Specialty Updated", description: `Your specialty is now ${value}.` });
+    window.dispatchEvent(new Event("storage"));
   };
 
   return (
@@ -53,6 +115,7 @@ export default function ProfilePage() {
             <div 
               className="w-16 h-16 rounded-full bg-slate-200 overflow-hidden border-2 border-white shadow-md cursor-pointer relative"
               onClick={handleAvatarClick}
+              data-testid="button-avatar-upload"
             >
               <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
               <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -68,11 +131,45 @@ export default function ProfilePage() {
               className="hidden" 
               accept="image/*"
               onChange={handleFileChange}
+              data-testid="input-avatar-file"
             />
           </div>
-          <div>
-            <h2 className="text-lg font-bold">Dr. John Smith</h2>
-            <p className="text-sm text-muted-foreground">Cardiology</p>
+          <div className="flex-1">
+            {isEditingName ? (
+              <div className="flex items-center gap-2">
+                <Input
+                  ref={nameInputRef}
+                  value={editNameValue}
+                  onChange={(e) => setEditNameValue(e.target.value)}
+                  className="h-8 text-lg font-bold"
+                  onKeyDown={(e) => e.key === "Enter" && saveName()}
+                  data-testid="input-fullname"
+                />
+                <button onClick={saveName} className="p-1 text-emerald-600 hover:bg-emerald-50 rounded" data-testid="button-save-name">
+                  <Check className="w-5 h-5" />
+                </button>
+                <button onClick={() => setIsEditingName(false)} className="p-1 text-slate-400 hover:bg-slate-100 rounded" data-testid="button-cancel-name">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold" data-testid="text-fullname">{fullName}</h2>
+                <button onClick={startEditingName} className="p-1 text-slate-400 hover:text-primary hover:bg-slate-100 rounded transition-colors" data-testid="button-edit-name">
+                  <Edit3 className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+            <Select value={specialty} onValueChange={handleSpecialtyChange}>
+              <SelectTrigger className="w-full h-8 mt-1 text-sm text-muted-foreground border-none shadow-none px-0 hover:text-primary" data-testid="select-specialty">
+                <SelectValue placeholder="Select specialty" />
+              </SelectTrigger>
+              <SelectContent>
+                {SPECIALTIES.map((s) => (
+                  <SelectItem key={s} value={s} data-testid={`option-specialty-${s.toLowerCase().replace(/\s+/g, '-')}`}>{s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <div className="mt-2 inline-flex items-center px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-semibold">
               Pro Plan
             </div>
@@ -86,7 +183,11 @@ export default function ProfilePage() {
           <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Account</h3>
           
           <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-            <button className="w-full flex items-center justify-between p-4 hover:bg-slate-50 transition-colors">
+            <button 
+              onClick={startEditingName}
+              className="w-full flex items-center justify-between p-4 hover:bg-slate-50 transition-colors"
+              data-testid="button-personal-info"
+            >
               <div className="flex items-center gap-3">
                 <User className="w-5 h-5 text-slate-400" />
                 <span className="text-sm font-medium">Personal Information</span>
@@ -94,15 +195,15 @@ export default function ProfilePage() {
               <ChevronRight className="w-4 h-4 text-slate-300" />
             </button>
             <Separator />
-            <button className="w-full flex items-center justify-between p-4 hover:bg-slate-50 transition-colors">
+            <Link href="/subscription" className="w-full flex items-center justify-between p-4 hover:bg-slate-50 transition-colors" data-testid="button-subscription">
               <div className="flex items-center gap-3">
                 <CreditCard className="w-5 h-5 text-slate-400" />
                 <span className="text-sm font-medium">Subscription & Billing</span>
               </div>
               <ChevronRight className="w-4 h-4 text-slate-300" />
-            </button>
+            </Link>
              <Separator />
-             <button className="w-full flex items-center justify-between p-4 hover:bg-slate-50 transition-colors">
+             <button className="w-full flex items-center justify-between p-4 hover:bg-slate-50 transition-colors" data-testid="button-security">
               <div className="flex items-center gap-3">
                 <Shield className="w-5 h-5 text-slate-400" />
                 <span className="text-sm font-medium">Security & Privacy (HIPAA)</span>

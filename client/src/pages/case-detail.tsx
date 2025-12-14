@@ -14,10 +14,8 @@ export default function CaseDetailPage() {
   return (
     <MobileLayout showNav={false}>
       <header className="px-4 py-4 flex items-center justify-between sticky top-0 bg-background/80 backdrop-blur-md z-10 border-b border-slate-100 dark:border-slate-800">
-        <Link href="/cases">
-          <a className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
-            <ChevronLeft className="w-5 h-5 text-foreground" />
-          </a>
+        <Link href="/cases" className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors" data-testid="button-back">
+          <ChevronLeft className="w-5 h-5 text-foreground" />
         </Link>
         <span className="font-semibold text-sm">Case #{id}</span>
         <Button variant="ghost" size="icon" className="h-9 w-9">
