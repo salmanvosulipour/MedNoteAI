@@ -285,6 +285,11 @@ export default function RecordPage() {
         <div className="absolute inset-0">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/20 rounded-full blur-[120px] animate-pulse" />
         </div>
+        <header className="absolute top-0 left-0 right-0 p-6 flex justify-start items-center z-10">
+          <Link href="/home" className="p-3 bg-white/5 border border-white/10 rounded-full backdrop-blur-xl hover:bg-white/10 transition-colors group" data-testid="button-back-processing">
+            <ChevronLeft className="w-5 h-5 group-hover:-translate-x-0.5 transition-transform" />
+          </Link>
+        </header>
         <div className="flex-1 flex flex-col items-center justify-center z-10">
           <Loader2 className="w-16 h-16 animate-spin text-primary mb-6" />
           <h2 className="text-2xl font-bold mb-2">Generating Medical Note</h2>
