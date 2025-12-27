@@ -337,13 +337,13 @@ export async function registerRoutes(
         return res.status(404).json({ error: "User not found" });
       }
 
-      // Check email verification
-      if (!user.isEmailVerified) {
-        return res.status(403).json({ 
-          error: "EMAIL_NOT_VERIFIED",
-          message: "Please verify your email before creating cases" 
-        });
-      }
+      // Email verification temporarily disabled
+      // if (!user.isEmailVerified) {
+      //   return res.status(403).json({ 
+      //     error: "EMAIL_NOT_VERIFIED",
+      //     message: "Please verify your email before creating cases" 
+      //   });
+      // }
 
       // Check subscription or free tokens
       let hasActiveSubscription = false;
