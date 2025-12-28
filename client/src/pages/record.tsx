@@ -282,11 +282,11 @@ export default function RecordPage() {
   if (isProcessing) {
     return (
       <MobileLayout showNav={false} className="bg-slate-950 text-white relative overflow-hidden font-sans">
-        <div className="absolute inset-0">
+        <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/20 rounded-full blur-[120px] animate-pulse" />
         </div>
-        <header className="absolute top-0 left-0 right-0 p-6 flex justify-start items-center z-10">
-          <Link href="/home" className="p-3 bg-white/5 border border-white/10 rounded-full backdrop-blur-xl hover:bg-white/10 transition-colors group" data-testid="button-back-processing">
+        <header className="absolute top-0 left-0 right-0 p-6 flex justify-start items-center z-20">
+          <Link href="/home" className="p-3 bg-white/5 border border-white/10 rounded-full backdrop-blur-xl hover:bg-white/10 transition-colors group pointer-events-auto" data-testid="button-back-processing">
             <ChevronLeft className="w-5 h-5 group-hover:-translate-x-0.5 transition-transform" />
           </Link>
         </header>
@@ -307,16 +307,16 @@ export default function RecordPage() {
 
   return (
     <MobileLayout showNav={false} className="bg-slate-950 text-white relative overflow-hidden font-sans">
-      <div className={`absolute inset-0 transition-opacity duration-1000 ${isRecording ? 'opacity-100' : 'opacity-60'}`}>
+      <div className={`absolute inset-0 transition-opacity duration-1000 pointer-events-none ${isRecording ? 'opacity-100' : 'opacity-60'}`}>
          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/20 rounded-full blur-[120px] animate-pulse" />
          <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-blue-500/10 rounded-full blur-[100px]" />
          <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-emerald-500/10 rounded-full blur-[100px]" />
       </div>
       
-      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20" />
+      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none" />
 
-      <header className="absolute top-0 left-0 right-0 p-6 flex justify-between items-center z-10">
-        <Link href="/home" className="p-3 bg-white/5 border border-white/10 rounded-full backdrop-blur-xl hover:bg-white/10 transition-colors group" data-testid="button-back">
+      <header className="absolute top-0 left-0 right-0 p-6 flex justify-between items-center z-20">
+        <Link href="/home" className="p-3 bg-white/5 border border-white/10 rounded-full backdrop-blur-xl hover:bg-white/10 transition-colors group pointer-events-auto" data-testid="button-back">
           <ChevronLeft className="w-5 h-5 group-hover:-translate-x-0.5 transition-transform" />
         </Link>
         <div className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full backdrop-blur-xl">
