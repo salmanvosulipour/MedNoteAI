@@ -70,7 +70,18 @@ Key database tables:
 ### Session Management
 - **connect-pg-simple**: PostgreSQL session store for Express sessions
 
-### Planned Integrations (from requirements)
-- **Stripe**: Subscription billing ($15/month or $99/year) - infrastructure present but not fully implemented
-- **Firebase Authentication**: Planned for email/password and social auth
-- **Cloud Storage**: For audio file and image attachment storage
+### Payment Processing
+- **Paddle**: Subscription billing ($15/month or $99/year) with 1 free token for new users
+
+### Authentication
+- **Replit Auth**: OAuth-based authentication supporting Sign in with Apple (required for iOS App Store)
+
+### iOS App (Capacitor)
+- **Framework**: Capacitor for wrapping the web app as a native iOS app
+- **Bundle ID**: `com.mednote.ai`
+- **iOS Project**: Located in `ios/` folder
+- **Setup Guide**: See `IOS_SETUP.md` for App Store submission instructions
+- **Build Commands**:
+  - `npm run build` - Build web assets
+  - `npx cap sync ios` - Sync web assets to iOS project
+- **Required Capabilities**: Sign in with Apple, Microphone, Camera
