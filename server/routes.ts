@@ -1,248 +1,28 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth, isAuthenticated, registerAuthRoutes } from "./replit_integrations/auth";
 import { generateMedicalSummary, generateDiagnosticInterpretation } from "./services/openai";
 import { transcribeAudio } from "./services/gemini";
-import { sendCaseSummaryEmail, sendPasswordResetEmail, sendVerificationEmail } from "./services/resend";
+import { sendCaseSummaryEmail } from "./services/resend";
 import { insertCaseSchema } from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
-import bcrypt from "bcryptjs";
-import crypto from "crypto";
 import { getPaddleClient, verifyPaddleWebhook } from "./paddleClient";
-
-// Generate a signed auth token for terms acceptance
-function generateAuthToken(userId: string): string {
-  const expiry = Date.now() + 10 * 60 * 1000; // 10 minutes
-  const payload = `${userId}:${expiry}`;
-  const signature = crypto.createHmac('sha256', process.env.SESSION_SECRET || 'fallback-secret')
-    .update(payload)
-    .digest('hex');
-  return Buffer.from(`${payload}:${signature}`).toString('base64');
-}
-
-// Verify and decode auth token
-function verifyAuthToken(token: string): string | null {
-  try {
-    const decoded = Buffer.from(token, 'base64').toString('utf-8');
-    const [userId, expiryStr, signature] = decoded.split(':');
-    const expiry = parseInt(expiryStr, 10);
-    
-    if (Date.now() > expiry) return null;
-    
-    const expectedSignature = crypto.createHmac('sha256', process.env.SESSION_SECRET || 'fallback-secret')
-      .update(`${userId}:${expiryStr}`)
-      .digest('hex');
-    
-    if (signature !== expectedSignature) return null;
-    
-    return userId;
-  } catch {
-    return null;
-  }
-}
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
   
-  // Setup Replit Auth
+  // Setup Replit Auth (supports Apple, Google, GitHub sign-in)
   await setupAuth(app);
+  registerAuthRoutes(app);
 
-  // Email/Password Signup
-  app.post('/api/auth/signup', async (req, res) => {
-    try {
-      const schema = z.object({
-        name: z.string().min(1),
-        email: z.string().email(),
-        password: z.string().min(6),
-      });
-      
-      const parsed = schema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({ message: "Invalid signup data" });
-      }
-
-      const { name, email, password } = parsed.data;
-      
-      const existingUser = await storage.getUserByEmail(email);
-      if (existingUser) {
-        return res.status(400).json({ message: "Email already registered" });
-      }
-
-      const hashedPassword = await bcrypt.hash(password, 10);
-      const nameParts = name.split(' ');
-      const firstName = nameParts[0];
-      const lastName = nameParts.slice(1).join(' ') || undefined;
-
-      const user = await storage.createUser({
-        email,
-        password: hashedPassword,
-        firstName,
-        lastName,
-      });
-
-      (req.session as any).userId = user.id;
-      const authToken = generateAuthToken(user.id);
-      req.session.save((err) => {
-        if (err) {
-          console.error("Session save error:", err);
-          return res.status(500).json({ message: "Failed to create session" });
-        }
-        res.json({ user, needsTerms: true, authToken });
-      });
-    } catch (error) {
-      console.error("Signup error:", error);
-      res.status(500).json({ message: "Failed to create account" });
-    }
-  });
-
-  // Email/Password Login
-  app.post('/api/auth/login', async (req, res) => {
-    try {
-      const schema = z.object({
-        email: z.string().email(),
-        password: z.string(),
-      });
-      
-      const parsed = schema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({ message: "Invalid login data" });
-      }
-
-      const { email, password } = parsed.data;
-      
-      const user = await storage.getUserByEmail(email);
-      if (!user || !user.password) {
-        return res.status(401).json({ message: "Invalid email or password" });
-      }
-
-      const isValidPassword = await bcrypt.compare(password, user.password);
-      if (!isValidPassword) {
-        return res.status(401).json({ message: "Invalid email or password" });
-      }
-
-      (req.session as any).userId = user.id;
-      const needsTerms = !user.termsAcceptedAt;
-      const authToken = generateAuthToken(user.id);
-      req.session.save((err) => {
-        if (err) {
-          console.error("Session save error:", err);
-          return res.status(500).json({ message: "Failed to create session" });
-        }
-        res.json({ user, needsTerms, authToken });
-      });
-    } catch (error) {
-      console.error("Login error:", error);
-      res.status(500).json({ message: "Failed to login" });
-    }
-  });
-
-  // Logout
-  app.post('/api/auth/logout', (req, res) => {
-    req.session.destroy((err) => {
-      if (err) {
-        return res.status(500).json({ message: "Failed to logout" });
-      }
-      res.json({ success: true });
-    });
-  });
-
-  // Request password reset
-  app.post('/api/auth/forgot-password', async (req, res) => {
-    try {
-      const schema = z.object({
-        email: z.string().email(),
-      });
-      
-      const parsed = schema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({ message: "Invalid email" });
-      }
-
-      const { email } = parsed.data;
-      const user = await storage.getUserByEmail(email);
-      
-      if (user) {
-        const token = crypto.randomBytes(32).toString('hex');
-        const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
-        
-        await storage.createPasswordResetToken(user.id, token, expiresAt);
-        
-        const baseUrl = process.env.REPLIT_DEV_DOMAIN 
-          ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-          : process.env.REPLIT_DOMAINS?.split(',')[0] 
-            ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
-            : 'http://localhost:5000';
-        const resetLink = `${baseUrl}/reset-password?token=${token}`;
-        
-        try {
-          await sendPasswordResetEmail({ email, resetLink });
-        } catch (emailError) {
-          console.error("Failed to send reset email:", emailError);
-        }
-      }
-      
-      res.json({ message: "If an account exists with that email, a password reset link has been sent." });
-    } catch (error) {
-      console.error("Forgot password error:", error);
-      res.status(500).json({ message: "Failed to process request" });
-    }
-  });
-
-  // Reset password with token
-  app.post('/api/auth/reset-password', async (req, res) => {
-    try {
-      const schema = z.object({
-        token: z.string(),
-        password: z.string().min(6),
-      });
-      
-      const parsed = schema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({ message: "Invalid request" });
-      }
-
-      const { token, password } = parsed.data;
-      
-      const resetToken = await storage.getValidPasswordResetToken(token);
-      if (!resetToken) {
-        return res.status(400).json({ message: "Invalid or expired reset link" });
-      }
-
-      const hashedPassword = await bcrypt.hash(password, 10);
-      await storage.updateUser(resetToken.userId, { password: hashedPassword });
-      await storage.markPasswordResetTokenUsed(token);
-
-      res.json({ message: "Password reset successfully" });
-    } catch (error) {
-      console.error("Reset password error:", error);
-      res.status(500).json({ message: "Failed to reset password" });
-    }
-  });
-
-  // Custom session auth middleware with token fallback
+  // Session auth middleware - uses Replit Auth
   const sessionAuth = (req: any, res: any, next: any) => {
-    const sessionUserId = req.session?.userId;
     const replitUserId = req.user?.claims?.sub;
     
-    // Check Authorization header for token fallback
-    const authHeader = req.headers.authorization;
-    if (authHeader?.startsWith('Bearer ')) {
-      const token = authHeader.slice(7);
-      const tokenUserId = verifyAuthToken(token);
-      if (tokenUserId) {
-        req.authUserId = tokenUserId;
-        return next();
-      }
-    }
-    
-    if (sessionUserId) {
-      req.authUserId = sessionUserId;
-      return next();
-    }
     if (replitUserId) {
       req.authUserId = replitUserId;
       return next();
@@ -266,20 +46,9 @@ export async function registerRoutes(
   });
 
   // Accept terms of use
-  app.post('/api/auth/accept-terms', async (req: any, res) => {
+  app.post('/api/auth/accept-terms', sessionAuth, async (req: any, res) => {
     try {
-      // Try session auth first
-      let userId = req.session?.userId || req.user?.claims?.sub;
-      
-      // Fall back to token-based auth
-      if (!userId && req.body.authToken) {
-        userId = verifyAuthToken(req.body.authToken);
-      }
-      
-      if (!userId) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-      
+      const userId = req.authUserId;
       const updated = await storage.updateUser(userId, {
         termsAcceptedAt: new Date(),
       });
@@ -687,80 +456,6 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("Error sending email:", error);
       res.status(502).json({ error: error.message || "Failed to send email" });
-    }
-  });
-
-  // Email Verification Routes
-  app.post('/api/auth/send-verification', sessionAuth, async (req: any, res) => {
-    try {
-      const userId = req.authUserId;
-      const user = await storage.getUser(userId);
-      
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      if (user.isEmailVerified) {
-        return res.status(400).json({ message: "Email already verified" });
-      }
-
-      if (!user.email) {
-        return res.status(400).json({ message: "No email address on account" });
-      }
-
-      const token = crypto.randomBytes(32).toString('hex');
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-      
-      await storage.createEmailVerificationToken(userId, token, expiresAt);
-      
-      const baseUrl = process.env.REPLIT_DEV_DOMAIN 
-        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-        : process.env.REPLIT_DOMAINS?.split(',')[0] 
-          ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
-          : 'http://localhost:5000';
-      const verificationLink = `${baseUrl}/verify-email?token=${token}`;
-      
-      await sendVerificationEmail({
-        email: user.email,
-        userName: user.firstName || 'there',
-        verificationLink,
-      });
-
-      res.json({ message: "Verification email sent" });
-    } catch (error) {
-      console.error("Send verification error:", error);
-      res.status(500).json({ message: "Failed to send verification email" });
-    }
-  });
-
-  app.post('/api/auth/verify-email', async (req, res) => {
-    try {
-      const schema = z.object({
-        token: z.string(),
-      });
-      
-      const parsed = schema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({ message: "Invalid request" });
-      }
-
-      const { token } = parsed.data;
-      
-      const verificationToken = await storage.getValidEmailVerificationToken(token);
-      if (!verificationToken) {
-        return res.status(400).json({ message: "Invalid or expired verification link" });
-      }
-
-      await storage.updateUser(verificationToken.userId, {
-        isEmailVerified: true,
-        emailVerifiedAt: new Date(),
-      });
-      await storage.markEmailVerificationTokenUsed(token);
-
-      res.json({ message: "Email verified successfully" });
-    } catch (error) {
-      console.error("Verify email error:", error);
-      res.status(500).json({ message: "Failed to verify email" });
     }
   });
 

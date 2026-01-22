@@ -1,89 +1,15 @@
-import { useState } from "react";
 import { useLocation } from "wouter";
 import { MobileLayout } from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion } from "framer-motion";
-import { useMutation } from "@tanstack/react-query";
-import { useToast } from "@/hooks/use-toast";
-import { storeUser, clearOldProfileKeys } from "@/hooks/useAuth";
 import logoIcon from "@assets/generated_images/minimalist_medical_ai_logo_icon.png";
+import { FaApple, FaGoogle, FaGithub } from "react-icons/fa";
 
 export default function AuthPage() {
   const [, setLocation] = useLocation();
-  const { toast } = useToast();
-  const [loginEmail, setLoginEmail] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
-  const [signupName, setSignupName] = useState("");
-  const [signupEmail, setSignupEmail] = useState("");
-  const [signupPassword, setSignupPassword] = useState("");
 
-  const loginMutation = useMutation({
-    mutationFn: async (data: { email: string; password: string }) => {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-        credentials: "include",
-      });
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Login failed");
-      }
-      return res.json();
-    },
-    onSuccess: (data) => {
-      clearOldProfileKeys();
-      storeUser(data.user);
-      if (data.authToken) {
-        localStorage.setItem("authToken", data.authToken);
-      }
-      if (data.needsTerms) {
-        setLocation("/terms");
-      } else {
-        setLocation("/home");
-      }
-    },
-    onError: (error: Error) => {
-      toast({ title: "Login Failed", description: error.message, variant: "destructive" });
-    },
-  });
-
-  const signupMutation = useMutation({
-    mutationFn: async (data: { name: string; email: string; password: string }) => {
-      const res = await fetch("/api/auth/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-        credentials: "include",
-      });
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Signup failed");
-      }
-      return res.json();
-    },
-    onSuccess: (data) => {
-      clearOldProfileKeys();
-      storeUser(data.user);
-      localStorage.setItem("authToken", data.authToken);
-      setLocation("/terms");
-    },
-    onError: (error: Error) => {
-      toast({ title: "Signup Failed", description: error.message, variant: "destructive" });
-    },
-  });
-
-  const handleEmailLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    loginMutation.mutate({ email: loginEmail, password: loginPassword });
-  };
-
-  const handleSignup = (e: React.FormEvent) => {
-    e.preventDefault();
-    signupMutation.mutate({ name: signupName, email: signupEmail, password: signupPassword });
+  const handleLogin = () => {
+    window.location.href = "/api/login";
   };
 
   return (
@@ -123,101 +49,40 @@ export default function AuthPage() {
           initial={{ y: 40, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.4 }}
+          className="space-y-4"
         >
-          <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
-              <TabsTrigger value="login" data-testid="tab-login">Login</TabsTrigger>
-              <TabsTrigger value="signup" data-testid="tab-signup">Sign Up</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="login">
-              <form onSubmit={handleEmailLogin} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input 
-                    id="email" 
-                    type="email" 
-                    placeholder="dr.smith@hospital.com" 
-                    required 
-                    className="h-12 bg-slate-50 border-slate-200" 
-                    data-testid="input-email"
-                    value={loginEmail}
-                    onChange={(e) => setLoginEmail(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="password">Password</Label>
-                    <button
-                      type="button"
-                      onClick={() => setLocation("/forgot-password")}
-                      className="text-sm text-primary hover:underline"
-                      data-testid="link-forgot-password"
-                    >
-                      Forgot password?
-                    </button>
-                  </div>
-                  <Input 
-                    id="password" 
-                    type="password" 
-                    required 
-                    className="h-12 bg-slate-50 border-slate-200" 
-                    data-testid="input-password"
-                    value={loginPassword}
-                    onChange={(e) => setLoginPassword(e.target.value)}
-                  />
-                </div>
-                <Button type="submit" className="w-full h-12 text-base shadow-lg shadow-primary/20" disabled={loginMutation.isPending} data-testid="button-login">
-                  {loginMutation.isPending ? "Signing in..." : "Sign In"}
-                </Button>
-              </form>
-            </TabsContent>
-            
-            <TabsContent value="signup">
-              <form onSubmit={handleSignup} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input 
-                    id="name" 
-                    placeholder="Dr. John Smith" 
-                    required 
-                    className="h-12 bg-slate-50 border-slate-200" 
-                    data-testid="input-name"
-                    value={signupName}
-                    onChange={(e) => setSignupName(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email-signup">Email</Label>
-                  <Input 
-                    id="email-signup" 
-                    type="email" 
-                    placeholder="name@example.com" 
-                    required 
-                    className="h-12 bg-slate-50 border-slate-200" 
-                    data-testid="input-email-signup"
-                    value={signupEmail}
-                    onChange={(e) => setSignupEmail(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password-signup">Password</Label>
-                  <Input 
-                    id="password-signup" 
-                    type="password" 
-                    required 
-                    className="h-12 bg-slate-50 border-slate-200" 
-                    data-testid="input-password-signup"
-                    value={signupPassword}
-                    onChange={(e) => setSignupPassword(e.target.value)}
-                  />
-                </div>
-                <Button type="submit" className="w-full h-12 text-base shadow-lg shadow-primary/20" disabled={signupMutation.isPending} data-testid="button-signup">
-                  {signupMutation.isPending ? "Creating Account..." : "Create Account"}
-                </Button>
-              </form>
-            </TabsContent>
-          </Tabs>
+          <Button 
+            onClick={handleLogin}
+            className="w-full h-14 text-base font-semibold bg-black text-white hover:bg-black/90 shadow-lg"
+            data-testid="button-sign-in-apple"
+          >
+            <FaApple className="mr-3 h-5 w-5" />
+            Sign in with Apple
+          </Button>
+          
+          <Button 
+            onClick={handleLogin}
+            variant="outline"
+            className="w-full h-14 text-base font-semibold border-2 shadow-sm"
+            data-testid="button-sign-in-google"
+          >
+            <FaGoogle className="mr-3 h-5 w-5 text-red-500" />
+            Sign in with Google
+          </Button>
+          
+          <Button 
+            onClick={handleLogin}
+            variant="outline"
+            className="w-full h-14 text-base font-semibold border-2 shadow-sm"
+            data-testid="button-sign-in-github"
+          >
+            <FaGithub className="mr-3 h-5 w-5" />
+            Sign in with GitHub
+          </Button>
+
+          <p className="text-center text-xs text-muted-foreground mt-6 px-4">
+            By continuing, you agree to our Terms of Service and Privacy Policy.
+          </p>
         </motion.div>
       </div>
     </MobileLayout>

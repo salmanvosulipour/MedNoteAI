@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import type { User } from "@shared/schema";
 
 function getStoredUser(): User | null {
@@ -18,7 +18,6 @@ export function storeUser(user: User) {
 export function clearStoredUser() {
   localStorage.removeItem("user");
   localStorage.removeItem("authToken");
-  // Clear old global profile keys (legacy)
   localStorage.removeItem("user-avatar");
   localStorage.removeItem("user-fullname");
   localStorage.removeItem("user-specialty");
@@ -26,7 +25,6 @@ export function clearStoredUser() {
 }
 
 export function clearOldProfileKeys() {
-  // Clear old global profile keys that may have been set before user-specific keys
   localStorage.removeItem("user-avatar");
   localStorage.removeItem("user-fullname");
   localStorage.removeItem("user-specialty");
@@ -36,9 +34,29 @@ export function useAuth() {
   const [user, setUser] = useState<User | null>(() => getStoredUser());
   const [isLoading, setIsLoading] = useState(true);
 
+  const fetchUser = useCallback(async () => {
+    try {
+      const res = await fetch("/api/auth/user", {
+        credentials: "include",
+      });
+      if (res.ok) {
+        const userData = await res.json();
+        storeUser(userData);
+        setUser(userData);
+      } else {
+        clearStoredUser();
+        setUser(null);
+      }
+    } catch {
+      const stored = getStoredUser();
+      setUser(stored);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    setUser(getStoredUser());
-    setIsLoading(false);
+    fetchUser();
     
     const handleAuthChange = () => {
       setUser(getStoredUser());
@@ -51,11 +69,20 @@ export function useAuth() {
       window.removeEventListener('authChange', handleAuthChange);
       window.removeEventListener('storage', handleAuthChange);
     };
+  }, [fetchUser]);
+
+  const logout = useCallback(async () => {
+    await fetch("/api/logout", { method: "POST", credentials: "include" });
+    clearStoredUser();
+    setUser(null);
+    window.location.href = "/";
   }, []);
 
   return {
     user,
     isLoading,
     isAuthenticated: !!user,
+    logout,
+    refetch: fetchUser,
   };
 }
