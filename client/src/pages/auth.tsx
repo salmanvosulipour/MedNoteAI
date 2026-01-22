@@ -3,7 +3,7 @@ import { MobileLayout } from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import logoIcon from "@assets/generated_images/minimalist_medical_ai_logo_icon.png";
-import { FaApple, FaGoogle, FaGithub } from "react-icons/fa";
+import { FaApple } from "react-icons/fa";
 
 export default function AuthPage() {
   const [, setLocation] = useLocation();
@@ -58,26 +58,6 @@ export default function AuthPage() {
           >
             <FaApple className="mr-3 h-5 w-5" />
             Sign in with Apple
-          </Button>
-          
-          <Button 
-            onClick={handleLogin}
-            variant="outline"
-            className="w-full h-14 text-base font-semibold border-2 shadow-sm"
-            data-testid="button-sign-in-google"
-          >
-            <FaGoogle className="mr-3 h-5 w-5 text-red-500" />
-            Sign in with Google
-          </Button>
-          
-          <Button 
-            onClick={handleLogin}
-            variant="outline"
-            className="w-full h-14 text-base font-semibold border-2 shadow-sm"
-            data-testid="button-sign-in-github"
-          >
-            <FaGithub className="mr-3 h-5 w-5" />
-            Sign in with GitHub
           </Button>
 
           <p className="text-center text-xs text-muted-foreground mt-6 px-4">
