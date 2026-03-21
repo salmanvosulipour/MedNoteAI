@@ -6,3 +6,9 @@ id = "pTtgsmERw6QOFw7et5UOI"
 uri = "file://mednote-ios.zip"
 type = "unspecified"
 title = "MedNote iOS Project (mednote-ios.zip)"
+
+[[outputs]]
+id = "h_rN_hJb9JWj7n3Ad6OPl"
+uri = "file://mednote-ios.tar.gz"
+type = "unspecified"
+title = "MedNote iOS Project (mednote-ios.tar.gz)"
