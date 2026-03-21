@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "pTtgsmERw6QOFw7et5UOI"
+uri = "file://mednote-ios.zip"
+type = "unspecified"
+title = "MedNote iOS Project (mednote-ios.zip)"
