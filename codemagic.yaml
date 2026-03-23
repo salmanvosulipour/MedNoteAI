@@ -22,10 +22,22 @@ workflows:
       - name: Build web app
         script: npm run build
 
-      - name: Sync Capacitor iOS
+      - name: Sync web assets to iOS
         script: |
-          npm install -g @capacitor/cli
-          npx cap sync ios
+          mkdir -p ios/App/App/public
+          cp -r dist/public/. ios/App/App/public/
+          cp capacitor.config.ts ios/App/App/ 2>/dev/null || true
+          node -e "
+            const fs = require('fs');
+            const cfg = {
+              appId: 'com.mednote.ai',
+              appName: 'MedNote AI',
+              webDir: 'dist/public',
+              server: { url: 'https://098b918f-8c03-405d-b6f6-d89ed3290933-00-3q3amhlze1ape.kirk.replit.dev', cleartext: false },
+              ios: { contentInset: 'automatic' }
+            };
+            fs.writeFileSync('ios/App/App/capacitor.config.json', JSON.stringify(cfg, null, 2));
+          "
 
       - name: Install CocoaPods dependencies
         script: |
