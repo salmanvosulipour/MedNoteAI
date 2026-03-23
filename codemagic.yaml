@@ -38,14 +38,12 @@ workflows:
             fs.writeFileSync('ios/App/App/capacitor.config.json', JSON.stringify(cfg, null, 2));
           "
           # Create config.xml required by Xcode build if not present
-          if [ ! -f ios/App/App/config.xml ]; then
-            cat > ios/App/App/config.xml << 'EOF'
-<?xml version='1.0' encoding='utf-8'?>
-<widget version="1.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
-  <access origin="*" />
-</widget>
-EOF
-          fi
+          node -e "
+            const fs = require('fs');
+            if (!fs.existsSync('ios/App/App/config.xml')) {
+              fs.writeFileSync('ios/App/App/config.xml', '<?xml version=\'1.0\' encoding=\'utf-8\'?>\n<widget version=\"1.0.0\" xmlns=\"http://www.w3.org/ns/widgets\" xmlns:cdv=\"http://cordova.apache.org/ns/1.0\">\n  <access origin=\"*\" />\n</widget>\n');
+            }
+          "
 
       - name: Install CocoaPods dependencies
         script: |
