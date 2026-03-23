@@ -68,14 +68,25 @@ workflows:
 
       - name: Export IPA
         script: |
+          set -e
           ARCHIVE_PATH="$HOME/archive/App.xcarchive"
           mkdir -p "$HOME/ipa"
+          echo "=== Checking archive exists ==="
+          ls -la "$HOME/archive/" || { echo "ERROR: Archive not found!"; exit 1; }
+          echo "=== Exporting IPA ==="
           xcodebuild -exportArchive \
             -archivePath "$ARCHIVE_PATH" \
             -exportPath "$HOME/ipa" \
             -exportOptionsPlist ios/App/ExportOptions.plist \
-            -allowProvisioningUpdates
+            -allowProvisioningUpdates 2>&1
+          echo "=== IPA output ==="
           ls -la "$HOME/ipa/"
+          IPA_COUNT=$(ls "$HOME/ipa/"*.ipa 2>/dev/null | wc -l)
+          if [ "$IPA_COUNT" -eq 0 ]; then
+            echo "ERROR: No IPA file was produced!"
+            exit 1
+          fi
+          echo "SUCCESS: IPA created at $HOME/ipa/"
 
     artifacts:
       - $HOME/ipa/*.ipa

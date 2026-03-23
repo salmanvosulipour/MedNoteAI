@@ -13,6 +13,6 @@
     <key>compileBitcode</key>
     <false/>
     <key>signingStyle</key>
-    <string>automatic</string>
+    <string>manual</string>
 </dict>
 </plist>
