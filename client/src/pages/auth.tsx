@@ -1,96 +1,61 @@
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Capacitor } from "@capacitor/core";
 import { SignInWithApple, type SignInWithAppleOptions } from "@capacitor-community/apple-sign-in";
 import logoIcon from "@assets/generated_images/minimalist_medical_ai_logo_icon.png";
 import { storeUser } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Mail, Lock } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Loader2 } from "lucide-react";
 
 export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false);
-  const [showWebFallback, setShowWebFallback] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const { toast } = useToast();
 
-  const handleAppleSignIn = async () => {
-    if (!Capacitor.isNativePlatform()) {
-      // On web/browser show the email fallback for development
-      setShowWebFallback(true);
+  const handleSignIn = async () => {
+    // On real iPhone (Capacitor): native Apple Sign In sheet — no Replit, no redirect
+    if (Capacitor.isNativePlatform()) {
+      setIsLoading(true);
+      try {
+        const options: SignInWithAppleOptions = {
+          clientId: "com.mednote.ai",
+          redirectURI: "",
+          scopes: "email name",
+          state: Math.random().toString(36).substring(7),
+          nonce: Math.random().toString(36).substring(7),
+        };
+
+        const result = await SignInWithApple.authorize(options);
+        const { identityToken, givenName, familyName, email } = result.response;
+
+        const res = await fetch("/api/auth/apple", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ identityToken, firstName: givenName, lastName: familyName, email }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.message || "Sign in failed");
+        }
+
+        const { user } = await res.json();
+        storeUser(user);
+        window.location.href = "/home";
+      } catch (err: any) {
+        // Error code 1001 = user cancelled — don't show an error toast for that
+        const cancelled = err?.message?.includes("1001") || err?.code === "1001";
+        if (!cancelled) {
+          toast({ title: "Sign in failed", description: err.message || "Please try again.", variant: "destructive" });
+        }
+      } finally {
+        setIsLoading(false);
+      }
       return;
     }
 
-    setIsLoading(true);
-    try {
-      const options: SignInWithAppleOptions = {
-        clientId: "com.mednote.ai",
-        redirectURI: "",
-        scopes: "email name",
-        state: Math.random().toString(36).substring(7),
-        nonce: Math.random().toString(36).substring(7),
-      };
-
-      const result = await SignInWithApple.authorize(options);
-      const { identityToken, givenName, familyName, email: appleEmail } = result.response;
-
-      const res = await fetch("/api/auth/apple", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          identityToken,
-          firstName: givenName,
-          lastName: familyName,
-          email: appleEmail,
-        }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || "Sign in failed");
-      }
-
-      const { user } = await res.json();
-      storeUser(user);
-      window.location.href = "/home";
-    } catch (err: any) {
-      if (err?.message !== "The operation couldn't be completed. (com.apple.AuthenticationServices.AuthorizationError error 1001.)") {
-        // 1001 = user cancelled, don't show error for that
-        toast({
-          title: "Sign in failed",
-          description: err.message || "Please try again.",
-          variant: "destructive",
-        });
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleWebLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || !password) return;
-    setIsLoading(true);
-    try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Login failed");
-      localStorage.setItem("authToken", data.token);
-      storeUser(data.user);
-      window.location.href = "/home";
-    } catch (err: any) {
-      toast({ title: "Login failed", description: err.message, variant: "destructive" });
-    } finally {
-      setIsLoading(false);
-    }
+    // On web browser: redirect to OAuth provider (your existing Apple ID session is picked up automatically)
+    window.location.href = "/api/login";
   };
 
   return (
@@ -121,117 +86,49 @@ export default function AuthPage() {
           </p>
         </motion.div>
 
-        <AnimatePresence mode="wait">
-          {!showWebFallback ? (
-            <motion.div
-              key="social"
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.5, delay: 0.15 }}
-              className="w-full space-y-3"
-            >
-              {/* Sign in with Apple */}
-              <button
-                onClick={handleAppleSignIn}
-                disabled={isLoading}
-                data-testid="button-sign-in-apple"
-                className="w-full h-14 flex items-center justify-center gap-3 bg-white text-black font-semibold text-base rounded-2xl shadow-xl hover:bg-white/90 active:scale-[0.98] transition-all disabled:opacity-60"
-              >
-                {isLoading ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <>
-                    <AppleLogo />
-                    Sign in with Apple
-                  </>
-                )}
-              </button>
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.15 }}
+          className="w-full space-y-4"
+        >
+          {/* Sign in with Apple */}
+          <button
+            onClick={handleSignIn}
+            disabled={isLoading}
+            data-testid="button-sign-in-apple"
+            className="w-full h-14 flex items-center justify-center gap-3 bg-white text-black font-semibold text-base rounded-2xl shadow-xl hover:bg-white/90 active:scale-[0.98] transition-all disabled:opacity-60"
+          >
+            {isLoading ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <>
+                <AppleLogo />
+                Sign in with Apple
+              </>
+            )}
+          </button>
 
-              {/* Feature list */}
-              <div className="pt-6 space-y-3">
-                {[
-                  { icon: "🔒", text: "Stays signed in on your device — no passwords" },
-                  { icon: "🎙️", text: "AI transcription from audio in seconds" },
-                  { icon: "📋", text: "Structured SOAP notes, auto-generated" },
-                ].map((item, i) => (
-                  <div key={i} className="flex items-center gap-3 text-slate-400 text-sm">
-                    <span className="text-base">{item.icon}</span>
-                    <span>{item.text}</span>
-                  </div>
-                ))}
+          {/* Feature highlights */}
+          <div className="pt-4 space-y-3">
+            {[
+              { icon: "🔒", text: "Stays signed in — no passwords to remember" },
+              { icon: "🎙️", text: "AI transcription from audio in seconds" },
+              { icon: "📋", text: "Structured SOAP notes, auto-generated" },
+            ].map((item, i) => (
+              <div key={i} className="flex items-center gap-3 text-slate-400 text-sm">
+                <span className="text-base">{item.icon}</span>
+                <span>{item.text}</span>
               </div>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="web-fallback"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="w-full space-y-4"
-            >
-              <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3 text-center">
-                <p className="text-xs text-blue-300">
-                  Apple Sign In works on the iPhone app. Use your account credentials below for web access.
-                </p>
-              </div>
-
-              <form onSubmit={handleWebLogin} className="space-y-3">
-                <div>
-                  <Label className="text-xs text-slate-400 uppercase tracking-wide">Email</Label>
-                  <div className="relative mt-1">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                    <Input
-                      type="email"
-                      value={email}
-                      onChange={e => setEmail(e.target.value)}
-                      placeholder="doctor@hospital.com"
-                      required
-                      className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-slate-600 rounded-xl h-12"
-                      data-testid="input-email"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-xs text-slate-400 uppercase tracking-wide">Password</Label>
-                  <div className="relative mt-1">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                    <Input
-                      type="password"
-                      value={password}
-                      onChange={e => setPassword(e.target.value)}
-                      placeholder="Your password"
-                      required
-                      className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-slate-600 rounded-xl h-12"
-                      data-testid="input-password"
-                    />
-                  </div>
-                </div>
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full h-12 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 font-semibold text-white disabled:opacity-60 flex items-center justify-center"
-                  data-testid="button-web-login"
-                >
-                  {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Sign In"}
-                </button>
-              </form>
-
-              <button
-                onClick={() => setShowWebFallback(false)}
-                className="w-full text-xs text-slate-500 hover:text-slate-400 transition-colors py-2"
-              >
-                ← Back
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            ))}
+          </div>
+        </motion.div>
 
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
-          className="text-center text-xs text-slate-600 mt-8 px-4"
+          className="text-center text-xs text-slate-600 mt-10 px-4"
         >
           By continuing, you agree to our Terms of Service and Privacy Policy.
         </motion.p>
