@@ -182,7 +182,7 @@
                         );
                         runOnlyForDeploymentPostprocessing = 0;
                         shellPath = /bin/sh;
-                        shellScript = "BUILD_NUMBER=$(date +%s)\necho \"Setting CFBundleVersion to $BUILD_NUMBER\"\nfor PLIST in \"${BUILT_PRODUCTS_DIR}/${INFOPLIST_PATH}\" \"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}\" \"${SRCROOT}/App/Info.plist\"; do\n    if [ -f \"$PLIST\" ]; then\n        /usr/libexec/PlistBuddy -c \"Set :CFBundleVersion $BUILD_NUMBER\" \"$PLIST\" && echo \"Updated: $PLIST\"\n    fi\ndone\n";
+                        shellScript = "BUILD_NUMBER=$(date +%s)\necho \"[BuildPhase] Setting CFBundleVersion to $BUILD_NUMBER\"\nSRC_PLIST=\"${SRCROOT}/App/Info.plist\"\nif [ -f \"$SRC_PLIST\" ]; then\n    /usr/libexec/PlistBuddy -c \"Set :CFBundleVersion $BUILD_NUMBER\" \"$SRC_PLIST\"\n    echo \"[BuildPhase] Updated source: $SRC_PLIST\"\nfi\nfor BUILT in \"${BUILT_PRODUCTS_DIR}/${INFOPLIST_PATH}\" \"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}\"; do\n    if [ -f \"$BUILT\" ]; then\n        /usr/libexec/PlistBuddy -c \"Set :CFBundleVersion $BUILD_NUMBER\" \"$BUILT\"\n        echo \"[BuildPhase] Updated built: $BUILT\"\n    fi\ndone\n";
                         showEnvVarsInLog = 0;
                 };
                 6634F4EFEBD30273BCE97C65 /* [CP] Check Pods Manifest.lock */ = {
