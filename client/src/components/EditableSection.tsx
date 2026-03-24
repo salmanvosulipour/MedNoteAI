@@ -9,25 +9,21 @@ interface SpeechRecognitionEvent extends Event {
   results: SpeechRecognitionResultList;
   resultIndex: number;
 }
-
 interface SpeechRecognitionResultList {
   length: number;
   item(index: number): SpeechRecognitionResult;
   [index: number]: SpeechRecognitionResult;
 }
-
 interface SpeechRecognitionResult {
   isFinal: boolean;
   length: number;
   item(index: number): SpeechRecognitionAlternative;
   [index: number]: SpeechRecognitionAlternative;
 }
-
 interface SpeechRecognitionAlternative {
   transcript: string;
   confidence: number;
 }
-
 interface SpeechRecognition extends EventTarget {
   continuous: boolean;
   interimResults: boolean;
@@ -39,7 +35,6 @@ interface SpeechRecognition extends EventTarget {
   stop(): void;
   abort(): void;
 }
-
 declare global {
   interface Window {
     SpeechRecognition: new () => SpeechRecognition;
@@ -47,34 +42,98 @@ declare global {
   }
 }
 
-function parseAndFormatContent(content: string): string[] {
-  if (!content) return [];
-  
-  // Handle PostgreSQL array format: {"item1","item2",...}
-  if (content.startsWith('{"') && content.endsWith('"}')) {
-    const items = content
-      .slice(1, -1) // Remove outer braces
-      .split('","')
-      .map(item => item.replace(/^"|"$/g, '').replace(/""/g, '"'));
-    return items;
-  }
-  
+/**
+ * Converts AI-generated content (which may be raw JSON) into clean display lines.
+ * Handles: plain text, JSON objects, JSON arrays, nested {steps:[]} / {education:""} / {redFlags:[]} patterns.
+ */
+export function parseAIContent(content: string): string[] {
+  if (!content || !content.trim()) return [];
+
+  const trimmed = content.trim();
+
+  // Try to parse as JSON first
   try {
-    const parsed = JSON.parse(content);
+    const parsed = JSON.parse(trimmed);
+
+    if (typeof parsed === "string") return [parsed];
+
+    if (Array.isArray(parsed)) {
+      return parsed.flatMap(item =>
+        typeof item === "string" ? [item] : parseAIContent(JSON.stringify(item))
+      );
+    }
+
     if (typeof parsed === "object" && parsed !== null) {
-      if (Array.isArray(parsed)) {
-        return parsed.map(item => typeof item === 'string' ? item : JSON.stringify(item));
+      // Unwrap single-key wrapper objects: {steps:[...]}, {education:"..."}, {redFlags:[...]}
+      const keys = Object.keys(parsed);
+      if (keys.length === 1) {
+        const val = parsed[keys[0]];
+        if (Array.isArray(val)) {
+          return val.flatMap(v => typeof v === "string" ? [v] : [JSON.stringify(v)]);
+        }
+        if (typeof val === "string") return [val];
       }
-      return Object.entries(parsed)
-        .map(([key, value]) => `${key}: ${typeof value === 'string' ? value : JSON.stringify(value)}`);
+
+      // Multi-key JSON object: render each key-value as "Key: value"
+      return Object.entries(parsed).map(([key, value]) => {
+        const label = key.replace(/([A-Z])/g, " $1").trim(); // camelCase → "Camel Case"
+        if (typeof value === "string") return `${label}: ${value}`;
+        if (Array.isArray(value)) return `${label}: ${value.join(", ")}`;
+        return `${label}: ${JSON.stringify(value)}`;
+      });
     }
   } catch {
-    // Not JSON, check for newline-separated content
+    // Not JSON — proceed with text handling
   }
-  
-  // Split by newlines for regular text
-  const lines = content.split('\n').filter(line => line.trim());
-  return lines.length > 0 ? lines : [content];
+
+  // Split by newlines for plain text
+  const lines = trimmed.split("\n").map(l => l.trim()).filter(Boolean);
+  return lines.length > 0 ? lines : [trimmed];
+}
+
+/**
+ * Structured renderer for Physical Exam JSON objects.
+ * Shows each system (General, Vitals, HEENT, CV, etc.) as its own labeled section.
+ */
+export function PhysicalExamDisplay({ content }: { content: string }) {
+  if (!content) return <p className="text-sm text-muted-foreground italic">No physical exam recorded</p>;
+
+  try {
+    const parsed = JSON.parse(content.trim());
+    if (typeof parsed === "object" && !Array.isArray(parsed) && parsed !== null) {
+      const systemIcons: Record<string, string> = {
+        General: "🧍", VitalSigns: "📊", Vitals: "📊", HEENT: "👁️",
+        Cardiovascular: "❤️", Respiratory: "🫁", Abdomen: "🟡",
+        Extremities: "🦵", Neurological: "🧠", Skin: "🩺", MSK: "🦴",
+      };
+      return (
+        <div className="space-y-2">
+          {Object.entries(parsed).map(([system, findings]) => (
+            <div key={system} className="rounded-xl border border-slate-200 dark:border-slate-700 bg-gradient-to-br from-slate-50 to-white dark:from-slate-900/60 dark:to-slate-800/30 p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-sm">{systemIcons[system] || "🩺"}</span>
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  {system.replace(/([A-Z])/g, " $1").trim()}
+                </span>
+              </div>
+              <p className="text-sm text-foreground leading-relaxed">
+                {typeof findings === "string" ? findings : JSON.stringify(findings)}
+              </p>
+            </div>
+          ))}
+        </div>
+      );
+    }
+  } catch {}
+
+  const lines = parseAIContent(content);
+  return (
+    <div className="space-y-1.5">
+      {lines.map((line, i) => (
+        <p key={i} className="text-sm text-foreground leading-relaxed">{line}</p>
+      ))}
+    </div>
+  );
 }
 
 interface EditableSectionProps {
@@ -84,15 +143,19 @@ interface EditableSectionProps {
   placeholder?: string;
   variant?: "default" | "highlighted" | "accent" | "warning";
   testId?: string;
+  renderContent?: (content: string) => React.ReactNode;
+  extraActions?: React.ReactNode;
 }
 
-export function EditableSection({ 
-  title, 
-  content, 
-  onSave, 
+export function EditableSection({
+  title,
+  content,
+  onSave,
   placeholder = "No content recorded",
   variant = "default",
-  testId 
+  testId,
+  renderContent,
+  extraActions,
 }: EditableSectionProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedContent, setEditedContent] = useState(content);
@@ -101,65 +164,36 @@ export function EditableSection({
   const isRecordingRef = useRef(false);
   const finalTranscriptRef = useRef("");
 
-  const formattedContent = parseAndFormatContent(content);
+  const formattedContent = parseAIContent(content);
 
+  useEffect(() => { setEditedContent(content); }, [content]);
+  useEffect(() => { isRecordingRef.current = isRecording; }, [isRecording]);
   useEffect(() => {
-    setEditedContent(content);
-  }, [content]);
-
-  useEffect(() => {
-    isRecordingRef.current = isRecording;
-  }, [isRecording]);
-
-  useEffect(() => {
-    return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.abort();
-      }
-    };
+    return () => { recognitionRef.current?.abort(); };
   }, []);
 
   const startVoiceInput = () => {
     const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognitionAPI) {
-      alert("Speech recognition is not supported in your browser. Please use Chrome, Edge, or Safari.");
-      return;
-    }
+    if (!SpeechRecognitionAPI) { alert("Speech recognition not supported. Please use Chrome, Edge, or Safari."); return; }
 
     const recognition = new SpeechRecognitionAPI();
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = "en-US";
-
     finalTranscriptRef.current = editedContent ? editedContent + " " : "";
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
-      let interimTranscript = "";
-      
+      let interim = "";
       for (let i = event.resultIndex; i < event.results.length; i++) {
-        const result = event.results[i];
-        if (result.isFinal) {
-          finalTranscriptRef.current += result[0].transcript + " ";
-        } else {
-          interimTranscript += result[0].transcript;
-        }
+        if (event.results[i].isFinal) finalTranscriptRef.current += event.results[i][0].transcript + " ";
+        else interim += event.results[i][0].transcript;
       }
-      
-      setEditedContent(finalTranscriptRef.current + interimTranscript);
+      setEditedContent(finalTranscriptRef.current + interim);
     };
-
-    recognition.onerror = (event: Event) => {
-      console.error("Speech recognition error:", event);
-      setIsRecording(false);
-    };
-
+    recognition.onerror = () => setIsRecording(false);
     recognition.onend = () => {
       if (isRecordingRef.current && recognitionRef.current) {
-        try {
-          recognitionRef.current.start();
-        } catch (e) {
-          setIsRecording(false);
-        }
+        try { recognitionRef.current.start(); } catch { setIsRecording(false); }
       }
     };
 
@@ -170,16 +204,13 @@ export function EditableSection({
 
   const stopVoiceInput = () => {
     isRecordingRef.current = false;
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-    }
+    recognitionRef.current?.stop();
     setIsRecording(false);
   };
 
   const handleSave = () => {
     stopVoiceInput();
-    const trimmedContent = editedContent.trim();
-    onSave(trimmedContent);
+    onSave(editedContent.trim());
     setIsEditing(false);
   };
 
@@ -208,38 +239,32 @@ export function EditableSection({
           })} />
           {title}
         </h3>
-        {!isEditing && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsEditing(true)}
-            className="opacity-0 group-hover:opacity-100 transition-opacity h-7 px-2 text-xs"
-            data-testid={`button-edit-${testId}`}
-          >
-            <Pencil className="w-3 h-3 mr-1" />
-            Edit
-          </Button>
-        )}
+        <div className="flex items-center gap-1">
+          {extraActions}
+          {!isEditing && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsEditing(true)}
+              className="opacity-0 group-hover:opacity-100 transition-opacity h-7 px-2 text-xs"
+              data-testid={`button-edit-${testId}`}
+            >
+              <Pencil className="w-3 h-3 mr-1" />
+              Edit
+            </Button>
+          )}
+        </div>
       </div>
 
       <AnimatePresence mode="wait">
         {isEditing ? (
-          <motion.div
-            key="editing"
-            initial={{ opacity: 0, y: -5 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -5 }}
-            className="space-y-3"
-          >
+          <motion.div key="editing" initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} className="space-y-3">
             <div className="relative">
               <Textarea
                 value={editedContent}
                 onChange={(e) => setEditedContent(e.target.value)}
                 placeholder={placeholder}
-                className={cn(
-                  "min-h-[120px] resize-none pr-12 transition-all",
-                  isRecording && "border-red-400 ring-2 ring-red-100 dark:ring-red-900/30"
-                )}
+                className={cn("min-h-[120px] resize-none pr-12 transition-all", isRecording && "border-red-400 ring-2 ring-red-100 dark:ring-red-900/30")}
                 data-testid={`textarea-${testId}`}
               />
               <Button
@@ -247,44 +272,24 @@ export function EditableSection({
                 variant={isRecording ? "destructive" : "secondary"}
                 size="icon"
                 onClick={isRecording ? stopVoiceInput : startVoiceInput}
-                className={cn(
-                  "absolute right-2 top-2 h-8 w-8 transition-all",
-                  isRecording && "animate-pulse"
-                )}
+                className={cn("absolute right-2 top-2 h-8 w-8 transition-all", isRecording && "animate-pulse")}
                 data-testid={`button-voice-${testId}`}
               >
                 {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
               </Button>
             </div>
-
             {isRecording && (
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="flex items-center gap-2 text-xs text-red-500"
-              >
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-2 text-xs text-red-500">
                 <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                 Recording...
               </motion.div>
             )}
-
             <div className="flex items-center gap-2 justify-end">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleCancel}
-                className="h-8"
-                data-testid={`button-cancel-${testId}`}
-              >
+              <Button variant="ghost" size="sm" onClick={handleCancel} className="h-8" data-testid={`button-cancel-${testId}`}>
                 <X className="w-3 h-3 mr-1" />
                 Cancel
               </Button>
-              <Button
-                size="sm"
-                onClick={handleSave}
-                className="h-8"
-                data-testid={`button-save-${testId}`}
-              >
+              <Button size="sm" onClick={handleSave} className="h-8" data-testid={`button-save-${testId}`}>
                 <Check className="w-3 h-3 mr-1" />
                 Save
               </Button>
@@ -295,36 +300,30 @@ export function EditableSection({
             key="display"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className={cn(
-              "rounded-xl border p-4 transition-all duration-300",
-              variantStyles[variant],
-              !content && "border-dashed"
-            )}
+            className={cn("rounded-xl border p-4 transition-all duration-300", variantStyles[variant], !content && "border-dashed")}
           >
-            <div 
-              className={cn(
-                "text-sm leading-relaxed whitespace-pre-wrap",
-                content ? "text-foreground" : "text-muted-foreground italic",
-                (variant === "accent" || variant === "highlighted") && "font-medium"
-              )}
-              data-testid={`text-${testId}`}
-            >
-              {formattedContent.length > 0 ? (
-                formattedContent.length > 1 ? (
-                  <ul className="list-disc list-outside space-y-2 pl-5">
-                    {formattedContent.map((item, idx) => (
-                      <li key={idx} className="text-foreground/90">
-                        {item.replace(/^\d+[\.\)]\s*/, '')}
-                      </li>
-                    ))}
-                  </ul>
+            {renderContent ? (
+              renderContent(content)
+            ) : (
+              <div
+                className={cn("text-sm leading-relaxed", content ? "text-foreground" : "text-muted-foreground italic", (variant === "accent" || variant === "highlighted") && "font-medium")}
+                data-testid={`text-${testId}`}
+              >
+                {formattedContent.length > 0 ? (
+                  formattedContent.length > 1 ? (
+                    <ul className="list-disc list-outside space-y-2 pl-5">
+                      {formattedContent.map((item, idx) => (
+                        <li key={idx} className="text-foreground/90 leading-relaxed">{item.replace(/^\d+[\.\)]\s*/, "")}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="leading-relaxed">{formattedContent[0]}</p>
+                  )
                 ) : (
-                  <p>{formattedContent[0]}</p>
-                )
-              ) : (
-                placeholder
-              )}
-            </div>
+                  placeholder
+                )}
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

@@ -1,8 +1,8 @@
 import { MobileLayout } from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ChevronLeft, Share2, AlertTriangle, Pill, Plus, GraduationCap, Stethoscope, Activity, FlaskConical, FileImage, Loader2, CheckCircle, Download, Printer, Presentation, TrendingUp, Mic, MicOff, ClipboardCheck, Pencil } from "lucide-react";
-import { EditableSection } from "@/components/EditableSection";
+import { ChevronLeft, Share2, AlertTriangle, Pill, Plus, GraduationCap, Stethoscope, Activity, FlaskConical, FileImage, Loader2, CheckCircle, Check, Download, Printer, Presentation, TrendingUp, Mic, MicOff, ClipboardCheck, Pencil, RefreshCw, Brain, Heart, Zap, ShieldAlert } from "lucide-react";
+import { EditableSection, PhysicalExamDisplay, parseAIContent } from "@/components/EditableSection";
 import pptxgen from "pptxgenjs";
 import { Link, useRoute } from "wouter";
 import { Badge } from "@/components/ui/badge";
@@ -65,6 +65,13 @@ export default function CaseDetailPage() {
   const [newMed, setNewMed] = useState<Medication>({ name: "", dose: "", frequency: "", duration: "", instructions: "" });
   const [newStudy, setNewStudy] = useState<DiagnosticStudy>({ type: "", interpretation: "", aiAssisted: false });
 
+  // HPI Recapture
+  const [hpiDialogOpen, setHpiDialogOpen] = useState(false);
+  const [hpiText, setHpiText] = useState("");
+  const [isRecordingHpi, setIsRecordingHpi] = useState(false);
+  const hpiRecognitionRef = useRef<any>(null);
+  const hpiStreamRef = useRef<MediaStream | null>(null);
+
   useEffect(() => {
     if (caseData) {
       setDiagnosticStudies(caseData.diagnosticStudies || []);
@@ -99,6 +106,56 @@ export default function CaseDetailPage() {
       setNewStudy({ type: "", interpretation: "", aiAssisted: false });
       setStudyDialogOpen(false);
     }
+  };
+
+  const startHpiRecording = () => {
+    const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognitionAPI) {
+      toast({ title: "Speech recognition not supported", description: "Please use Chrome, Edge, or Safari.", variant: "destructive" });
+      return;
+    }
+    navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+      hpiStreamRef.current = stream;
+      const recognition = new SpeechRecognitionAPI();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = "en-US";
+      let finalText = hpiText;
+      recognition.onresult = (event: any) => {
+        let interim = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          if (event.results[i].isFinal) finalText += event.results[i][0].transcript + " ";
+          else interim += event.results[i][0].transcript;
+        }
+        setHpiText(finalText + interim);
+      };
+      recognition.onerror = (e: any) => {
+        if (e.error !== "aborted" && e.error !== "no-speech") setIsRecordingHpi(false);
+      };
+      recognition.onend = () => {
+        if (hpiRecognitionRef.current && isRecordingHpi) {
+          try { hpiRecognitionRef.current.start(); } catch {}
+        }
+      };
+      hpiRecognitionRef.current = recognition;
+      recognition.start();
+      setIsRecordingHpi(true);
+    }).catch(() => toast({ title: "Microphone access denied", variant: "destructive" }));
+  };
+
+  const stopHpiRecording = () => {
+    hpiRecognitionRef.current?.stop();
+    hpiStreamRef.current?.getTracks().forEach(t => t.stop());
+    setIsRecordingHpi(false);
+  };
+
+  const saveHpi = () => {
+    stopHpiRecording();
+    if (hpiText.trim()) {
+      updateMutation.mutate({ hpi: hpiText.trim() });
+      toast({ title: "HPI Updated", description: "History of Present Illness has been updated." });
+    }
+    setHpiDialogOpen(false);
   };
 
   const getDispositionLabel = (value: string) => {
@@ -476,8 +533,18 @@ export default function CaseDetailPage() {
             )}
           </div>
 
-          <Card className="border-none shadow-md bg-white dark:bg-slate-900 mb-6 overflow-hidden">
-            <div className="h-1 bg-gradient-to-r from-primary to-accent" />
+          <Card className="border-none shadow-lg bg-white dark:bg-slate-900 mb-6 overflow-hidden">
+            <div className="px-5 pt-5 pb-4 bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-950 dark:to-slate-900">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
+                  <Brain className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-white">Clinical Notes</h2>
+                  <p className="text-xs text-slate-400">AI-generated from your recording</p>
+                </div>
+              </div>
+            </div>
             <CardContent className="p-5 space-y-6">
               <EditableSection
                 title="Chief Complaint (CC)"
@@ -497,6 +564,18 @@ export default function CaseDetailPage() {
                 placeholder="No HPI recorded"
                 variant="highlighted"
                 testId="hpi"
+                extraActions={
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs text-blue-500 hover:text-blue-600 hover:bg-blue-50 gap-1"
+                    onClick={() => { setHpiText(caseData.hpi || ""); setHpiDialogOpen(true); }}
+                    data-testid="button-recapture-hpi"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    Recapture
+                  </Button>
+                }
               />
 
               <Separator />
@@ -531,6 +610,7 @@ export default function CaseDetailPage() {
                 placeholder="No physical exam recorded"
                 variant="default"
                 testId="physical-exam"
+                renderContent={(content) => <PhysicalExamDisplay content={content} />}
               />
 
               <Separator />
@@ -578,14 +658,18 @@ export default function CaseDetailPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-none shadow-md bg-white dark:bg-slate-900 mb-6 overflow-hidden">
-            <div className="h-1 bg-gradient-to-r from-blue-500 to-cyan-500" />
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold flex items-center gap-2">
-                  <Stethoscope className="w-4 h-4 text-blue-500" />
-                  Diagnostic Studies
-                </h3>
+          <Card className="border-none shadow-lg bg-white dark:bg-slate-900 mb-6 overflow-hidden">
+            <div className="px-5 pt-5 pb-4 bg-gradient-to-br from-blue-900 to-cyan-900 dark:from-blue-950 dark:to-cyan-950">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center shadow-lg shadow-blue-500/30">
+                    <Activity className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-white">Diagnostic Studies</h2>
+                    <p className="text-xs text-blue-200/70">Labs, imaging & results</p>
+                  </div>
+                </div>
                 <Dialog open={studyDialogOpen} onOpenChange={setStudyDialogOpen}>
                   <DialogTrigger asChild>
                     <Button variant="ghost" size="sm" className="h-8 px-2" data-testid="button-add-study">
@@ -629,10 +713,12 @@ export default function CaseDetailPage() {
                   </DialogContent>
                 </Dialog>
               </div>
+            </div>
+            <CardContent className="p-5">
               <div className="space-y-3">
                 {diagnosticStudies.length > 0 ? (
                   diagnosticStudies.map((study, idx) => (
-                    <div key={idx} className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3" data-testid={`study-item-${idx}`}>
+                    <div key={idx} className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-100 dark:border-slate-700" data-testid={`study-item-${idx}`}>
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
                           {getStudyIcon(study.type)}
@@ -648,15 +734,25 @@ export default function CaseDetailPage() {
                     </div>
                   ))
                 ) : (
-                  <p className="text-sm text-muted-foreground text-center py-4">No diagnostic studies added</p>
+                  <p className="text-sm text-muted-foreground text-center py-6">No diagnostic studies added yet</p>
                 )}
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-none shadow-md bg-white dark:bg-slate-900 mb-6 overflow-hidden">
-            <div className="h-1 bg-gradient-to-r from-green-500 to-emerald-500" />
-            <CardContent className="p-5">
+          <Card className="border-none shadow-lg bg-white dark:bg-slate-900 mb-6 overflow-hidden">
+            <div className="px-5 pt-5 pb-4 bg-gradient-to-br from-emerald-900 to-green-900 dark:from-emerald-950 dark:to-green-950">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                  <GraduationCap className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-white">Patient Education</h2>
+                  <p className="text-xs text-emerald-200/70">Instructions & warning signs</p>
+                </div>
+              </div>
+            </div>
+            <CardContent className="p-5 space-y-5">
               <EditableSection
                 title="Patient Education"
                 content={patientEducation}
@@ -665,20 +761,37 @@ export default function CaseDetailPage() {
                   updateMutation.mutate({ patientEducation: content });
                 }}
                 placeholder="Add patient education notes..."
-                variant="default"
+                variant="accent"
                 testId="patient-education"
               />
+              {caseData.treatmentRedFlags && (
+                <>
+                  <Separator />
+                  <EditableSection
+                    title="Warning Signs (Red Flags)"
+                    content={caseData.treatmentRedFlags}
+                    onSave={(content) => updateMutation.mutate({ treatmentRedFlags: content })}
+                    placeholder="No warning signs recorded"
+                    variant="warning"
+                    testId="treatment-red-flags"
+                  />
+                </>
+              )}
             </CardContent>
           </Card>
 
-          <Card className="border-none shadow-md bg-white dark:bg-slate-900 mb-6 overflow-hidden">
-            <div className="h-1 bg-gradient-to-r from-violet-500 to-purple-500" />
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold flex items-center gap-2">
-                  <Pill className="w-4 h-4 text-violet-500" />
-                  Discharge Medications
-                </h3>
+          <Card className="border-none shadow-lg bg-white dark:bg-slate-900 mb-6 overflow-hidden">
+            <div className="px-5 pt-5 pb-4 bg-gradient-to-br from-violet-900 to-purple-900 dark:from-violet-950 dark:to-purple-950">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-violet-400 to-purple-500 flex items-center justify-center shadow-lg shadow-violet-500/30">
+                    <Pill className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-white">Discharge Medications</h2>
+                    <p className="text-xs text-violet-200/70">Prescribed at discharge</p>
+                  </div>
+                </div>
                 <Dialog open={medDialogOpen} onOpenChange={setMedDialogOpen}>
                   <DialogTrigger asChild>
                     <Button variant="ghost" size="sm" className="h-8 px-2" data-testid="button-add-medication">
@@ -746,6 +859,8 @@ export default function CaseDetailPage() {
                   </DialogContent>
                 </Dialog>
               </div>
+            </div>
+            <CardContent className="p-5">
               <div className="space-y-2">
                 {medications.length > 0 ? (
                   medications.map((med, idx) => (
@@ -1017,6 +1132,65 @@ export default function CaseDetailPage() {
           )}
         </div>
       </ScrollArea>
+
+      {/* HPI Recapture Dialog */}
+      <Dialog open={hpiDialogOpen} onOpenChange={(open) => {
+        if (!open) stopHpiRecording();
+        setHpiDialogOpen(open);
+      }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RefreshCw className="w-4 h-4 text-blue-500" />
+              Recapture History of Present Illness
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground">
+              Record a new HPI to replace the current one. Use the microphone button or type directly.
+            </p>
+
+            <div className="relative">
+              <Textarea
+                value={hpiText}
+                onChange={(e) => setHpiText(e.target.value)}
+                placeholder="Dictate or type the updated HPI here..."
+                className={`min-h-[160px] resize-none pr-12 text-sm leading-relaxed ${isRecordingHpi ? "border-red-400 ring-2 ring-red-100" : ""}`}
+                data-testid="textarea-recapture-hpi"
+              />
+              <Button
+                type="button"
+                variant={isRecordingHpi ? "destructive" : "secondary"}
+                size="icon"
+                onClick={isRecordingHpi ? stopHpiRecording : startHpiRecording}
+                className={`absolute right-2 top-2 h-9 w-9 rounded-xl ${isRecordingHpi ? "animate-pulse" : ""}`}
+                data-testid="button-voice-recapture-hpi"
+              >
+                {isRecordingHpi ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+              </Button>
+            </div>
+
+            {isRecordingHpi && (
+              <div className="flex items-center gap-2 text-xs text-red-500">
+                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                Listening… speak clearly
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => { stopHpiRecording(); setHpiDialogOpen(false); }}>Cancel</Button>
+            <Button
+              onClick={saveHpi}
+              disabled={!hpiText.trim()}
+              className="bg-gradient-to-r from-blue-600 to-violet-600 text-white"
+              data-testid="button-save-recapture-hpi"
+            >
+              <Check className="w-4 h-4 mr-1" />
+              Save Updated HPI
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </MobileLayout>
   );
 }
