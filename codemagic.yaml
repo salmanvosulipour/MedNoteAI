@@ -24,8 +24,7 @@ workflows:
 
       - name: Sync web assets to iOS
         script: |
-          mkdir -p ios/App/App/public
-          cp -r dist/public/. ios/App/App/public/
+          # Write root capacitor config so npx cap sync knows where web assets are
           node -e "
             const fs = require('fs');
             const cfg = {
@@ -35,7 +34,7 @@ workflows:
               server: { url: 'https://098b918f-8c03-405d-b6f6-d89ed3290933-00-3q3amhlze1ape.kirk.replit.dev', cleartext: false },
               ios: { contentInset: 'automatic' }
             };
-            fs.writeFileSync('ios/App/App/capacitor.config.json', JSON.stringify(cfg, null, 2));
+            fs.writeFileSync('capacitor.config.json', JSON.stringify(cfg, null, 2));
           "
           # Create config.xml required by Xcode build if not present
           node -e "
@@ -44,6 +43,8 @@ workflows:
               fs.writeFileSync('ios/App/App/config.xml', '<?xml version=\'1.0\' encoding=\'utf-8\'?>\n<widget version=\"1.0.0\" xmlns=\"http://www.w3.org/ns/widgets\" xmlns:cdv=\"http://cordova.apache.org/ns/1.0\">\n  <access origin=\"*\" />\n</widget>\n');
             }
           "
+          # Sync web assets + register all Capacitor plugins (including Apple Sign In)
+          npx cap sync ios
 
       - name: Install CocoaPods dependencies
         script: |
