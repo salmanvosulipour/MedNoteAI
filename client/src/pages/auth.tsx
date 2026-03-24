@@ -1,67 +1,119 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Capacitor } from "@capacitor/core";
 import { SignInWithApple, type SignInWithAppleOptions } from "@capacitor-community/apple-sign-in";
 import logoIcon from "@assets/generated_images/minimalist_medical_ai_logo_icon.png";
 import { storeUser } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, Mail, Lock, User, Eye, EyeOff } from "lucide-react";
+
+type Mode = "landing" | "login" | "register";
 
 export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [mode, setMode] = useState<Mode>("landing");
+  const [showPassword, setShowPassword] = useState(false);
+  const [form, setForm] = useState({ email: "", password: "", firstName: "", lastName: "" });
   const { toast } = useToast();
 
-  const handleSignIn = async () => {
-    // On real iPhone (Capacitor): native Apple Sign In sheet — no Replit, no redirect
-    if (Capacitor.isNativePlatform()) {
-      setIsLoading(true);
-      try {
-        const options: SignInWithAppleOptions = {
-          clientId: "com.mednote.ai",
-          redirectURI: "",
-          scopes: "email name",
-          state: Math.random().toString(36).substring(7),
-          nonce: Math.random().toString(36).substring(7),
-        };
+  // Native iOS: Apple Sign In sheet (no Replit, no redirect)
+  const handleNativeAppleSignIn = async () => {
+    setIsLoading(true);
+    try {
+      const options: SignInWithAppleOptions = {
+        clientId: "com.mednote.ai",
+        redirectURI: "",
+        scopes: "email name",
+        state: Math.random().toString(36).substring(7),
+        nonce: Math.random().toString(36).substring(7),
+      };
+      const result = await SignInWithApple.authorize(options);
+      const { identityToken, givenName, familyName, email } = result.response;
 
-        const result = await SignInWithApple.authorize(options);
-        const { identityToken, givenName, familyName, email } = result.response;
-
-        const res = await fetch("/api/auth/apple", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ identityToken, firstName: givenName, lastName: familyName, email }),
-        });
-
-        if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.message || "Sign in failed");
-        }
-
-        const { user } = await res.json();
-        storeUser(user);
-        window.location.href = "/home";
-      } catch (err: any) {
-        // Plugin not yet linked to native iOS project — fall back to web auth
-        if (err?.message?.includes("not implemented") || err?.message?.includes("not available")) {
-          window.location.href = "/api/login";
-          return;
-        }
-        // Error code 1001 = user cancelled — don't show an error toast for that
-        const cancelled = err?.message?.includes("1001") || err?.code === "1001";
-        if (!cancelled) {
-          toast({ title: "Sign in failed", description: err.message || "Please try again.", variant: "destructive" });
-        }
-      } finally {
-        setIsLoading(false);
+      const res = await fetch("/api/auth/apple", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ identityToken, firstName: givenName, lastName: familyName, email }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Sign in failed");
       }
+      const { user } = await res.json();
+      storeUser(user);
+      window.location.href = "/home";
+    } catch (err: any) {
+      const cancelled = err?.message?.includes("1001") || err?.code === "1001";
+      if (!cancelled) {
+        toast({ title: "Sign in failed", description: err.message || "Please try again.", variant: "destructive" });
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Web: email/password login
+  const handleEmailLogin = async () => {
+    if (!form.email || !form.password) {
+      toast({ title: "Missing fields", description: "Please enter your email and password.", variant: "destructive" });
       return;
     }
-
-    // On web browser: redirect to OAuth provider (your existing Apple ID session is picked up automatically)
-    window.location.href = "/api/login";
+    setIsLoading(true);
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email: form.email, password: form.password }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Login failed");
+      }
+      const { user, token } = await res.json();
+      storeUser({ ...user, token });
+      window.location.href = "/home";
+    } catch (err: any) {
+      toast({ title: "Login failed", description: err.message || "Check your email and password.", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  // Web: email/password register
+  const handleEmailRegister = async () => {
+    if (!form.email || !form.password || !form.firstName) {
+      toast({ title: "Missing fields", description: "Please fill in all required fields.", variant: "destructive" });
+      return;
+    }
+    if (form.password.length < 8) {
+      toast({ title: "Password too short", description: "Password must be at least 8 characters.", variant: "destructive" });
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email: form.email, password: form.password, firstName: form.firstName, lastName: form.lastName }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Registration failed");
+      }
+      const { user, token } = await res.json();
+      storeUser({ ...user, token });
+      window.location.href = "/home";
+    } catch (err: any) {
+      toast({ title: "Registration failed", description: err.message || "Please try again.", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const isNative = Capacitor.isNativePlatform();
 
   return (
     <div className="min-h-screen bg-[#050810] text-white flex flex-col items-center justify-center px-6 relative overflow-hidden">
@@ -78,62 +130,224 @@ export default function AuthPage() {
           initial={{ opacity: 0, y: -30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="flex flex-col items-center mb-12"
+          className="flex flex-col items-center mb-10"
         >
-          <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-blue-500/20 to-violet-500/20 border border-white/10 backdrop-blur-xl flex items-center justify-center mb-6 overflow-hidden shadow-2xl shadow-blue-500/20">
+          <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-blue-500/20 to-violet-500/20 border border-white/10 backdrop-blur-xl flex items-center justify-center mb-4 overflow-hidden shadow-2xl shadow-blue-500/20">
             <img src={logoIcon} alt="MedNote AI" className="w-full h-full object-cover" />
           </div>
-          <h1 className="text-4xl font-bold text-center bg-gradient-to-br from-white to-white/60 bg-clip-text text-transparent mb-2">
+          <h1 className="text-3xl font-bold text-center bg-gradient-to-br from-white to-white/60 bg-clip-text text-transparent mb-1">
             MedNote AI
           </h1>
-          <p className="text-slate-400 text-center text-sm max-w-[220px] leading-relaxed">
-            AI-powered clinical scribing for physicians
+          <p className="text-slate-400 text-center text-sm">
+            AI-powered clinical scribing
           </p>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.15 }}
-          className="w-full space-y-4"
-        >
-          {/* Sign in with Apple */}
-          <button
-            onClick={handleSignIn}
-            disabled={isLoading}
-            data-testid="button-sign-in-apple"
-            className="w-full h-14 flex items-center justify-center gap-3 bg-white text-black font-semibold text-base rounded-2xl shadow-xl hover:bg-white/90 active:scale-[0.98] transition-all disabled:opacity-60"
-          >
-            {isLoading ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <>
-                <AppleLogo />
-                Sign in with Apple
-              </>
-            )}
-          </button>
+        <AnimatePresence mode="wait">
+          {/* LANDING — native iOS shows Apple Sign In, web shows email options */}
+          {mode === "landing" && (
+            <motion.div
+              key="landing"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+              className="w-full space-y-3"
+            >
+              {isNative ? (
+                <button
+                  onClick={handleNativeAppleSignIn}
+                  disabled={isLoading}
+                  data-testid="button-sign-in-apple"
+                  className="w-full h-14 flex items-center justify-center gap-3 bg-white text-black font-semibold text-base rounded-2xl shadow-xl hover:bg-white/90 active:scale-[0.98] transition-all disabled:opacity-60"
+                >
+                  {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><AppleLogo />Sign in with Apple</>}
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setMode("login")}
+                    data-testid="button-sign-in-email"
+                    className="w-full h-14 flex items-center justify-center gap-3 bg-white text-black font-semibold text-base rounded-2xl shadow-xl hover:bg-white/90 active:scale-[0.98] transition-all"
+                  >
+                    <Mail className="w-5 h-5" />
+                    Sign in with Email
+                  </button>
+                  <button
+                    onClick={() => setMode("register")}
+                    data-testid="button-create-account"
+                    className="w-full h-14 flex items-center justify-center gap-3 bg-white/10 border border-white/20 text-white font-semibold text-base rounded-2xl hover:bg-white/15 active:scale-[0.98] transition-all"
+                  >
+                    Create Account
+                  </button>
+                </>
+              )}
 
-          {/* Feature highlights */}
-          <div className="pt-4 space-y-3">
-            {[
-              { icon: "🔒", text: "Stays signed in — no passwords to remember" },
-              { icon: "🎙️", text: "AI transcription from audio in seconds" },
-              { icon: "📋", text: "Structured SOAP notes, auto-generated" },
-            ].map((item, i) => (
-              <div key={i} className="flex items-center gap-3 text-slate-400 text-sm">
-                <span className="text-base">{item.icon}</span>
-                <span>{item.text}</span>
+              <div className="pt-4 space-y-3">
+                {[
+                  { icon: "🔒", text: "Stays signed in — no passwords to remember" },
+                  { icon: "🎙️", text: "AI transcription from audio in seconds" },
+                  { icon: "📋", text: "Structured SOAP notes, auto-generated" },
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center gap-3 text-slate-400 text-sm">
+                    <span className="text-base">{item.icon}</span>
+                    <span>{item.text}</span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </motion.div>
+            </motion.div>
+          )}
+
+          {/* LOGIN */}
+          {mode === "login" && (
+            <motion.div
+              key="login"
+              initial={{ opacity: 0, x: 30 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -30 }}
+              transition={{ duration: 0.3 }}
+              className="w-full space-y-3"
+            >
+              <h2 className="text-xl font-semibold text-center mb-2">Welcome back</h2>
+
+              <div className="relative">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="email"
+                  placeholder="Email"
+                  value={form.email}
+                  onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                  data-testid="input-email"
+                  className="w-full h-12 pl-11 pr-4 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
+                />
+              </div>
+
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Password"
+                  value={form.password}
+                  onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                  onKeyDown={e => e.key === "Enter" && handleEmailLogin()}
+                  data-testid="input-password"
+                  className="w-full h-12 pl-11 pr-11 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
+                />
+                <button onClick={() => setShowPassword(s => !s)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+
+              <button
+                onClick={handleEmailLogin}
+                disabled={isLoading}
+                data-testid="button-login"
+                className="w-full h-12 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl transition-colors disabled:opacity-60 flex items-center justify-center"
+              >
+                {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Sign In"}
+              </button>
+
+              <p className="text-center text-slate-400 text-sm pt-1">
+                Don't have an account?{" "}
+                <button onClick={() => setMode("register")} className="text-blue-400 hover:text-blue-300 font-medium">
+                  Create one
+                </button>
+              </p>
+              <button onClick={() => setMode("landing")} className="w-full text-center text-slate-600 text-sm hover:text-slate-400 transition-colors pt-1">
+                ← Back
+              </button>
+            </motion.div>
+          )}
+
+          {/* REGISTER */}
+          {mode === "register" && (
+            <motion.div
+              key="register"
+              initial={{ opacity: 0, x: 30 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -30 }}
+              transition={{ duration: 0.3 }}
+              className="w-full space-y-3"
+            >
+              <h2 className="text-xl font-semibold text-center mb-2">Create account</h2>
+
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="First name"
+                    value={form.firstName}
+                    onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))}
+                    data-testid="input-first-name"
+                    className="w-full h-12 pl-9 pr-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors text-sm"
+                  />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Last name"
+                  value={form.lastName}
+                  onChange={e => setForm(f => ({ ...f, lastName: e.target.value }))}
+                  data-testid="input-last-name"
+                  className="flex-1 h-12 px-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors text-sm"
+                />
+              </div>
+
+              <div className="relative">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="email"
+                  placeholder="Email"
+                  value={form.email}
+                  onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                  data-testid="input-email-register"
+                  className="w-full h-12 pl-11 pr-4 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
+                />
+              </div>
+
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Password (min 8 chars)"
+                  value={form.password}
+                  onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                  onKeyDown={e => e.key === "Enter" && handleEmailRegister()}
+                  data-testid="input-password-register"
+                  className="w-full h-12 pl-11 pr-11 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
+                />
+                <button onClick={() => setShowPassword(s => !s)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+
+              <button
+                onClick={handleEmailRegister}
+                disabled={isLoading}
+                data-testid="button-register"
+                className="w-full h-12 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl transition-colors disabled:opacity-60 flex items-center justify-center"
+              >
+                {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Create Account"}
+              </button>
+
+              <p className="text-center text-slate-400 text-sm pt-1">
+                Already have an account?{" "}
+                <button onClick={() => setMode("login")} className="text-blue-400 hover:text-blue-300 font-medium">
+                  Sign in
+                </button>
+              </p>
+              <button onClick={() => setMode("landing")} className="w-full text-center text-slate-600 text-sm hover:text-slate-400 transition-colors pt-1">
+                ← Back
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
-          className="text-center text-xs text-slate-600 mt-10 px-4"
+          className="text-center text-xs text-slate-600 mt-8 px-4"
         >
           By continuing, you agree to our Terms of Service and Privacy Policy.
         </motion.p>
