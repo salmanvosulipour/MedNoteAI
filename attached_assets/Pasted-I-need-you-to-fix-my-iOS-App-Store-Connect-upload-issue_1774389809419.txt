@@ -1,0 +1,40 @@
+I need you to fix my iOS App Store Connect upload issue for my Capacitor iOS app.
+
+Current situation:
+- The IPA builds successfully.
+- The failure happens only at the publish/upload step to App Store Connect.
+- Codemagic log says:
+  “Failed to upload archive … The provided entity includes an attribute with a value that has already been used”
+- This same error happens repeatedly.
+- Most likely cause: duplicate iOS build number / CFBundleVersion, or another duplicate App Store Connect metadata value.
+
+What I want you to do:
+1. Inspect the project and identify exactly where the iOS versioning/build number is defined.
+2. Check all relevant files, especially:
+   - ios/App/App.xcodeproj/project.pbxproj
+   - ios/App/App/Info.plist
+   - capacitor config files
+   - codemagic.yaml or any Codemagic config
+3. Determine whether CFBundleVersion / build number is being reused.
+4. Update the project so every new build uploaded to App Store Connect uses a unique, incrementing build number automatically.
+5. Keep the marketing version (CFBundleShortVersionString) unchanged unless necessary.
+6. If Codemagic config is involved, modify it so build numbers auto-increment safely on every build.
+7. Make the fix directly in the project files, not just explain it.
+8. After making changes, show me exactly:
+   - which files you changed
+   - the before/after values
+   - what build number strategy you implemented
+   - what I should do next to rebuild and upload
+
+Important constraints:
+- Do not make unnecessary changes.
+- Do not break the existing iOS build.
+- Focus only on fixing the App Store Connect duplicate-value upload error.
+- If there are multiple possible duplicate fields, check all of them and tell me which one is most likely causing the issue.
+
+Also check whether the app is trying to create duplicate App Store metadata or reuse an already-used identifier during publish, and fix that if relevant.
+
+At the end, give me:
+- a short diagnosis
+- exact file edits
+- exact next steps for a successful upload
