@@ -55,28 +55,26 @@ workflows:
 
       - name: Increment build number
         script: |
-          # Unique build number: unix timestamp (e.g. 1742860000) — Apple has never seen this
           BUILD_NUMBER=$(date +%s)
-          echo "BUILD_NUMBER=$BUILD_NUMBER" >> $CM_ENV
-          echo "Setting build number to: $BUILD_NUMBER"
-          # 1) Patch Info.plist directly
+          echo "=== BUILD NUMBER: $BUILD_NUMBER ==="
+          # Patch Info.plist with literal value (no variable reference)
           PLIST="ios/App/App/Info.plist"
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" "$PLIST"
           /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 1.1" "$PLIST"
-          echo "Info.plist CFBundleVersion set to: $(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' $PLIST)"
-          # 2) Patch xcodeproj build settings
-          sed -i '' "s/CURRENT_PROJECT_VERSION = [^;]*/CURRENT_PROJECT_VERSION = $BUILD_NUMBER/" ios/App/App.xcodeproj/project.pbxproj
-          sed -i '' "s/MARKETING_VERSION = [^;]*/MARKETING_VERSION = 1.1/" ios/App/App.xcodeproj/project.pbxproj
+          echo "=== Info.plist after patch ==="
+          /usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$PLIST"
+          # Patch xcodeproj build settings as backup
+          sed -i '' "s/CURRENT_PROJECT_VERSION = [0-9]*/CURRENT_PROJECT_VERSION = $BUILD_NUMBER/" ios/App/App.xcodeproj/project.pbxproj
+          echo "=== pbxproj CURRENT_PROJECT_VERSION after patch ==="
+          grep "CURRENT_PROJECT_VERSION" ios/App/App.xcodeproj/project.pbxproj
 
       - name: Build and export IPA
         script: |
           xcode-project build-ipa \
             --workspace "$XCODE_WORKSPACE" \
             --scheme "$XCODE_SCHEME" \
-            --verbose \
-            -- \
-            CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
-            MARKETING_VERSION="1.1"
+            --verbose
 
     artifacts:
       - build/ios/ipa/*.ipa
