@@ -1,0 +1,48 @@
+"product-errors" : [
+    {
+      "code" : -19232,
+      "message" : "The provided entity includes an attribute with a value that has already been used",
+      "underlying-errors" : [
+        {
+          "code" : -19241,
+          "message" : "The provided entity includes an attribute with a value that has already been used",
+          "underlying-errors" : [
+
+          ],
+          "user-info" : {
+            "NSLocalizedDescription" : "The provided entity includes an attribute with a value that has already been used",
+            "NSLocalizedFailureReason" : "The bundle version must be higher than the previously uploaded version.",
+            "code" : "ENTITY_ERROR.ATTRIBUTE.INVALID.DUPLICATE",
+            "detail" : "The bundle version must be higher than the previously uploaded version.",
+            "id" : "a53a0d17-7995-4d36-adb2-933ec2e53b2e",
+            "meta" : "{\n    previousBundleVersion = 1;\n}",
+            "source" : "{\n    pointer = \"/data/attributes/cfBundleVersion\";\n}",
+            "status" : "409",
+            "title" : "The provided entity includes an attribute with a value that has already been used"
+          }
+        }
+      ],
+      "user-info" : {
+        "NSLocalizedDescription" : "The provided entity includes an attribute with a value that has already been used",
+        "NSLocalizedFailureReason" : "The bundle version must be higher than the previously uploaded version: ‘1’. (ID: a53a0d17-7995-4d36-adb2-933ec2e53b2e)",
+        "NSUnderlyingError" : "Error Domain=IrisAPI Code=-19241 \"The provided entity includes an attribute with a value that has already been used\" UserInfo={status=409, detail=The bundle version must be higher than the previously uploaded version., source={\n    pointer = \"/data/attributes/cfBundleVersion\";\n}, id=a53a0d17-7995-4d36-adb2-933ec2e53b2e, code=ENTITY_ERROR.ATTRIBUTE.INVALID.DUPLICATE, title=The provided entity includes an attribute with a value that has already been used, meta={\n    previousBundleVersion = 1;\n}, NSLocalizedDescription=The provided entity includes an attribute with a value that has already been used, NSLocalizedFailureReason=The bundle version must be higher than the previously uploaded version.}",
+        "iris-code" : "ENTITY_ERROR.ATTRIBUTE.INVALID.DUPLICATE",
+        "previousBundleVersion" : "1"
+      }
+    }
+  ],
+  "tool-path" : "/Applications/Xcode-26.2.app/Contents/SharedFrameworks/ContentDelivery.framework/Resources",
+  "tool-version" : "26.10.1 (171001)"
+}
+
+Failed to upload archive at "/Users/builder/clone/build/ios/ipa/App.ipa":
+The provided entity includes an attribute with a value that has already been used
+Failed to publish /Users/builder/clone/build/ios/ipa/App.ipa
+
+Failed to publish App.ipa to App Store Connect.
+
+Build failed :|
+
+
+Publishing failed :|
+Failed to publish App.ipa to App Store Connect.
