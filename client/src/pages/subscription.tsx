@@ -1,12 +1,11 @@
 import { MobileLayout } from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
-import { Check, Star, X, Loader2, CreditCard, CheckCircle } from "lucide-react";
+import { Check, Star, X, Loader2, CreditCard, CheckCircle, Zap, Shield, Globe, Headphones } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
-import { Link, useLocation } from "wouter";
+import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import premiumBg from "@assets/generated_images/premium_medical_subscription_background.png";
 
 declare global {
   interface Window {
@@ -28,14 +27,22 @@ const PRICE_IDS = {
   monthly: import.meta.env.VITE_PADDLE_MONTHLY_PRICE_ID || "",
   yearly: import.meta.env.VITE_PADDLE_YEARLY_PRICE_ID || "",
 };
-
 const PADDLE_CLIENT_TOKEN = import.meta.env.VITE_PADDLE_CLIENT_TOKEN || "";
 const PADDLE_ENVIRONMENT = import.meta.env.VITE_PADDLE_ENVIRONMENT || "sandbox";
 
+const features = [
+  { icon: Zap, label: "Unlimited AI Scribing", desc: "No caps on recordings" },
+  { icon: Globe, label: "Multilingual Transcription", desc: "30+ languages supported" },
+  { icon: Shield, label: "HIPAA Compliant", desc: "Encrypted & secure" },
+  { icon: CreditCard, label: "Export to PDF & PPTX", desc: "Shareable notes instantly" },
+  { icon: Headphones, label: "Priority Support", desc: "Dedicated physician support" },
+  { icon: Check, label: "Cloud Sync", desc: "iOS & Android included" },
+];
+
 export default function SubscriptionPage() {
-  const [isYearly, setIsYearly] = useState(false);
+  const [isYearly, setIsYearly] = useState(true);
   const [paddleReady, setPaddleReady] = useState(false);
-  const [location, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
 
   const searchParams = new URLSearchParams(window.location.search);
@@ -44,33 +51,20 @@ export default function SubscriptionPage() {
 
   useEffect(() => {
     if (success) {
-      toast({
-        title: "Welcome to Pro!",
-        description: "Your subscription is now active. Enjoy unlimited AI scribing!",
-      });
+      toast({ title: "Welcome to Pro!", description: "Your subscription is now active. Enjoy unlimited AI scribing!" });
       window.history.replaceState({}, "", "/subscription");
     }
     if (canceled) {
-      toast({
-        title: "Checkout canceled",
-        description: "No charges were made. You can try again anytime.",
-        variant: "destructive",
-      });
+      toast({ title: "Checkout canceled", description: "No charges were made. You can try again anytime.", variant: "destructive" });
       window.history.replaceState({}, "", "/subscription");
     }
-  }, [success, canceled, toast]);
+  }, [success, canceled]);
 
   useEffect(() => {
-    if (!PADDLE_CLIENT_TOKEN) {
-      console.warn("Paddle client token not configured");
-      return;
-    }
+    if (!PADDLE_CLIENT_TOKEN) return;
 
     if (window.Paddle) {
-      window.Paddle.Initialize({ 
-        token: PADDLE_CLIENT_TOKEN,
-        environment: PADDLE_ENVIRONMENT,
-      });
+      window.Paddle.Initialize({ token: PADDLE_CLIENT_TOKEN, environment: PADDLE_ENVIRONMENT });
       setPaddleReady(true);
       return;
     }
@@ -80,20 +74,12 @@ export default function SubscriptionPage() {
     script.async = true;
     script.onload = () => {
       if (window.Paddle) {
-        window.Paddle.Initialize({ 
-          token: PADDLE_CLIENT_TOKEN,
-          environment: PADDLE_ENVIRONMENT,
-        });
+        window.Paddle.Initialize({ token: PADDLE_CLIENT_TOKEN, environment: PADDLE_ENVIRONMENT });
         setPaddleReady(true);
       }
     };
     document.body.appendChild(script);
-
-    return () => {
-      if (script.parentNode) {
-        script.parentNode.removeChild(script);
-      }
-    };
+    return () => { if (script.parentNode) script.parentNode.removeChild(script); };
   }, []);
 
   const { data: billingStatus, isLoading } = useQuery({
@@ -102,12 +88,10 @@ export default function SubscriptionPage() {
       const authToken = localStorage.getItem("authToken");
       const res = await fetch("/api/billing/status", {
         credentials: "include",
-        headers: authToken ? { "Authorization": `Bearer ${authToken}` } : {},
+        headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
       });
       if (!res.ok) {
-        if (res.status === 401) {
-          return { isEmailVerified: false, freeTokensRemaining: 0, isSubscribed: false, subscription: null };
-        }
+        if (res.status === 401) return { isSubscribed: false, freeTokensRemaining: 0, subscription: null };
         throw new Error("Failed to fetch billing status");
       }
       return res.json();
@@ -120,49 +104,31 @@ export default function SubscriptionPage() {
       const authToken = localStorage.getItem("authToken");
       const res = await fetch("/api/billing/checkout", {
         method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {})
-        },
+        headers: { "Content-Type": "application/json", ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) },
         body: JSON.stringify({ priceId }),
         credentials: "include",
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        if (res.status === 401) {
-          throw new Error("Please log in again to continue.");
-        }
+        if (res.status === 401) throw new Error("Please log in again to continue.");
         throw new Error(data.error || "Failed to start checkout");
       }
       return res.json();
     },
     onSuccess: (data) => {
       if (!window.Paddle) {
-        toast({
-          title: "Error",
-          description: "Payment system is not ready. Please refresh and try again.",
-          variant: "destructive",
-        });
+        toast({ title: "Error", description: "Payment system not ready. Please refresh.", variant: "destructive" });
         return;
       }
-
-      const baseUrl = window.location.origin;
-      
       window.Paddle.Checkout.open({
         items: [{ priceId: data.priceId, quantity: 1 }],
         customer: data.email ? { email: data.email } : undefined,
         customData: { userId: data.userId },
-        settings: {
-          successUrl: `${baseUrl}/subscription?success=true`,
-        },
+        settings: { successUrl: `${window.location.origin}/subscription?success=true` },
       });
     },
     onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to start checkout. Please try again.",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: error.message || "Failed to start checkout.", variant: "destructive" });
     },
   });
 
@@ -172,7 +138,7 @@ export default function SubscriptionPage() {
       const res = await fetch("/api/billing/portal", {
         method: "POST",
         credentials: "include",
-        headers: authToken ? { "Authorization": `Bearer ${authToken}` } : {},
+        headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -180,233 +146,244 @@ export default function SubscriptionPage() {
       }
       return res.json();
     },
-    onSuccess: (data) => {
-      if (data.url) {
-        window.open(data.url, '_blank', 'noopener,noreferrer');
-      }
-    },
+    onSuccess: (data) => { if (data.url) window.open(data.url, "_blank", "noopener,noreferrer"); },
     onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to open billing portal. Please try again.",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 
   const handleSubscribe = useCallback(() => {
     const priceId = isYearly ? PRICE_IDS.yearly : PRICE_IDS.monthly;
-    if (!priceId) {
-      toast({
-        title: "Configuration needed",
-        description: "Payment is not configured yet. Please contact support.",
-        variant: "destructive",
-      });
+    if (!priceId || !PADDLE_CLIENT_TOKEN) {
+      toast({ title: "Coming Soon", description: "Payment is being configured. Please check back shortly.", variant: "destructive" });
       return;
     }
     if (!paddleReady) {
-      toast({
-        title: "Please wait",
-        description: "Payment system is loading. Please try again in a moment.",
-        variant: "destructive",
-      });
+      toast({ title: "Please wait", description: "Payment system is loading. Try again in a moment." });
       return;
     }
     checkoutMutation.mutate(priceId);
-  }, [isYearly, paddleReady, checkoutMutation, toast]);
-
-  const features = [
-    "Unlimited AI Scribing",
-    "Instant Dictation & Transcription",
-    "Export to PDF & PowerPoint",
-    "Cloud Sync across iOS & Android",
-    "Priority Support",
-    "HIPAA Compliant Storage"
-  ];
+  }, [isYearly, paddleReady, checkoutMutation]);
 
   const isSubscribed = billingStatus?.isSubscribed;
   const subscription = billingStatus?.subscription;
 
+  if (isLoading) {
+    return (
+      <MobileLayout showNav={false} className="bg-[#080B14] text-white relative overflow-hidden">
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
+        </div>
+      </MobileLayout>
+    );
+  }
+
   if (isSubscribed) {
     return (
-      <MobileLayout showNav={false} className="bg-slate-950 text-white relative overflow-hidden">
-        <div className="absolute inset-0 z-0">
-          <div className="absolute inset-0 bg-gradient-to-b from-slate-900/80 to-slate-950 z-10" />
-          <img 
-            src={premiumBg} 
-            alt="Premium Background" 
-            className="w-full h-full object-cover opacity-50"
-          />
+      <MobileLayout showNav={false} className="bg-[#080B14] text-white relative overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-emerald-500/15 rounded-full blur-[120px]" />
+          <div className="absolute bottom-0 right-0 w-[300px] h-[300px] bg-blue-600/10 rounded-full blur-[80px]" />
         </div>
 
-        <div className="relative z-20 flex flex-col h-full p-6">
-          <div className="flex justify-end">
-            <Link href="/home" className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors" data-testid="button-close">
-              <X className="w-6 h-6" />
-            </Link>
+        <div className="relative z-10 flex flex-col h-full p-6">
+          <div className="flex justify-end pt-8">
+            <button onClick={() => setLocation("/home")} className="p-2 bg-white/8 border border-white/10 rounded-full hover:bg-white/15 transition-colors" data-testid="button-close">
+              <X className="w-5 h-5" />
+            </button>
           </div>
 
           <div className="flex-1 flex flex-col items-center justify-center">
             <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
+              initial={{ scale: 0.7, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="w-24 h-24 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-full flex items-center justify-center shadow-2xl shadow-emerald-500/30 mb-6"
+              transition={{ type: "spring", stiffness: 200 }}
+              className="relative mb-8"
             >
-              <CheckCircle className="w-12 h-12 text-white" />
+              <div className="w-28 h-28 rounded-3xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-2xl shadow-emerald-500/40">
+                <CheckCircle className="w-14 h-14 text-white" strokeWidth={1.5} />
+              </div>
+              <div className="absolute -inset-3 rounded-3xl border border-emerald-500/25 animate-ping duration-[3000ms]" />
             </motion.div>
 
-            <h1 className="text-3xl font-heading font-bold text-center mb-2" data-testid="text-pro-title">You're a Pro!</h1>
-            <p className="text-slate-400 text-center text-sm max-w-xs mb-6">
-              Enjoy unlimited AI scribing and all premium features.
-            </p>
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="text-center mb-8">
+              <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent" data-testid="text-pro-title">
+                You're Pro
+              </h1>
+              <p className="text-slate-400 text-sm">Full access to all MedNote AI features</p>
+            </motion.div>
 
-            <div className="bg-white/5 rounded-2xl p-6 border border-white/10 w-full max-w-sm mb-8">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center">
-                  <Star className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <p className="font-semibold text-white">Pro Subscription</p>
-                  <p className="text-sm text-slate-400 capitalize">
-                    {subscription?.status === 'trialing' ? 'Trial Active' : 'Active'}
-                  </p>
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.25 }}
+              className="w-full max-w-sm mb-8"
+            >
+              <div className="relative rounded-2xl overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/20 to-blue-500/10" />
+                <div className="relative p-5 border border-emerald-500/20 rounded-2xl">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center">
+                      <Star className="w-5 h-5 text-emerald-400 fill-emerald-400" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-white text-sm">Pro Subscription</p>
+                      <p className="text-xs text-emerald-400 font-medium capitalize">
+                        {subscription?.status === "trialing" ? "Trial Active" : "Active"}
+                      </p>
+                    </div>
+                  </div>
+                  {subscription?.currentPeriodEnd && (
+                    <p className="text-xs text-slate-500 border-t border-white/8 pt-3">
+                      {subscription.cancelAtPeriodEnd
+                        ? `Cancels ${new Date(subscription.currentPeriodEnd * 1000).toLocaleDateString()}`
+                        : `Renews ${new Date(subscription.currentPeriodEnd * 1000).toLocaleDateString()}`}
+                    </p>
+                  )}
                 </div>
               </div>
-              
-              {subscription?.currentPeriodEnd && (
-                <p className="text-xs text-slate-500">
-                  {subscription.cancelAtPeriodEnd 
-                    ? `Cancels on ${new Date(subscription.currentPeriodEnd * 1000).toLocaleDateString()}`
-                    : `Renews on ${new Date(subscription.currentPeriodEnd * 1000).toLocaleDateString()}`
-                  }
-                </p>
-              )}
-            </div>
+            </motion.div>
 
-            <Button 
-              size="lg"
-              variant="outline"
-              onClick={() => portalMutation.mutate()}
-              disabled={portalMutation.isPending}
-              className="w-full max-w-sm h-14 text-lg border-white/20 text-white hover:bg-white/10"
-              data-testid="button-manage-subscription"
-            >
-              {portalMutation.isPending ? (
-                <Loader2 className="w-5 h-5 animate-spin mr-2" />
-              ) : (
-                <CreditCard className="w-5 h-5 mr-2" />
-              )}
-              Manage Subscription
-            </Button>
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="w-full max-w-sm">
+              <Button
+                size="lg"
+                variant="outline"
+                onClick={() => portalMutation.mutate()}
+                disabled={portalMutation.isPending}
+                className="w-full h-14 rounded-2xl border-white/15 text-white bg-white/5 hover:bg-white/10 text-base"
+                data-testid="button-manage-subscription"
+              >
+                {portalMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <CreditCard className="w-5 h-5 mr-2" />}
+                Manage Subscription
+              </Button>
+            </motion.div>
           </div>
         </div>
       </MobileLayout>
     );
   }
 
+  const isPaddleConfigured = !!PADDLE_CLIENT_TOKEN;
+
   return (
-    <MobileLayout showNav={false} className="bg-slate-950 text-white relative overflow-hidden">
-      <div className="absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-gradient-to-b from-slate-900/80 to-slate-950 z-10" />
-        <img 
-          src={premiumBg} 
-          alt="Premium Background" 
-          className="w-full h-full object-cover opacity-50"
-        />
+    <MobileLayout showNav={false} className="bg-[#080B14] text-white relative overflow-hidden">
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-[700px] h-[400px] bg-blue-600/20 rounded-full blur-[120px]" />
+        <div className="absolute top-1/3 -right-20 w-[350px] h-[350px] bg-violet-600/15 rounded-full blur-[100px]" />
+        <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-cyan-600/8 rounded-full blur-[80px]" />
       </div>
 
-      <div className="relative z-20 flex flex-col h-full p-6">
-        <div className="flex justify-end">
-          <Link href="/home" className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors" data-testid="button-close">
-            <X className="w-6 h-6" />
-          </Link>
+      <div className="absolute inset-0 pointer-events-none opacity-20"
+        style={{ backgroundImage: "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.04) 1px, transparent 0)", backgroundSize: "36px 36px" }}
+      />
+
+      <div className="relative z-10 flex flex-col h-full">
+        <div className="flex justify-end p-6 pt-14">
+          <button onClick={() => setLocation("/home")} className="p-2 bg-white/8 border border-white/10 rounded-full hover:bg-white/15 transition-colors" data-testid="button-close">
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
-        <div className="flex-1 flex flex-col items-center pt-8">
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="w-20 h-20 bg-gradient-to-br from-amber-300 to-yellow-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-amber-500/20 mb-6"
-          >
-            <Star className="w-10 h-10 text-white fill-current" />
+        <div className="flex-1 overflow-y-auto px-6 pb-6">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/25 mb-4">
+              <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+              <span className="text-[10px] font-bold tracking-widest uppercase text-amber-400">MedNote Pro</span>
+            </div>
+            <h1 className="text-4xl font-bold mb-2 bg-gradient-to-br from-white via-white to-white/50 bg-clip-text text-transparent leading-tight" data-testid="text-upgrade-title">
+              Upgrade to Pro
+            </h1>
+            <p className="text-slate-400 text-sm max-w-xs mx-auto leading-relaxed">
+              Save hours of documentation time every day with AI-powered medical scribing.
+            </p>
           </motion.div>
 
-          <h1 className="text-3xl font-heading font-bold text-center mb-2" data-testid="text-upgrade-title">Upgrade to Pro</h1>
-          <p className="text-slate-400 text-center text-sm max-w-xs mb-8">
-            Unlock the full power of MedNote AI. Save hours of documentation time every day.
-          </p>
-
-          <div className="flex items-center gap-4 mb-8 bg-white/5 p-1 rounded-full border border-white/10">
-            <button 
-              onClick={() => setIsYearly(false)}
-              className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${!isYearly ? 'bg-primary text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
-              data-testid="button-monthly"
-            >
-              Monthly
-            </button>
-            <button 
-              onClick={() => setIsYearly(true)}
-              className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${isYearly ? 'bg-primary text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
-              data-testid="button-yearly"
-            >
-              Yearly <span className="text-[10px] ml-1 text-amber-300 font-bold">-45%</span>
-            </button>
-          </div>
-
-          <div className="text-center mb-8">
-            <div className="flex items-end justify-center gap-1">
-              <span className="text-5xl font-bold font-heading" data-testid="text-price">{isYearly ? "$99" : "$15"}</span>
-              <span className="text-slate-400 mb-1">/{isYearly ? "year" : "mo"}</span>
-            </div>
-            {isYearly && (
-              <p className="text-xs text-emerald-400 mt-2 font-medium">
-                Save $81 per year
-              </p>
-            )}
-          </div>
-
-          <div className="w-full max-w-sm space-y-4 mb-8">
-            {features.map((feature, i) => (
-              <motion.div 
-                key={i}
-                initial={{ x: -20, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                transition={{ delay: i * 0.1 }}
-                className="flex items-center gap-3"
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mb-8">
+            <div className="flex items-center gap-1 p-1 rounded-2xl bg-white/5 border border-white/10">
+              <button
+                onClick={() => setIsYearly(false)}
+                className={`flex-1 py-3 rounded-xl text-sm font-semibold transition-all ${!isYearly ? "bg-white text-slate-900 shadow-lg" : "text-slate-400 hover:text-white"}`}
+                data-testid="button-monthly"
               >
-                <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                Monthly
+              </button>
+              <button
+                onClick={() => setIsYearly(true)}
+                className={`flex-1 py-3 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2 ${isYearly ? "bg-white text-slate-900 shadow-lg" : "text-slate-400 hover:text-white"}`}
+                data-testid="button-yearly"
+              >
+                Yearly
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${isYearly ? "bg-emerald-500/20 text-emerald-600" : "bg-emerald-500/20 text-emerald-400"}`}>
+                  -45%
+                </span>
+              </button>
+            </div>
+          </motion.div>
+
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.15 }} className="mb-8">
+            <div className="relative rounded-3xl overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-600/30 via-violet-600/20 to-cyan-600/10" />
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-400/50 to-transparent" />
+              <div className="relative p-6 border border-white/10 rounded-3xl text-center">
+                <motion.div key={isYearly ? "yearly" : "monthly"} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+                  <div className="flex items-baseline justify-center gap-1 mb-1">
+                    <span className="text-6xl font-bold bg-gradient-to-b from-white to-white/70 bg-clip-text text-transparent" data-testid="text-price">
+                      {isYearly ? "$99" : "$15"}
+                    </span>
+                    <span className="text-slate-400 text-base mb-1">/{isYearly ? "year" : "mo"}</span>
+                  </div>
+                  {isYearly ? (
+                    <p className="text-xs text-emerald-400 font-semibold">Save $81 per year · $8.25/mo</p>
+                  ) : (
+                    <p className="text-xs text-slate-500">Billed monthly</p>
+                  )}
+                </motion.div>
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="mb-8 space-y-2">
+            {features.map((feature, i) => (
+              <motion.div
+                key={i}
+                initial={{ x: -16, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: 0.25 + i * 0.06 }}
+                className="flex items-center gap-4 p-3 rounded-2xl bg-white/4 border border-white/6 hover:bg-white/6 transition-colors"
+              >
+                <div className="w-9 h-9 rounded-xl bg-blue-500/15 border border-blue-500/20 flex items-center justify-center flex-shrink-0">
+                  <feature.icon className="w-4 h-4 text-blue-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-white">{feature.label}</p>
+                  <p className="text-xs text-slate-500">{feature.desc}</p>
+                </div>
+                <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
                   <Check className="w-3 h-3 text-emerald-400" />
                 </div>
-                <span className="text-sm font-medium text-slate-200">{feature}</span>
               </motion.div>
             ))}
-          </div>
+          </motion.div>
         </div>
 
-        <div className="space-y-4">
-          <Button 
-            size="lg" 
+        <div className="px-6 pb-8 space-y-3">
+          <Button
+            size="lg"
             onClick={handleSubscribe}
-            disabled={checkoutMutation.isPending || isLoading || !paddleReady}
-            className="w-full h-14 text-lg bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 shadow-xl shadow-blue-500/20 border-t border-white/20"
+            disabled={checkoutMutation.isPending}
+            className="w-full h-14 rounded-2xl text-base font-bold bg-gradient-to-r from-blue-600 via-blue-500 to-violet-600 hover:from-blue-500 hover:to-violet-500 shadow-xl shadow-blue-500/30 border-t border-white/20 transition-all"
             data-testid="button-subscribe"
           >
             {checkoutMutation.isPending ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                Loading...
-              </>
-            ) : !paddleReady ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                Loading payment...
-              </>
+              <><Loader2 className="w-5 h-5 animate-spin mr-2" />Processing...</>
+            ) : isYearly ? (
+              "Start 7-Day Free Trial"
             ) : (
-              isYearly ? "Start 7-Day Free Trial" : "Subscribe Now"
+              "Subscribe Now"
             )}
           </Button>
-          <p className="text-xs text-center text-slate-500">
-            Recurring billing. Cancel anytime.
+          <p className="text-xs text-center text-slate-600">
+            Recurring billing · Cancel anytime · Secure payment
           </p>
         </div>
       </div>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { MobileLayout } from "@/components/MobileLayout";
 import { AudioVisualizer } from "@/components/AudioVisualizer";
-import { ChevronLeft, Pause, Square, Mic, Settings2, Sparkles, Loader2 } from "lucide-react";
+import { ChevronLeft, Square, Mic, Sparkles, Loader2, Play, Pause } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { createCase, processText } from "@/lib/api";
@@ -13,30 +13,25 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
 
-// Web Speech API types
 interface SpeechRecognitionEvent extends Event {
   results: SpeechRecognitionResultList;
   resultIndex: number;
 }
-
 interface SpeechRecognitionResultList {
   length: number;
   item(index: number): SpeechRecognitionResult;
   [index: number]: SpeechRecognitionResult;
 }
-
 interface SpeechRecognitionResult {
   isFinal: boolean;
   length: number;
   item(index: number): SpeechRecognitionAlternative;
   [index: number]: SpeechRecognitionAlternative;
 }
-
 interface SpeechRecognitionAlternative {
   transcript: string;
   confidence: number;
 }
-
 interface SpeechRecognition extends EventTarget {
   continuous: boolean;
   interimResults: boolean;
@@ -48,7 +43,6 @@ interface SpeechRecognition extends EventTarget {
   stop(): void;
   abort(): void;
 }
-
 declare global {
   interface Window {
     SpeechRecognition: new () => SpeechRecognition;
@@ -56,185 +50,176 @@ declare global {
   }
 }
 
+type RecordingState = "idle" | "recording" | "paused";
 
 export default function RecordPage() {
   const { user } = useAuth();
-  const [isRecording, setIsRecording] = useState(false);
+  const [recordingState, setRecordingState] = useState<RecordingState>("idle");
   const [isProcessing, setIsProcessing] = useState(false);
   const [duration, setDuration] = useState(0);
   const [transcription, setTranscription] = useState("");
+  const [finalTranscriptRef, setFinalTranscriptRef] = useState("");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  
+
   const [showPatientDialog, setShowPatientDialog] = useState(false);
   const [patientName, setPatientName] = useState("");
   const [patientMrn, setPatientMrn] = useState("");
   const [patientAge, setPatientAge] = useState("");
   const [patientGender, setPatientGender] = useState("M");
   const [chiefComplaint, setChiefComplaint] = useState("");
-  
+  const [patientDetailsConfirmed, setPatientDetailsConfirmed] = useState(false);
+
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const isRecordingRef = useRef(false);
+
+  const isRecording = recordingState === "recording";
+  const isPaused = recordingState === "paused";
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (isRecording) {
-      interval = setInterval(() => {
-        setDuration(d => d + 1);
-      }, 1000);
+      interval = setInterval(() => setDuration(d => d + 1), 1000);
     }
     return () => clearInterval(interval);
   }, [isRecording]);
 
   useEffect(() => {
     return () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-      }
-      if (recognitionRef.current) {
-        recognitionRef.current.abort();
-      }
+      if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
+      if (recognitionRef.current) recognitionRef.current.abort();
     };
   }, []);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const [patientDetailsConfirmed, setPatientDetailsConfirmed] = useState(false);
+  const buildRecognition = (existingFinal: string) => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return null;
 
-  const handleRecordButtonClick = () => {
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
+
+    let localFinal = existingFinal;
+
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      let interim = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const r = event.results[i];
+        if (r.isFinal) {
+          localFinal += r[0].transcript + " ";
+          setFinalTranscriptRef(localFinal);
+        } else {
+          interim += r[0].transcript;
+        }
+      }
+      setTranscription(localFinal + interim);
+    };
+
+    recognition.onerror = (event: Event) => {
+      const err = (event as any).error || "unknown";
+      if (err === "network") {
+        toast({ title: "Network Error", description: "Speech recognition requires internet.", variant: "destructive" });
+      } else if (err === "audio-capture" || err === "not-allowed") {
+        toast({ title: "Microphone Error", description: "Could not access microphone.", variant: "destructive" });
+      }
+    };
+
+    recognition.onend = () => {
+      if (isRecordingRef.current) {
+        try { recognition.start(); } catch (_) {}
+      }
+    };
+
+    return recognition;
+  };
+
+  const startRecording = async (existingFinal = "") => {
+    try {
+      if (!streamRef.current) {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        streamRef.current = stream;
+      }
+
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        toast({ title: "Not Supported", description: "Use Chrome, Edge, or Safari for speech recognition.", variant: "destructive" });
+        return;
+      }
+
+      const recognition = buildRecognition(existingFinal);
+      if (!recognition) return;
+
+      recognitionRef.current = recognition;
+      isRecordingRef.current = true;
+      recognition.start();
+      setRecordingState("recording");
+      if (!existingFinal) {
+        setDuration(0);
+        setTranscription("");
+        setFinalTranscriptRef("");
+      }
+    } catch {
+      toast({ title: "Microphone Access Required", description: "Please allow microphone access.", variant: "destructive" });
+    }
+  };
+
+  const handlePause = () => {
+    isRecordingRef.current = false;
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+    }
+    setRecordingState("paused");
+  };
+
+  const handleResume = () => {
+    startRecording(finalTranscriptRef);
+  };
+
+  const handleStop = () => {
+    isRecordingRef.current = false;
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
+    }
+    setRecordingState("idle");
+
+    const finalText = transcription.trim();
+    if (finalText) {
+      processRecording(finalText);
+    } else {
+      toast({ title: "No Speech Detected", description: "Please speak clearly into the microphone.", variant: "destructive" });
+      setPatientDetailsConfirmed(false);
+    }
+  };
+
+  const handleMainButtonClick = () => {
     if (!patientDetailsConfirmed) {
       setShowPatientDialog(true);
     } else if (isRecording) {
-      // Pause/Resume not supported with speech recognition, just continue
+      handlePause();
+    } else if (isPaused) {
+      handleResume();
     } else {
       startRecording();
     }
   };
 
-  const startRecording = async () => {
-    try {
-      // Request microphone access for audio visualizer
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
-      
-      // Check for Speech Recognition API
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SpeechRecognition) {
-        toast({
-          title: "Speech Recognition Not Supported",
-          description: "Your browser doesn't support speech recognition. Please use Chrome, Edge, or Safari.",
-          variant: "destructive",
-        });
-        stream.getTracks().forEach(track => track.stop());
-        return;
-      }
-
-      const recognition = new SpeechRecognition();
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      recognition.lang = "en-US";
-
-      let finalTranscript = "";
-
-      recognition.onresult = (event: SpeechRecognitionEvent) => {
-        let interimTranscript = "";
-        
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const result = event.results[i];
-          if (result.isFinal) {
-            finalTranscript += result[0].transcript + " ";
-          } else {
-            interimTranscript += result[0].transcript;
-          }
-        }
-        
-        setTranscription(finalTranscript + interimTranscript);
-      };
-
-      recognition.onerror = (event: Event) => {
-        const errorEvent = event as any;
-        const errorType = errorEvent.error || 'unknown';
-        console.error("Speech recognition error:", errorType);
-        
-        if (errorType === 'network') {
-          toast({
-            title: "Network Error",
-            description: "Speech recognition requires an internet connection. Please check your connection.",
-            variant: "destructive",
-          });
-        } else if (errorType === 'audio-capture' || errorType === 'not-allowed') {
-          toast({
-            title: "Microphone Error",
-            description: "Could not access your microphone. Please check permissions.",
-            variant: "destructive",
-          });
-        } else if (errorType !== 'no-speech' && errorType !== 'aborted') {
-          toast({
-            title: "Recognition Issue",
-            description: "There was an issue with speech recognition. Please try again.",
-            variant: "destructive",
-          });
-        }
-      };
-
-      recognition.onend = () => {
-        // Restart if still recording (speech recognition auto-stops after silence)
-        if (isRecording && recognitionRef.current) {
-          try {
-            recognitionRef.current.start();
-          } catch (e) {
-            // Already started, ignore
-          }
-        }
-      };
-
-      recognitionRef.current = recognition;
-      recognition.start();
-      setIsRecording(true);
-      setDuration(0);
-      setTranscription("");
-    } catch (error: any) {
-      toast({
-        title: "Microphone Access Required",
-        description: "Please allow microphone access to record audio.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleStop = () => {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-    }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-    }
-    setIsRecording(false);
-    
-    // Process the transcription
-    if (transcription.trim()) {
-      processRecording(transcription.trim());
-    } else {
-      toast({
-        title: "No Speech Detected",
-        description: "Please speak clearly into the microphone.",
-        variant: "destructive",
-      });
-      setPatientDetailsConfirmed(false);
-    }
-  };
-
   const handlePatientDetailsSubmit = () => {
     if (!patientName.trim() || !patientAge || !chiefComplaint.trim()) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill in all patient details.",
-        variant: "destructive",
-      });
+      toast({ title: "Missing Information", description: "Please fill in all patient details.", variant: "destructive" });
       return;
     }
     setPatientDetailsConfirmed(true);
@@ -244,7 +229,6 @@ export default function RecordPage() {
 
   const processRecording = async (dictation: string) => {
     setIsProcessing(true);
-
     try {
       const newCase = await createCase({
         userId: user?.id ? String(user.id) : "",
@@ -254,26 +238,12 @@ export default function RecordPage() {
         gender: patientGender,
         chiefComplaint: chiefComplaint.trim(),
       });
-
-      toast({
-        title: "Generating Medical Note",
-        description: "AI is processing your dictation...",
-      });
-
+      toast({ title: "Generating Medical Note", description: "AI is processing your dictation..." });
       const result = await processText(newCase.id, dictation);
-
-      toast({
-        title: "Medical Note Generated",
-        description: "Your case has been processed successfully.",
-      });
-
+      toast({ title: "Medical Note Generated", description: "Your case has been processed successfully." });
       setLocation(`/cases/${result.id}`);
     } catch (error: any) {
-      toast({
-        title: "Processing Failed",
-        description: error.message || "Failed to generate medical note.",
-        variant: "destructive",
-      });
+      toast({ title: "Processing Failed", description: error.message || "Failed to generate medical note.", variant: "destructive" });
       setIsProcessing(false);
       setPatientDetailsConfirmed(false);
     }
@@ -281,207 +251,265 @@ export default function RecordPage() {
 
   if (isProcessing) {
     return (
-      <MobileLayout showNav={false} className="bg-slate-950 text-white relative overflow-hidden font-sans">
+      <MobileLayout showNav={false} className="bg-[#050810] text-white relative overflow-hidden font-sans">
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/20 rounded-full blur-[120px] animate-pulse" />
+          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-blue-600/20 rounded-full blur-[100px] animate-pulse" />
+          <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-violet-600/15 rounded-full blur-[80px]" />
         </div>
-        <header className="absolute top-0 left-0 right-0 p-6 flex justify-start items-center z-20">
-          <Link href="/home" className="p-3 bg-white/5 border border-white/10 rounded-full backdrop-blur-xl hover:bg-white/10 transition-colors group pointer-events-auto" data-testid="button-back-processing">
-            <ChevronLeft className="w-5 h-5 group-hover:-translate-x-0.5 transition-transform" />
-          </Link>
-        </header>
-        <div className="flex-1 flex flex-col items-center justify-center z-10">
-          <Loader2 className="w-16 h-16 animate-spin text-primary mb-6" />
-          <h2 className="text-2xl font-bold mb-2">Generating Medical Note</h2>
-          <p className="text-slate-400 text-center px-8">
-            AI is analyzing your dictation and creating a structured medical note...
+        <div className="flex-1 flex flex-col items-center justify-center z-10 px-8">
+          <div className="relative mb-8">
+            <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center shadow-2xl shadow-blue-500/40">
+              <Sparkles className="w-10 h-10 text-white" />
+            </div>
+            <div className="absolute -inset-2 rounded-3xl border border-blue-500/30 animate-ping" />
+          </div>
+          <h2 className="text-2xl font-bold mb-3 bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent">
+            Generating Medical Note
+          </h2>
+          <p className="text-slate-400 text-center text-sm leading-relaxed mb-8">
+            AI is analyzing your dictation and creating a structured SOAP note...
           </p>
-          <div className="mt-8 flex items-center gap-2 text-sm text-slate-500">
-            <Sparkles className="w-4 h-4 text-amber-400" />
-            <span>Powered by GPT-4</span>
+          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10">
+            <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
+            <span className="text-xs text-slate-400 font-medium">Processing with GPT-4</span>
           </div>
         </div>
       </MobileLayout>
     );
   }
 
-  return (
-    <MobileLayout showNav={false} className="bg-slate-950 text-white relative overflow-hidden font-sans">
-      <div className={`absolute inset-0 transition-opacity duration-1000 pointer-events-none ${isRecording ? 'opacity-100' : 'opacity-60'}`}>
-         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/20 rounded-full blur-[120px] animate-pulse" />
-         <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-blue-500/10 rounded-full blur-[100px]" />
-         <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-emerald-500/10 rounded-full blur-[100px]" />
-      </div>
-      
-      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none" />
+  const getButtonIcon = () => {
+    if (isRecording) return <Pause className="w-10 h-10 text-white" fill="currentColor" />;
+    if (isPaused) return <Play className="w-10 h-10 text-white" fill="currentColor" />;
+    return <Mic className="w-10 h-10 text-slate-900" />;
+  };
 
-      <header className="absolute top-0 left-0 right-0 p-6 flex justify-between items-center z-20">
-        <Link href="/home" className="p-3 bg-white/5 border border-white/10 rounded-full backdrop-blur-xl hover:bg-white/10 transition-colors group pointer-events-auto" data-testid="button-back">
+  const getStatusLabel = () => {
+    if (isRecording) return "Recording";
+    if (isPaused) return "Paused — Tap to Resume";
+    return "Tap to Start";
+  };
+
+  const getStatusColor = () => {
+    if (isRecording) return "text-red-400";
+    if (isPaused) return "text-amber-400";
+    return "text-slate-300";
+  };
+
+  const getDotStyle = () => {
+    if (isRecording) return "bg-red-500 animate-ping";
+    if (isPaused) return "bg-amber-400 animate-pulse";
+    return "bg-emerald-400";
+  };
+
+  const getStatusBg = () => {
+    if (isRecording) return "bg-red-500/10 border-red-500/30";
+    if (isPaused) return "bg-amber-500/10 border-amber-500/30";
+    return "bg-white/5 border-white/10";
+  };
+
+  return (
+    <MobileLayout showNav={false} className="bg-[#050810] text-white relative overflow-hidden font-sans">
+      <div className="absolute inset-0 pointer-events-none">
+        <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full blur-[140px] transition-all duration-1000 ${
+          isRecording ? "bg-red-600/15 scale-110" : isPaused ? "bg-amber-600/10" : "bg-blue-600/10"
+        }`} />
+        <div className="absolute top-0 right-0 w-[350px] h-[350px] bg-violet-600/10 rounded-full blur-[100px]" />
+        <div className="absolute bottom-0 left-0 w-[350px] h-[350px] bg-cyan-600/8 rounded-full blur-[100px]" />
+      </div>
+
+      <div className="absolute inset-0 pointer-events-none opacity-30"
+        style={{ backgroundImage: "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.03) 1px, transparent 0)", backgroundSize: "40px 40px" }}
+      />
+
+      <header className="absolute top-0 left-0 right-0 px-6 pt-14 pb-4 flex justify-between items-center z-20">
+        <Link href="/home" className="w-11 h-11 bg-white/8 border border-white/10 rounded-2xl backdrop-blur-xl flex items-center justify-center hover:bg-white/15 transition-colors group pointer-events-auto" data-testid="button-back">
           <ChevronLeft className="w-5 h-5 group-hover:-translate-x-0.5 transition-transform" />
         </Link>
         <div className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full backdrop-blur-xl">
-           <Sparkles className="w-3 h-3 text-amber-300" />
-           <span className="text-[10px] font-bold tracking-widest uppercase text-white/80">AI Enhanced</span>
+          <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+          <span className="text-[10px] font-bold tracking-widest uppercase text-white/70">AI Scribe</span>
         </div>
-        <button className="p-3 bg-white/5 border border-white/10 rounded-full backdrop-blur-xl hover:bg-white/10 transition-colors" data-testid="button-settings">
-          <Settings2 className="w-5 h-5" />
-        </button>
+        <div className="w-11 h-11" />
       </header>
 
       <div className="flex-1 flex flex-col items-center justify-center z-10 w-full px-6 relative">
-        <AnimatePresence mode="wait">
-          <motion.div 
-            key={isRecording ? "recording" : "ready"}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 1.1 }}
-            transition={{ type: "spring", stiffness: 200, damping: 20 }}
-            className="text-center mb-8"
+        {patientDetailsConfirmed && (patientName || chiefComplaint) && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8 px-5 py-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xl text-center"
           >
-            <h2 className="text-7xl font-light tracking-tighter mb-6 tabular-nums font-heading bg-gradient-to-br from-white to-white/60 bg-clip-text text-transparent">
+            <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-0.5">Patient</p>
+            <p className="text-sm font-semibold text-white">{patientName}{patientAge ? `, ${patientAge}${patientGender ? patientGender : ""}` : ""}</p>
+            {chiefComplaint && <p className="text-xs text-slate-500 mt-0.5">{chiefComplaint}</p>}
+          </motion.div>
+        )}
+
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={recordingState}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            className="text-center mb-10"
+          >
+            <h2 className="text-8xl font-light tracking-tighter mb-6 tabular-nums bg-gradient-to-b from-white via-white to-white/40 bg-clip-text text-transparent" style={{ fontVariantNumeric: "tabular-nums" }}>
               {formatTime(duration)}
             </h2>
-            <div className={`inline-flex items-center gap-3 px-5 py-2 rounded-full backdrop-blur-md transition-colors duration-500 ${isRecording ? 'bg-red-500/10 border border-red-500/30' : 'bg-white/5 border border-white/10'}`}>
-              <div className={`w-2 h-2 rounded-full ${isRecording ? 'bg-red-500 animate-ping' : 'bg-emerald-400'}`} />
-              <span className={`text-xs font-bold tracking-[0.2em] uppercase ${isRecording ? 'text-red-400' : 'text-slate-300'}`}>
-                {isRecording ? "Live Recording" : "Tap to Start"}
+            <div className={`inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full backdrop-blur-md border transition-all duration-500 ${getStatusBg()}`}>
+              <div className={`w-2 h-2 rounded-full ${getDotStyle()}`} />
+              <span className={`text-xs font-semibold tracking-[0.15em] uppercase ${getStatusColor()}`}>
+                {getStatusLabel()}
               </span>
             </div>
           </motion.div>
         </AnimatePresence>
 
-        {isRecording && transcription && (
-          <motion.div 
+        {(isRecording || isPaused) && transcription && (
+          <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="w-full max-w-sm mb-8 px-4 py-3 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-xl"
+            className="w-full max-w-sm mb-10"
           >
-            <p className="text-sm text-slate-300 leading-relaxed max-h-24 overflow-y-auto">
-              {transcription}
-            </p>
+            <div className="relative px-5 py-4 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-xl overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+              <p className="text-sm text-slate-300 leading-relaxed max-h-20 overflow-y-auto">
+                {transcription}
+              </p>
+            </div>
           </motion.div>
         )}
 
-        <div className="h-24 w-full mb-12 flex items-center justify-center relative">
+        <div className="h-20 w-full mb-10 flex items-center justify-center relative">
           <AudioVisualizer isRecording={isRecording} />
           {!isRecording && (
-            <div className="absolute inset-0 flex items-center justify-center opacity-30">
-               <div className="w-full h-0.5 bg-white/20" />
+            <div className="absolute inset-0 flex items-center justify-center opacity-20">
+              <div className="w-full h-px bg-gradient-to-r from-transparent via-white/40 to-transparent" />
             </div>
           )}
         </div>
 
         <div className="flex items-center gap-8 relative">
           <AnimatePresence>
-            {isRecording && (
+            {(isRecording || isPaused) && (
               <motion.button
-                initial={{ scale: 0, opacity: 0, x: 40 }}
-                animate={{ scale: 1, opacity: 1, x: 0 }}
-                exit={{ scale: 0, opacity: 0, x: 40 }}
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0, opacity: 0 }}
+                transition={{ type: "spring", stiffness: 300, damping: 20 }}
                 onClick={handleStop}
-                className="absolute -left-28 w-20 h-20 rounded-[2rem] bg-slate-800/50 border border-white/10 backdrop-blur-xl flex items-center justify-center text-red-500 hover:bg-slate-700/50 transition-colors group"
+                className="absolute -left-24 w-16 h-16 rounded-2xl bg-white/8 border border-white/15 backdrop-blur-xl flex items-center justify-center hover:bg-red-500/20 hover:border-red-500/40 transition-all group"
                 data-testid="button-stop"
               >
-                <Square className="w-6 h-6 fill-current group-hover:scale-90 transition-transform" />
+                <Square className="w-6 h-6 text-red-400 fill-current group-hover:scale-90 transition-transform" />
               </motion.button>
             )}
           </AnimatePresence>
 
-          <button 
-            onClick={handleRecordButtonClick}
-            className={`relative w-28 h-28 rounded-[2.5rem] flex items-center justify-center transition-all duration-500 shadow-2xl ${
-              isRecording 
-                ? 'bg-red-500 hover:bg-red-600 shadow-red-500/40 rotate-180 rounded-full' 
-                : 'bg-white hover:scale-105 shadow-white/20'
+          <motion.button
+            onClick={handleMainButtonClick}
+            whileTap={{ scale: 0.95 }}
+            className={`relative w-28 h-28 rounded-[2rem] flex items-center justify-center transition-all duration-500 shadow-2xl ${
+              isRecording
+                ? "bg-gradient-to-br from-red-500 to-red-600 shadow-red-500/50"
+                : isPaused
+                ? "bg-gradient-to-br from-amber-400 to-amber-600 shadow-amber-500/40"
+                : "bg-white shadow-white/25"
             }`}
             data-testid="button-record"
           >
-            {isRecording ? (
-              <Pause className="w-10 h-10 text-white rotate-180" fill="currentColor" />
-            ) : (
-              <Mic className="w-10 h-10 text-primary" />
+            {!isRecording && !isPaused && (
+              <div className="absolute inset-0 rounded-[2rem] border-2 border-white/40 animate-ping duration-[2500ms]" />
             )}
-            
-            {!isRecording && (
-               <div className="absolute inset-0 rounded-[2.5rem] border border-white/30 animate-ping duration-[2000ms]" />
+            {isRecording && (
+              <div className="absolute inset-0 rounded-[2rem] bg-red-400/20 animate-pulse" />
             )}
-          </button>
+            {getButtonIcon()}
+          </motion.button>
         </div>
 
-        <motion.div 
-          initial={{ opacity: 0 }} 
-          animate={{ opacity: 1 }} 
-          transition={{ delay: 0.5 }}
-          className="mt-12 text-center"
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.8 }}
+          className="mt-14 text-[10px] text-slate-600 font-medium tracking-[0.25em] uppercase"
         >
-          <p className="text-xs text-slate-400 font-medium tracking-wide">
-             POWERED BY AI
-          </p>
-        </motion.div>
+          Powered by OpenAI & Gemini
+        </motion.p>
       </div>
 
       <Dialog open={showPatientDialog} onOpenChange={setShowPatientDialog}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm mx-4 bg-slate-900 border-slate-700 text-white rounded-3xl">
           <DialogHeader>
-            <DialogTitle>Patient Information</DialogTitle>
+            <DialogTitle className="text-white text-lg">Patient Information</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-2">
             <div>
-              <Label>Patient Name</Label>
-              <Input 
+              <Label className="text-slate-400 text-xs uppercase tracking-wide mb-1.5 block">Patient Name</Label>
+              <Input
                 placeholder="e.g., John Doe"
                 value={patientName}
-                onChange={(e) => setPatientName(e.target.value)}
+                onChange={e => setPatientName(e.target.value)}
+                className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 rounded-xl"
                 data-testid="input-patient-name"
               />
             </div>
             <div>
-              <Label>MRN (Optional)</Label>
-              <Input 
+              <Label className="text-slate-400 text-xs uppercase tracking-wide mb-1.5 block">MRN (Optional)</Label>
+              <Input
                 placeholder="e.g., MRN-12345"
                 value={patientMrn}
-                onChange={(e) => setPatientMrn(e.target.value)}
+                onChange={e => setPatientMrn(e.target.value)}
+                className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 rounded-xl"
                 data-testid="input-patient-mrn"
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Age</Label>
-                <Input 
+                <Label className="text-slate-400 text-xs uppercase tracking-wide mb-1.5 block">Age</Label>
+                <Input
                   type="number"
                   placeholder="Years"
                   value={patientAge}
-                  onChange={(e) => setPatientAge(e.target.value)}
+                  onChange={e => setPatientAge(e.target.value)}
+                  className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 rounded-xl"
                   data-testid="input-patient-age"
                 />
               </div>
               <div>
-                <Label>Gender</Label>
+                <Label className="text-slate-400 text-xs uppercase tracking-wide mb-1.5 block">Gender</Label>
                 <Select value={patientGender} onValueChange={setPatientGender}>
-                  <SelectTrigger data-testid="select-patient-gender">
+                  <SelectTrigger className="bg-slate-800 border-slate-700 text-white rounded-xl" data-testid="select-patient-gender">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="M">Male</SelectItem>
-                    <SelectItem value="F">Female</SelectItem>
-                    <SelectItem value="Other">Other</SelectItem>
+                  <SelectContent className="bg-slate-800 border-slate-700">
+                    <SelectItem value="M" className="text-white">Male</SelectItem>
+                    <SelectItem value="F" className="text-white">Female</SelectItem>
+                    <SelectItem value="Other" className="text-white">Other</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
             <div>
-              <Label>Chief Complaint</Label>
-              <Input 
+              <Label className="text-slate-400 text-xs uppercase tracking-wide mb-1.5 block">Chief Complaint</Label>
+              <Input
                 placeholder="e.g., Headache for 3 days"
                 value={chiefComplaint}
-                onChange={(e) => setChiefComplaint(e.target.value)}
+                onChange={e => setChiefComplaint(e.target.value)}
+                className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 rounded-xl"
                 data-testid="input-chief-complaint"
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowPatientDialog(false)}>Cancel</Button>
-            <Button onClick={handlePatientDetailsSubmit} data-testid="button-start-recording">Start Recording</Button>
+          <DialogFooter className="gap-2">
+            <Button variant="ghost" onClick={() => setShowPatientDialog(false)} className="text-slate-400 hover:text-white rounded-xl">
+              Cancel
+            </Button>
+            <Button onClick={handlePatientDetailsSubmit} className="bg-gradient-to-r from-blue-600 to-violet-600 text-white rounded-xl flex-1" data-testid="button-start-recording">
+              Start Recording
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
