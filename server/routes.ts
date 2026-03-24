@@ -11,6 +11,10 @@ import multer from "multer";
 import { getPaddleClient, verifyPaddleWebhook } from "./paddleClient";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
+import { createRemoteJWKSet, jwtVerify } from "jose";
+
+// Apple's public keys for verifying Sign in with Apple tokens
+const APPLE_JWKS = createRemoteJWKSet(new URL("https://appleid.apple.com/auth/keys"));
 
 export async function registerRoutes(
   httpServer: Server,
@@ -69,24 +73,71 @@ export async function registerRoutes(
     }
   });
 
-  // Logout - clear token
+  // Sign in with Apple — verifies identity token, creates session
+  app.post('/api/auth/apple', async (req: any, res) => {
+    try {
+      const { identityToken, firstName, lastName, email } = req.body;
+      if (!identityToken) return res.status(400).json({ message: "identityToken required" });
+
+      // Verify the token with Apple's public keys
+      const { payload } = await jwtVerify(identityToken, APPLE_JWKS, {
+        issuer: "https://appleid.apple.com",
+      });
+
+      const appleUserId = payload.sub as string;
+      if (!appleUserId) return res.status(400).json({ message: "Invalid Apple token" });
+
+      // Find or create user — Apple only sends email/name on first sign-in
+      let user = await storage.getUser(appleUserId);
+      if (!user) {
+        user = await storage.upsertUser({
+          id: appleUserId,
+          email: (payload.email as string) || email || null,
+          firstName: firstName || null,
+          lastName: lastName || null,
+        });
+      }
+
+      // Store userId in session so future requests are authenticated
+      req.session.userId = appleUserId;
+      await new Promise<void>((resolve, reject) =>
+        req.session.save((err: any) => (err ? reject(err) : resolve()))
+      );
+
+      const { password: _, currentAuthToken: __, ...safeUser } = user as any;
+      return res.json({ user: safeUser });
+    } catch (error: any) {
+      console.error("Apple auth error:", error);
+      return res.status(401).json({ message: "Apple Sign In failed. Please try again." });
+    }
+  });
+
+  // Logout - clear all sessions
   app.post('/api/auth/logout', async (req: any, res) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (authHeader?.startsWith("Bearer ")) {
-        const token = authHeader.slice(7);
-        const user = await storage.getUserByToken(token);
-        if (user) await storage.updateUser(user.id, { currentAuthToken: null as any });
-      }
+      req.session?.destroy(() => {});
       return res.json({ success: true });
     } catch {
       return res.json({ success: true });
     }
   });
 
-  // Auth middleware — supports both Bearer token and Replit session
+  // Auth middleware — supports Apple session, Replit session, or Bearer token
   const sessionAuth = async (req: any, res: any, next: any) => {
-    // Check Bearer token first (mobile/API clients)
+    // 1. Apple Sign In session (set by /api/auth/apple)
+    if (req.session?.userId) {
+      req.authUserId = req.session.userId;
+      return next();
+    }
+
+    // 2. Replit OIDC session (legacy / web testing)
+    const replitUserId = req.user?.claims?.sub;
+    if (replitUserId) {
+      req.authUserId = replitUserId;
+      return next();
+    }
+
+    // 3. Bearer token (email/password legacy fallback)
     const authHeader = req.headers.authorization;
     if (authHeader?.startsWith("Bearer ")) {
       const token = authHeader.slice(7);
@@ -97,13 +148,6 @@ export async function registerRoutes(
           return next();
         }
       } catch {}
-    }
-
-    // Fall back to Replit session (web/browser)
-    const replitUserId = req.user?.claims?.sub;
-    if (replitUserId) {
-      req.authUserId = replitUserId;
-      return next();
     }
 
     return res.status(401).json({ message: "Unauthorized" });

@@ -12,6 +12,7 @@
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
+    "@capacitor-community/apple-sign-in": "^7.1.0",
     "@capacitor/cli": "^7.4.5",
     "@capacitor/core": "^8.0.1",
     "@capacitor/ios": "^8.0.1",
@@ -67,6 +68,7 @@
     "express-session": "^1.18.2",
     "framer-motion": "^12.23.24",
     "input-otp": "^1.4.2",
+    "jose": "^6.2.2",
     "lucide-react": "^0.545.0",
     "memoizee": "^0.4.17",
     "memorystore": "^1.6.7",

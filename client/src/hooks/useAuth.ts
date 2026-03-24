@@ -67,7 +67,8 @@ export function useAuth() {
   const logout = useCallback(async () => {
     clearStoredUser();
     setUser(null);
-    window.location.href = "/api/logout";
+    await fetch("/api/auth/logout", { method: "POST", credentials: "include" }).catch(() => {});
+    window.location.href = "/";
   }, []);
 
   return {
