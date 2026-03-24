@@ -56,8 +56,11 @@ workflows:
       - name: Increment build number
         script: |
           cd ios/App
-          LATEST_BUILD_NUMBER=$(app-store-connect get-latest-build-number "$APP_ID" 2>/dev/null || echo 0)
-          agvtool new-version -all $((LATEST_BUILD_NUMBER + 1))
+          # Use minutes elapsed since Jan 1 2024 — always unique, never conflicts
+          BASE=1704067200
+          NOW=$(date +%s)
+          BUILD_NUMBER=$(( (NOW - BASE) / 60 ))
+          agvtool new-version -all $BUILD_NUMBER
 
       - name: Build and export IPA
         script: |
