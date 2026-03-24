@@ -672,7 +672,7 @@ export default function CaseDetailPage() {
                 </div>
                 <Dialog open={studyDialogOpen} onOpenChange={setStudyDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-8 px-2" data-testid="button-add-study">
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-white/80 hover:text-white hover:bg-white/15 rounded-xl" data-testid="button-add-study">
                       <Plus className="w-4 h-4" />
                     </Button>
                   </DialogTrigger>
@@ -794,7 +794,7 @@ export default function CaseDetailPage() {
                 </div>
                 <Dialog open={medDialogOpen} onOpenChange={setMedDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-8 px-2" data-testid="button-add-medication">
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-white/80 hover:text-white hover:bg-white/15 rounded-xl" data-testid="button-add-medication">
                       <Plus className="w-4 h-4" />
                     </Button>
                   </DialogTrigger>

@@ -43,15 +43,41 @@ declare global {
 }
 
 /**
- * Converts AI-generated content (which may be raw JSON) into clean display lines.
- * Handles: plain text, JSON objects, JSON arrays, nested {steps:[]} / {education:""} / {redFlags:[]} patterns.
+ * Finds the end of a leading JSON object or array in a string.
+ * Returns { json, remainder } or null if no balanced JSON found.
+ */
+function extractLeadingJson(text: string): { json: string; remainder: string } | null {
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (escaped) { escaped = false; continue; }
+    if (ch === "\\" && inString) { escaped = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === "{" || ch === "[") depth++;
+    if (ch === "}" || ch === "]") {
+      depth--;
+      if (depth === 0) {
+        return { json: text.substring(0, i + 1), remainder: text.substring(i + 1) };
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Converts AI-generated content (which may be raw JSON or JSON + trailing text) into
+ * clean display lines. Handles: plain text, JSON objects, JSON arrays, nested wrappers,
+ * and the common case of {"key":"value"} followed by dictation corrections.
  */
 export function parseAIContent(content: string): string[] {
   if (!content || !content.trim()) return [];
 
   const trimmed = content.trim();
 
-  // Try to parse as JSON first
+  // Try to parse as full JSON first
   try {
     const parsed = JSON.parse(trimmed);
 
@@ -64,29 +90,42 @@ export function parseAIContent(content: string): string[] {
     }
 
     if (typeof parsed === "object" && parsed !== null) {
-      // Unwrap single-key wrapper objects: {steps:[...]}, {education:"..."}, {redFlags:[...]}
       const keys = Object.keys(parsed);
       if (keys.length === 1) {
         const val = parsed[keys[0]];
         if (Array.isArray(val)) {
-          return val.flatMap(v => typeof v === "string" ? [v] : [JSON.stringify(v)]);
+          return val.flatMap(v => typeof v === "string" ? [v] : parseAIContent(JSON.stringify(v)));
         }
         if (typeof val === "string") return [val];
+        if (typeof val === "object" && val !== null) return parseAIContent(JSON.stringify(val));
       }
 
-      // Multi-key JSON object: render each key-value as "Key: value"
-      return Object.entries(parsed).map(([key, value]) => {
-        const label = key.replace(/([A-Z])/g, " $1").trim(); // camelCase → "Camel Case"
-        if (typeof value === "string") return `${label}: ${value}`;
-        if (Array.isArray(value)) return `${label}: ${value.join(", ")}`;
-        return `${label}: ${JSON.stringify(value)}`;
+      // Multi-key object: render values as plain text lines (ignore keys)
+      return Object.entries(parsed).flatMap(([, value]) => {
+        if (typeof value === "string") return [value];
+        if (Array.isArray(value)) return value.map(v => typeof v === "string" ? v : JSON.stringify(v));
+        if (typeof value === "object" && value !== null) return parseAIContent(JSON.stringify(value));
+        return [String(value)];
       });
     }
   } catch {
-    // Not JSON — proceed with text handling
+    // Full parse failed — try extracting a leading JSON block (handles "JSON + trailing text" pattern)
+    if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+      const extracted = extractLeadingJson(trimmed);
+      if (extracted) {
+        try {
+          const parts = parseAIContent(extracted.json);
+          const tail = extracted.remainder.trim();
+          if (tail) {
+            parts.push(...tail.split("\n").map(l => l.trim()).filter(Boolean));
+          }
+          return parts;
+        } catch {}
+      }
+    }
   }
 
-  // Split by newlines for plain text
+  // Plain text — split by newlines
   const lines = trimmed.split("\n").map(l => l.trim()).filter(Boolean);
   return lines.length > 0 ? lines : [trimmed];
 }
