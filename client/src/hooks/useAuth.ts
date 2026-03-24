@@ -17,7 +17,6 @@ export function storeUser(user: User) {
 
 export function clearStoredUser() {
   localStorage.removeItem("user");
-  localStorage.removeItem("authToken");
   localStorage.removeItem("user-avatar");
   localStorage.removeItem("user-fullname");
   localStorage.removeItem("user-specialty");
@@ -36,11 +35,7 @@ export function useAuth() {
 
   const fetchUser = useCallback(async () => {
     try {
-      const authToken = localStorage.getItem("authToken");
-      const res = await fetch("/api/auth/user", {
-        credentials: "include",
-        headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
-      });
+      const res = await fetch("/api/auth/user", { credentials: "include" });
       if (res.ok) {
         const userData = await res.json();
         storeUser(userData);
@@ -59,14 +54,10 @@ export function useAuth() {
 
   useEffect(() => {
     fetchUser();
-    
-    const handleAuthChange = () => {
-      setUser(getStoredUser());
-    };
-    
+
+    const handleAuthChange = () => setUser(getStoredUser());
     window.addEventListener('authChange', handleAuthChange);
     window.addEventListener('storage', handleAuthChange);
-    
     return () => {
       window.removeEventListener('authChange', handleAuthChange);
       window.removeEventListener('storage', handleAuthChange);
@@ -74,15 +65,9 @@ export function useAuth() {
   }, [fetchUser]);
 
   const logout = useCallback(async () => {
-    const authToken = localStorage.getItem("authToken");
-    await fetch("/api/auth/logout", {
-      method: "POST",
-      credentials: "include",
-      headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
-    });
     clearStoredUser();
     setUser(null);
-    window.location.href = "/";
+    window.location.href = "/api/logout";
   }, []);
 
   return {
