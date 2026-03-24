@@ -55,31 +55,28 @@ workflows:
 
       - name: Increment build number
         script: |
-          cd ios/App
-          # Unique build number: minutes elapsed since Jan 1 2024
-          BASE=1704067200
-          NOW=$(date +%s)
-          BUILD_NUMBER=$(( (NOW - BASE) / 60 ))
+          # Unique build number: unix timestamp (e.g. 1742860000) — Apple has never seen this
+          BUILD_NUMBER=$(date +%s)
+          echo "BUILD_NUMBER=$BUILD_NUMBER" >> $CM_ENV
           echo "Setting build number to: $BUILD_NUMBER"
-          # Set via xcodeproj AND Info.plist directly for reliability
-          agvtool new-version -all $BUILD_NUMBER || true
-          PLIST="App/Info.plist"
-          if [ -f "$PLIST" ]; then
-            /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" "$PLIST"
-            /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 1.1" "$PLIST"
-          fi
-          # Also update xcodeproj settings directly
-          sed -i '' "s/CURRENT_PROJECT_VERSION = .*/CURRENT_PROJECT_VERSION = $BUILD_NUMBER;/" App.xcodeproj/project.pbxproj
-          sed -i '' "s/MARKETING_VERSION = .*/MARKETING_VERSION = 1.1;/" App.xcodeproj/project.pbxproj
-          echo "Build number set. Verifying:"
-          agvtool what-version || true
+          # 1) Patch Info.plist directly
+          PLIST="ios/App/App/Info.plist"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 1.1" "$PLIST"
+          echo "Info.plist CFBundleVersion set to: $(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' $PLIST)"
+          # 2) Patch xcodeproj build settings
+          sed -i '' "s/CURRENT_PROJECT_VERSION = [^;]*/CURRENT_PROJECT_VERSION = $BUILD_NUMBER/" ios/App/App.xcodeproj/project.pbxproj
+          sed -i '' "s/MARKETING_VERSION = [^;]*/MARKETING_VERSION = 1.1/" ios/App/App.xcodeproj/project.pbxproj
 
       - name: Build and export IPA
         script: |
           xcode-project build-ipa \
             --workspace "$XCODE_WORKSPACE" \
             --scheme "$XCODE_SCHEME" \
-            --verbose
+            --verbose \
+            -- \
+            CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
+            MARKETING_VERSION="1.1"
 
     artifacts:
       - build/ios/ipa/*.ipa
