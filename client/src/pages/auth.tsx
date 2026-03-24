@@ -43,6 +43,11 @@ export default function AuthPage() {
         storeUser(user);
         window.location.href = "/home";
       } catch (err: any) {
+        // Plugin not yet linked to native iOS project — fall back to web auth
+        if (err?.message?.includes("not implemented") || err?.message?.includes("not available")) {
+          window.location.href = "/api/login";
+          return;
+        }
         // Error code 1001 = user cancelled — don't show an error toast for that
         const cancelled = err?.message?.includes("1001") || err?.code === "1001";
         if (!cancelled) {
