@@ -9,24 +9,103 @@ import { insertCaseSchema } from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
 import { getPaddleClient, verifyPaddleWebhook } from "./paddleClient";
+import bcrypt from "bcryptjs";
+import crypto from "crypto";
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
   
-  // Setup Replit Auth (supports Apple, Google, GitHub sign-in)
+  // Setup Replit Auth (kept for backward compatibility)
   await setupAuth(app);
   registerAuthRoutes(app);
 
-  // Session auth middleware - uses Replit Auth
-  const sessionAuth = (req: any, res: any, next: any) => {
+  // --- Email/Password Auth Endpoints ---
+
+  // Register new user
+  app.post('/api/auth/register', async (req, res) => {
+    try {
+      const { email, password, firstName, lastName } = req.body;
+      if (!email || !password) return res.status(400).json({ message: "Email and password are required" });
+      if (password.length < 8) return res.status(400).json({ message: "Password must be at least 8 characters" });
+
+      const existing = await storage.getUserByEmail(email.toLowerCase());
+      if (existing) return res.status(409).json({ message: "An account with this email already exists" });
+
+      const hashed = await bcrypt.hash(password, 12);
+      const token = crypto.randomBytes(32).toString("hex");
+      const user = await storage.createUser({ email: email.toLowerCase(), password: hashed, firstName, lastName });
+      await storage.updateUser(user.id, { currentAuthToken: token });
+
+      const { password: _, ...safeUser } = user as any;
+      return res.json({ user: { ...safeUser, currentAuthToken: undefined }, token });
+    } catch (error: any) {
+      console.error("Register error:", error);
+      return res.status(500).json({ message: "Registration failed" });
+    }
+  });
+
+  // Login with email/password
+  app.post('/api/auth/login', async (req, res) => {
+    try {
+      const { email, password } = req.body;
+      if (!email || !password) return res.status(400).json({ message: "Email and password are required" });
+
+      const user = await storage.getUserByEmail(email.toLowerCase());
+      if (!user || !user.password) return res.status(401).json({ message: "Invalid email or password" });
+
+      const valid = await bcrypt.compare(password, user.password);
+      if (!valid) return res.status(401).json({ message: "Invalid email or password" });
+
+      const token = crypto.randomBytes(32).toString("hex");
+      await storage.updateUser(user.id, { currentAuthToken: token });
+
+      const { password: _, currentAuthToken: __, ...safeUser } = user as any;
+      return res.json({ user: safeUser, token });
+    } catch (error: any) {
+      console.error("Login error:", error);
+      return res.status(500).json({ message: "Login failed" });
+    }
+  });
+
+  // Logout - clear token
+  app.post('/api/auth/logout', async (req: any, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (authHeader?.startsWith("Bearer ")) {
+        const token = authHeader.slice(7);
+        const user = await storage.getUserByToken(token);
+        if (user) await storage.updateUser(user.id, { currentAuthToken: null as any });
+      }
+      return res.json({ success: true });
+    } catch {
+      return res.json({ success: true });
+    }
+  });
+
+  // Auth middleware — supports both Bearer token and Replit session
+  const sessionAuth = async (req: any, res: any, next: any) => {
+    // Check Bearer token first (mobile/API clients)
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith("Bearer ")) {
+      const token = authHeader.slice(7);
+      try {
+        const user = await storage.getUserByToken(token);
+        if (user) {
+          req.authUserId = user.id;
+          return next();
+        }
+      } catch {}
+    }
+
+    // Fall back to Replit session (web/browser)
     const replitUserId = req.user?.claims?.sub;
-    
     if (replitUserId) {
       req.authUserId = replitUserId;
       return next();
     }
+
     return res.status(401).json({ message: "Unauthorized" });
   };
 

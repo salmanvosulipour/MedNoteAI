@@ -2,6 +2,14 @@ import { queryClient } from "./queryClient";
 
 const API_BASE = "/api";
 
+function authHeaders(extra?: Record<string, string>): Record<string, string> {
+  const token = localStorage.getItem("authToken");
+  return {
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...extra,
+  };
+}
+
 export interface Case {
   id: string;
   userId: string;
@@ -28,13 +36,19 @@ export interface Case {
 }
 
 export async function fetchCases(userId: string = "demo-user"): Promise<Case[]> {
-  const res = await fetch(`${API_BASE}/cases?userId=${userId}`);
+  const res = await fetch(`${API_BASE}/cases?userId=${userId}`, {
+    credentials: "include",
+    headers: authHeaders(),
+  });
   if (!res.ok) throw new Error("Failed to fetch cases");
   return res.json();
 }
 
 export async function fetchCase(id: string): Promise<Case> {
-  const res = await fetch(`${API_BASE}/cases/${id}`);
+  const res = await fetch(`${API_BASE}/cases/${id}`, {
+    credentials: "include",
+    headers: authHeaders(),
+  });
   if (!res.ok) throw new Error("Failed to fetch case");
   return res.json();
 }
@@ -49,7 +63,8 @@ export async function createCase(data: {
 }): Promise<Case> {
   const res = await fetch(`${API_BASE}/cases`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: authHeaders({ "Content-Type": "application/json" }),
+    credentials: "include",
     body: JSON.stringify({ ...data, status: "draft" }),
   });
   if (!res.ok) throw new Error("Failed to create case");
@@ -59,7 +74,8 @@ export async function createCase(data: {
 export async function updateCase(id: string, data: Partial<Case>): Promise<Case> {
   const res = await fetch(`${API_BASE}/cases/${id}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
+    headers: authHeaders({ "Content-Type": "application/json" }),
+    credentials: "include",
     body: JSON.stringify(data),
   });
   if (!res.ok) throw new Error("Failed to update case");
@@ -67,16 +83,22 @@ export async function updateCase(id: string, data: Partial<Case>): Promise<Case>
 }
 
 export async function deleteCase(id: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/cases/${id}`, { method: "DELETE" });
+  const res = await fetch(`${API_BASE}/cases/${id}`, {
+    method: "DELETE",
+    credentials: "include",
+    headers: authHeaders(),
+  });
   if (!res.ok) throw new Error("Failed to delete case");
 }
 
 export async function processAudio(caseId: string, audioBlob: Blob): Promise<Case> {
   const formData = new FormData();
   formData.append("audio", audioBlob, "recording.webm");
-  
+
   const res = await fetch(`${API_BASE}/cases/${caseId}/process-audio`, {
     method: "POST",
+    headers: authHeaders(),
+    credentials: "include",
     body: formData,
   });
   if (!res.ok) {
@@ -89,7 +111,8 @@ export async function processAudio(caseId: string, audioBlob: Blob): Promise<Cas
 export async function processText(caseId: string, dictation: string): Promise<Case> {
   const res = await fetch(`${API_BASE}/cases/${caseId}/process-text`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: authHeaders({ "Content-Type": "application/json" }),
+    credentials: "include",
     body: JSON.stringify({ dictation }),
   });
   if (!res.ok) {
@@ -102,6 +125,8 @@ export async function processText(caseId: string, dictation: string): Promise<Ca
 export async function generateSummary(caseId: string): Promise<Case> {
   const res = await fetch(`${API_BASE}/cases/${caseId}/generate-summary`, {
     method: "POST",
+    headers: authHeaders(),
+    credentials: "include",
   });
   if (!res.ok) throw new Error("Failed to generate summary");
   return res.json();
@@ -110,7 +135,8 @@ export async function generateSummary(caseId: string): Promise<Case> {
 export async function sendEmailSummary(caseId: string, patientEmail: string, physicianName?: string): Promise<{ success: boolean; messageId: string }> {
   const res = await fetch(`${API_BASE}/cases/${caseId}/email-summary`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: authHeaders({ "Content-Type": "application/json" }),
+    credentials: "include",
     body: JSON.stringify({ patientEmail, physicianName }),
   });
   if (!res.ok) {
@@ -129,7 +155,10 @@ export function invalidateCase(id: string) {
 }
 
 export async function fetchCasesByMrn(mrn: string): Promise<Case[]> {
-  const res = await fetch(`${API_BASE}/patients/${encodeURIComponent(mrn)}/cases`);
+  const res = await fetch(`${API_BASE}/patients/${encodeURIComponent(mrn)}/cases`, {
+    credentials: "include",
+    headers: authHeaders(),
+  });
   if (!res.ok) throw new Error("Failed to fetch patient cases");
   return res.json();
 }

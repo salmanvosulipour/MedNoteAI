@@ -29,6 +29,8 @@ export const users = pgTable("users", {
   freeTokensRemaining: integer("free_tokens_remaining").default(1),
   // Paddle integration
   paddleCustomerId: varchar("paddle_customer_id"),
+  // Auth token for mobile/API authentication
+  currentAuthToken: varchar("current_auth_token"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

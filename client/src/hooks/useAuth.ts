@@ -36,8 +36,10 @@ export function useAuth() {
 
   const fetchUser = useCallback(async () => {
     try {
+      const authToken = localStorage.getItem("authToken");
       const res = await fetch("/api/auth/user", {
         credentials: "include",
+        headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
       });
       if (res.ok) {
         const userData = await res.json();
@@ -72,7 +74,12 @@ export function useAuth() {
   }, [fetchUser]);
 
   const logout = useCallback(async () => {
-    await fetch("/api/logout", { method: "POST", credentials: "include" });
+    const authToken = localStorage.getItem("authToken");
+    await fetch("/api/auth/logout", {
+      method: "POST",
+      credentials: "include",
+      headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+    });
     clearStoredUser();
     setUser(null);
     window.location.href = "/";
