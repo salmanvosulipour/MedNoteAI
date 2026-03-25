@@ -255,10 +255,24 @@ export default function CaseDetailPage() {
     let summary = `MEDICAL CASE SUMMARY\n`;
     summary += `${"=".repeat(50)}\n\n`;
     summary += `Patient: ${caseData.patientName}\n`;
+    if (caseData.mrn) summary += `MRN: ${caseData.mrn}\n`;
     summary += `Age: ${caseData.age} years | Gender: ${caseData.gender}\n`;
     summary += `Date: ${caseData.recordedAt ? format(new Date(caseData.recordedAt), "MMMM d, yyyy - HH:mm") : "N/A"}\n`;
-    summary += `Status: ${caseData.status}\n\n`;
-    
+    summary += `Status: ${caseData.status}\n`;
+
+    if (caseData.disposition) {
+      const dispositionLabels: Record<string, string> = {
+        discharged: "Discharged Home", admitted: "Admitted", transferred: "Transferred",
+        ama: "Left AMA", observation: "Observation"
+      };
+      summary += `Disposition: ${dispositionLabels[caseData.disposition] || caseData.disposition}\n`;
+    }
+    summary += "\n";
+
+    if (caseData.finalNotes) {
+      summary += `FINAL CLINICAL NOTES\n${"=".repeat(50)}\n${caseData.finalNotes}\n\n`;
+    }
+
     summary += `CHIEF COMPLAINT\n${"-".repeat(30)}\n${caseData.chiefComplaint || "Not recorded"}\n\n`;
     summary += `HISTORY OF PRESENT ILLNESS (HPI)\n${"-".repeat(30)}\n${caseData.hpi || "Not recorded"}\n\n`;
     
@@ -474,6 +488,24 @@ export default function CaseDetailPage() {
       }
     }
     
+    if (caseData.disposition || caseData.finalNotes) {
+      const dispositionLabels: Record<string, string> = {
+        discharged: "Discharged Home", admitted: "Admitted", transferred: "Transferred",
+        ama: "Left AMA", observation: "Observation"
+      };
+      const slideDisp = pptx.addSlide();
+      slideDisp.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: "100%", h: 1.2, fill: { color: "0F172A" } });
+      slideDisp.addText("FINAL DISPOSITION", { x: 0.5, y: 0.35, w: 9, h: 0.5, fontSize: 24, bold: true, color: "FFFFFF", fontFace: "Arial" });
+      if (caseData.disposition) {
+        slideDisp.addShape(pptx.ShapeType.rect, { x: 0.5, y: 1.4, w: 9, h: 0.6, fill: { color: "DBEAFE" }, line: { color: "3B82F6", pt: 2 } });
+        slideDisp.addText(dispositionLabels[caseData.disposition] || caseData.disposition, { x: 0.7, y: 1.5, w: 8.6, h: 0.4, fontSize: 16, bold: true, color: "1E40AF", fontFace: "Arial" });
+      }
+      if (caseData.finalNotes) {
+        slideDisp.addText("Final Clinical Notes", { x: 0.5, y: 2.2, w: 9, h: 0.4, fontSize: 14, bold: true, color: darkColor, fontFace: "Arial" });
+        slideDisp.addText(caseData.finalNotes, { x: 0.5, y: 2.6, w: 9, h: 3, fontSize: 11, color: darkColor, fontFace: "Arial", valign: "top" });
+      }
+    }
+
     const slideEnd = pptx.addSlide();
     slideEnd.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: "100%", h: "100%", fill: { color: darkColor } });
     slideEnd.addShape(pptx.ShapeType.rect, { x: 0, y: 2.3, w: "100%", h: 1, fill: { color: primaryColor } });

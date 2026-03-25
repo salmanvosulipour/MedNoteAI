@@ -25,6 +25,9 @@ export interface Case {
   dischargeMedications?: Array<{ name: string; dose: string; frequency: string; duration: string; instructions: string }>;
   patientEmail?: string;
   emailStatus?: { sentAt: string; recipient: string; status: string; messageId?: string; error?: string };
+  disposition?: string;
+  finalNotes?: string;
+  dischargeSummary?: string;
 }
 
 export async function fetchCases(userId: string = "demo-user"): Promise<Case[]> {
