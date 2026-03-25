@@ -281,13 +281,25 @@ export default function CaseDetailPage() {
     return summary;
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     const summary = generateCaseSummaryText();
+    const filename = `case-${caseData?.patientName?.replace(/\s+/g, "-") || id}-summary.txt`;
     const blob = new Blob([summary], { type: "text/plain" });
+    const file = new File([blob], filename, { type: "text/plain" });
+
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: filename });
+        return;
+      } catch {
+        // fall through to anchor download
+      }
+    }
+
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `case-${caseData?.patientName?.replace(/\s+/g, "-") || id}-summary.txt`;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

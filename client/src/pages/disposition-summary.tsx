@@ -105,15 +105,27 @@ export default function DispositionSummaryPage() {
     return summary;
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     const summary = generateSummaryText();
+    const firstName = caseData?.patientName?.split(' ')[0] || "case";
+    const mrn = caseData?.mrn || id.slice(0, 8);
+    const filename = `disposition-${firstName}-${mrn}.txt`;
     const blob = new Blob([summary], { type: "text/plain" });
+    const file = new File([blob], filename, { type: "text/plain" });
+
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: filename });
+        return;
+      } catch {
+        // fall through to anchor download
+      }
+    }
+
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    const firstName = caseData?.patientName?.split(' ')[0] || "case";
-    const mrn = caseData?.mrn || id.slice(0, 8);
-    a.download = `disposition-${firstName}-${mrn}.txt`;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
