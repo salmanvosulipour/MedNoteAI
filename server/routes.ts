@@ -142,8 +142,9 @@ export async function registerRoutes(
       return next();
     }
 
-    // 3. Bearer token (email/password legacy fallback)
+    // 3. Bearer token (email/password + Apple Sign In on Capacitor)
     const authHeader = req.headers.authorization;
+    console.log(`[auth] ${req.method} ${req.path} — session:${!!req.session?.userId} bearer:${authHeader ? authHeader.slice(0,16)+'...' : 'none'}`);
     if (authHeader?.startsWith("Bearer ")) {
       const token = authHeader.slice(7);
       try {
@@ -152,7 +153,10 @@ export async function registerRoutes(
           req.authUserId = user.id;
           return next();
         }
-      } catch {}
+        console.log(`[auth] Bearer token not found in DB`);
+      } catch (e) {
+        console.log(`[auth] Bearer token lookup error:`, e);
+      }
     }
 
     return res.status(401).json({ message: "Unauthorized" });
