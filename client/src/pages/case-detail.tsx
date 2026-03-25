@@ -228,6 +228,21 @@ export default function CaseDetailPage() {
     return summary;
   };
 
+  const formatPhysicalExam = (raw: string | undefined): string => {
+    if (!raw) return "Not recorded";
+    try {
+      const obj = typeof raw === "string" ? JSON.parse(raw) : raw;
+      if (obj && typeof obj === "object" && !Array.isArray(obj)) {
+        return Object.entries(obj)
+          .map(([system, findings]) => `${system}: ${findings}`)
+          .join("\n");
+      }
+    } catch {
+      // not JSON — return as-is
+    }
+    return raw;
+  };
+
   const generateCaseSummaryText = () => {
     if (!caseData) return "";
     
@@ -249,7 +264,7 @@ export default function CaseDetailPage() {
       summary += "\n";
     }
     
-    summary += `PHYSICAL EXAM\n${"-".repeat(30)}\n${caseData.physicalExam || "Not recorded"}\n\n`;
+    summary += `PHYSICAL EXAM\n${"-".repeat(30)}\n${formatPhysicalExam(caseData.physicalExam)}\n\n`;
     
     if (caseData.differentialDiagnosis && caseData.differentialDiagnosis.length > 0) {
       summary += `DIFFERENTIAL DIAGNOSIS\n${"-".repeat(30)}\n`;
@@ -408,7 +423,7 @@ export default function CaseDetailPage() {
     const slide4 = pptx.addSlide();
     slide4.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: "100%", h: 1.2, fill: { color: accentColor } });
     slide4.addText("PHYSICAL EXAMINATION", { x: 0.5, y: 0.35, w: 9, h: 0.5, fontSize: 24, bold: true, color: "FFFFFF", fontFace: "Arial" });
-    slide4.addText(caseData.physicalExam || "Not recorded", { x: 0.5, y: 1.5, w: 9, h: 4, fontSize: 12, color: darkColor, fontFace: "Arial", valign: "top" });
+    slide4.addText(formatPhysicalExam(caseData.physicalExam), { x: 0.5, y: 1.5, w: 9, h: 4, fontSize: 12, color: darkColor, fontFace: "Arial", valign: "top" });
     
     if (caseData.differentialDiagnosis && caseData.differentialDiagnosis.length > 0) {
       const slide5 = pptx.addSlide();
