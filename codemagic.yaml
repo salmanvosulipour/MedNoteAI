@@ -46,6 +46,17 @@ workflows:
           # Sync web assets + register all Capacitor plugins (including Apple Sign In)
           npx cap sync ios
 
+          # cap sync may overwrite capacitor.config.json inside the iOS bundle — patch it back
+          # Capacitor 8 reads packageClassList from this file to register plugins via NSClassFromString
+          node -e "
+            const fs = require('fs');
+            const cfgPath = 'ios/App/App/capacitor.config.json';
+            const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+            cfg.packageClassList = ['SignInWithApple'];
+            fs.writeFileSync(cfgPath, JSON.stringify(cfg, null, 2));
+            console.log('Patched packageClassList:', cfg.packageClassList);
+          "
+
       - name: Register Apple Sign In plugin in AppDelegate
         script: |
           APPDELEGATE="ios/App/App/AppDelegate.swift"
