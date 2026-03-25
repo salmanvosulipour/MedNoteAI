@@ -40,8 +40,8 @@ export default function AuthPage() {
         const err = await res.json();
         throw new Error(err.message || "Sign in failed");
       }
-      const { user } = await res.json();
-      storeUser(user);
+      const { user, token } = await res.json();
+      storeUser({ ...user, token });
       window.location.href = "/home";
     } catch (err: any) {
       const cancelled = err?.message?.includes("1001") || err?.code === "1001";

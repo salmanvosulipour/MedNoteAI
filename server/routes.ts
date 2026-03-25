@@ -104,8 +104,13 @@ export async function registerRoutes(
         req.session.save((err: any) => (err ? reject(err) : resolve()))
       );
 
+      // Also generate a Bearer token — Capacitor/WKWebView loses session cookies
+      // so native iOS uses this token for all subsequent API calls
+      const token = crypto.randomBytes(32).toString("hex");
+      await storage.updateUser(user.id, { currentAuthToken: token });
+
       const { password: _, currentAuthToken: __, ...safeUser } = user as any;
-      return res.json({ user: safeUser });
+      return res.json({ user: safeUser, token });
     } catch (error: any) {
       console.error("Apple auth error:", error);
       return res.status(401).json({ message: "Apple Sign In failed. Please try again." });

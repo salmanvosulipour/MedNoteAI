@@ -35,11 +35,17 @@ export function useAuth() {
 
   const fetchUser = useCallback(async () => {
     try {
-      const res = await fetch("/api/auth/user", { credentials: "include" });
+      const stored = getStoredUser();
+      const token = (stored as any)?.token;
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const res = await fetch("/api/auth/user", { credentials: "include", headers });
       if (res.ok) {
         const userData = await res.json();
-        storeUser(userData);
-        setUser(userData);
+        // Preserve the token when refreshing user data
+        storeUser({ ...userData, token: token || userData.token });
+        setUser({ ...userData, token: token || userData.token });
       } else {
         clearStoredUser();
         setUser(null);
