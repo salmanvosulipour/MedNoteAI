@@ -46,6 +46,17 @@ workflows:
           # Sync web assets + register all Capacitor plugins (including Apple Sign In)
           npx cap sync ios
 
+      - name: Register Apple Sign In plugin in AppDelegate
+        script: |
+          APPDELEGATE="ios/App/App/AppDelegate.swift"
+          if ! grep -q "CapacitorCommunityAppleSignIn" "$APPDELEGATE"; then
+            sed -i '' 's/^import Capacitor$/import Capacitor\nimport CapacitorCommunityAppleSignIn/' "$APPDELEGATE"
+            echo "Injected CapacitorCommunityAppleSignIn import into AppDelegate.swift"
+          else
+            echo "CapacitorCommunityAppleSignIn already imported"
+          fi
+          cat "$APPDELEGATE" | head -5
+
       - name: Install CocoaPods dependencies
         script: |
           cd ios/App
