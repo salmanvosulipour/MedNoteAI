@@ -199,7 +199,7 @@ export default function CaseDetailPage() {
     
     // Treatment Plan
     if (caseData.plan) {
-      summary += "TREATMENT:\n" + caseData.plan + "\n\n";
+      summary += "TREATMENT:\n" + formatField(caseData.plan) + "\n\n";
     }
     
     // Medications
@@ -214,18 +214,24 @@ export default function CaseDetailPage() {
     
     // Patient Education
     if (patientEducation) {
-      summary += "PATIENT EDUCATION:\n" + patientEducation + "\n\n";
+      summary += "PATIENT EDUCATION:\n" + formatField(patientEducation) + "\n\n";
     }
     
     // Red Flags
     if (caseData.treatmentRedFlags) {
-      summary += "WARNING SIGNS - RETURN IF:\n" + caseData.treatmentRedFlags + "\n\n";
+      summary += "WARNING SIGNS - RETURN IF:\n" + formatField(caseData.treatmentRedFlags) + "\n\n";
     }
     
     // Follow-up
     summary += "FOLLOW-UP:\nFollow up with your primary care physician within 3-5 days or sooner if symptoms worsen.\n";
     
     return summary;
+  };
+
+  const formatField = (raw: string | undefined): string => {
+    if (!raw) return "Not recorded";
+    const lines = parseAIContent(raw);
+    return lines.length > 0 ? lines.join("\n") : raw;
   };
 
   const formatPhysicalExam = (raw: string | undefined): string => {
@@ -274,7 +280,7 @@ export default function CaseDetailPage() {
       summary += "\n";
     }
     
-    summary += `PLAN\n${"-".repeat(30)}\n${caseData.plan || "Not recorded"}\n\n`;
+    summary += `PLAN\n${"-".repeat(30)}\n${formatField(caseData.plan)}\n\n`;
     
     if (medications.length > 0) {
       summary += `MEDICATIONS\n${"-".repeat(30)}\n`;
@@ -286,11 +292,11 @@ export default function CaseDetailPage() {
     }
     
     if (patientEducation) {
-      summary += `PATIENT EDUCATION\n${"-".repeat(30)}\n${patientEducation}\n\n`;
+      summary += `PATIENT EDUCATION\n${"-".repeat(30)}\n${formatField(patientEducation)}\n\n`;
     }
     
     if (caseData.treatmentRedFlags) {
-      summary += `WARNING SIGNS (RED FLAGS)\n${"-".repeat(30)}\n${caseData.treatmentRedFlags}\n\n`;
+      summary += `WARNING SIGNS (RED FLAGS)\n${"-".repeat(30)}\n${formatField(caseData.treatmentRedFlags)}\n\n`;
     }
     
     return summary;
@@ -442,7 +448,7 @@ export default function CaseDetailPage() {
     const slide6 = pptx.addSlide();
     slide6.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: "100%", h: 1.2, fill: { color: "059669" } });
     slide6.addText("TREATMENT PLAN", { x: 0.5, y: 0.35, w: 9, h: 0.5, fontSize: 24, bold: true, color: "FFFFFF", fontFace: "Arial" });
-    slide6.addText(caseData.plan || "Not recorded", { x: 0.5, y: 1.5, w: 9, h: 2.5, fontSize: 12, color: darkColor, fontFace: "Arial", valign: "top" });
+    slide6.addText(formatField(caseData.plan), { x: 0.5, y: 1.5, w: 9, h: 2.5, fontSize: 12, color: darkColor, fontFace: "Arial", valign: "top" });
     
     if (medications.length > 0) {
       slide6.addText("Medications", { x: 0.5, y: 4.2, w: 9, h: 0.4, fontSize: 14, bold: true, color: "059669", fontFace: "Arial" });
@@ -458,13 +464,13 @@ export default function CaseDetailPage() {
       
       if (patientEducation) {
         slide7.addText("Patient Education", { x: 0.5, y: 1.5, w: 9, h: 0.4, fontSize: 14, bold: true, color: "7C3AED", fontFace: "Arial" });
-        slide7.addText(patientEducation, { x: 0.5, y: 1.9, w: 9, h: 1.5, fontSize: 11, color: darkColor, fontFace: "Arial", valign: "top" });
+        slide7.addText(formatField(patientEducation), { x: 0.5, y: 1.9, w: 9, h: 1.5, fontSize: 11, color: darkColor, fontFace: "Arial", valign: "top" });
       }
       
       if (caseData.treatmentRedFlags) {
         slide7.addShape(pptx.ShapeType.rect, { x: 0.5, y: 3.6, w: 9, h: 1.8, fill: { color: "FEF2F2" }, line: { color: "DC2626", pt: 2 } });
         slide7.addText("Warning Signs (Red Flags)", { x: 0.7, y: 3.7, w: 8.6, h: 0.4, fontSize: 14, bold: true, color: "DC2626", fontFace: "Arial" });
-        slide7.addText(caseData.treatmentRedFlags, { x: 0.7, y: 4.1, w: 8.6, h: 1.2, fontSize: 10, color: darkColor, fontFace: "Arial", valign: "top" });
+        slide7.addText(formatField(caseData.treatmentRedFlags), { x: 0.7, y: 4.1, w: 8.6, h: 1.2, fontSize: 10, color: darkColor, fontFace: "Arial", valign: "top" });
       }
     }
     

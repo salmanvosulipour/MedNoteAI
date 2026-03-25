@@ -6,6 +6,7 @@ import { Link, useRoute } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import { fetchCase, type Case } from "@/lib/api";
+import { parseAIContent } from "@/components/EditableSection";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 
@@ -48,6 +49,12 @@ export default function DispositionSummaryPage() {
     return colors[value] || 'bg-gray-100 text-gray-700';
   };
 
+  const formatField = (raw: string | undefined): string => {
+    if (!raw) return "Not recorded";
+    const lines = parseAIContent(raw);
+    return lines.length > 0 ? lines.join("\n") : raw;
+  };
+
   const generateSummaryText = () => {
     if (!caseData) return "";
     
@@ -77,7 +84,7 @@ export default function DispositionSummaryPage() {
     }
     
     if (caseData.plan) {
-      summary += `TREATMENT PLAN:\n${"-".repeat(30)}\n${caseData.plan}\n\n`;
+      summary += `TREATMENT PLAN:\n${"-".repeat(30)}\n${formatField(caseData.plan)}\n\n`;
     }
     
     if (caseData.dischargeMedications && caseData.dischargeMedications.length > 0) {
@@ -90,11 +97,11 @@ export default function DispositionSummaryPage() {
     }
     
     if (caseData.patientEducation) {
-      summary += `PATIENT EDUCATION:\n${"-".repeat(30)}\n${caseData.patientEducation}\n\n`;
+      summary += `PATIENT EDUCATION:\n${"-".repeat(30)}\n${formatField(caseData.patientEducation)}\n\n`;
     }
     
     if (caseData.treatmentRedFlags) {
-      summary += `WARNING SIGNS - RETURN IF:\n${"-".repeat(30)}\n${caseData.treatmentRedFlags}\n\n`;
+      summary += `WARNING SIGNS - RETURN IF:\n${"-".repeat(30)}\n${formatField(caseData.treatmentRedFlags)}\n\n`;
     }
     
     summary += `FOLLOW-UP:\n${"-".repeat(30)}\nFollow up with your primary care physician within 3-5 days or sooner if symptoms worsen.\n\n`;
