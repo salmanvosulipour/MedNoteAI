@@ -56,6 +56,10 @@ workflows:
             fs.writeFileSync(cfgPath, JSON.stringify(cfg, null, 2));
             console.log('Patched packageClassList:', cfg.packageClassList);
           "
+          echo "=== capacitor.config.json ==="
+          cat ios/App/App/capacitor.config.json
+          echo "=== Podfile capacitor_pods section ==="
+          grep -A 10 "def capacitor_pods" ios/App/Podfile
 
       - name: Register Apple Sign In plugin in AppDelegate
         script: |
@@ -71,7 +75,9 @@ workflows:
       - name: Install CocoaPods dependencies
         script: |
           cd ios/App
-          pod install
+          # Force clean install so cached Pods never hide missing plugins
+          rm -rf Pods Podfile.lock
+          pod install --repo-update
 
       - name: Set up code signing
         script: xcode-project use-profiles
