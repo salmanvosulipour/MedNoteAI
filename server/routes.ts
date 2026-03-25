@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, registerAuthRoutes } from "./replit_integrations/auth";
-import { generateMedicalSummary, generateDiagnosticInterpretation } from "./services/openai";
+import { generateMedicalSummary, generateDiagnosticInterpretation, paraphraseDispositionNote } from "./services/openai";
 import { transcribeAudio } from "./services/gemini";
 import { sendCaseSummaryEmail } from "./services/resend";
 import { insertCaseSchema } from "@shared/schema";
@@ -351,6 +351,21 @@ export async function registerRoutes(
       console.error("Error generating summary:", error);
       await storage.updateCase(req.params.id, { status: "draft" });
       res.status(500).json({ error: "Failed to generate medical summary" });
+    }
+  });
+
+  // Paraphrase raw dictation into clean clinical note
+  app.post("/api/paraphrase", sessionAuth, async (req, res) => {
+    try {
+      const schema = z.object({ text: z.string().min(1) });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "text is required" });
+
+      const cleaned = await paraphraseDispositionNote(parsed.data.text);
+      res.json({ cleaned });
+    } catch (error) {
+      console.error("Error paraphrasing:", error);
+      res.status(500).json({ error: "Failed to paraphrase text" });
     }
   });
 

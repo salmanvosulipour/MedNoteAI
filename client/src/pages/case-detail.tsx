@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { fetchCase, updateCase, invalidateCase, type Case } from "@/lib/api";
+import { fetchCase, updateCase, invalidateCase, paraphraseNote, type Case } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 
@@ -63,6 +63,7 @@ export default function CaseDetailPage() {
   const [medDialogOpen, setMedDialogOpen] = useState(false);
   const [studyDialogOpen, setStudyDialogOpen] = useState(false);
   const [rxPreviewOpen, setRxPreviewOpen] = useState(false);
+  const [isParaphrasing, setIsParaphrasing] = useState(false);
   const [newMed, setNewMed] = useState<Medication>({ name: "", dose: "", frequency: "", duration: "", instructions: "" });
   const [newStudy, setNewStudy] = useState<DiagnosticStudy>({ type: "", interpretation: "", aiAssisted: false });
 
@@ -1140,13 +1141,28 @@ export default function CaseDetailPage() {
                   </div>
                   <DialogFooter>
                     <Button 
-                      onClick={() => {
+                      onClick={async () => {
+                        if (!selectedDisposition) return;
+                        let cleanedNotes = dispositionText;
+
+                        if (dispositionText.trim()) {
+                          setIsParaphrasing(true);
+                          try {
+                            cleanedNotes = await paraphraseNote(dispositionText);
+                            setDispositionText(cleanedNotes);
+                          } catch {
+                            // fall back to raw text if paraphrase fails
+                          } finally {
+                            setIsParaphrasing(false);
+                          }
+                        }
+
                         const dischargeSummary = selectedDisposition === 'discharged' 
-                          ? generateDischargeSummary(selectedDisposition, dispositionText)
+                          ? generateDischargeSummary(selectedDisposition, cleanedNotes)
                           : undefined;
                         
                         updateMutation.mutate({ 
-                          finalNotes: dispositionText,
+                          finalNotes: cleanedNotes,
                           disposition: selectedDisposition,
                           dischargeSummary: dischargeSummary,
                           status: 'completed'
@@ -1159,11 +1175,20 @@ export default function CaseDetailPage() {
                             : "Final diagnosis and disposition saved.",
                         });
                       }}
-                      disabled={!selectedDisposition}
+                      disabled={!selectedDisposition || isParaphrasing}
                       data-testid="button-save-disposition"
                     >
-                      <CheckCircle className="w-4 h-4 mr-2" />
-                      {caseData.disposition ? "Update" : "Finalize Case"}
+                      {isParaphrasing ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Cleaning up notes...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          {caseData.disposition ? "Update" : "Finalize Case"}
+                        </>
+                      )}
                     </Button>
                   </DialogFooter>
                 </DialogContent>

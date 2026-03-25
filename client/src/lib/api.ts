@@ -129,6 +129,18 @@ export async function sendEmailSummary(caseId: string, patientEmail: string, phy
   return res.json();
 }
 
+export async function paraphraseNote(text: string): Promise<string> {
+  const res = await fetch(`${API_BASE}/paraphrase`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ text }),
+  });
+  if (!res.ok) throw new Error("Failed to paraphrase");
+  const data = await res.json();
+  return data.cleaned as string;
+}
+
 export function invalidateCases() {
   queryClient.invalidateQueries({ queryKey: ["cases"] });
 }
