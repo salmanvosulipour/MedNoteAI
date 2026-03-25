@@ -310,120 +310,133 @@ export default function CaseDetailPage() {
       ? medications.map((m, i) => `
           <div class="rx-item">
             <div class="rx-symbol">℞</div>
-            <div class="rx-details">
-              <div class="drug-name">${i + 1}. ${m.name} <span class="dose">${m.dose}</span></div>
-              <div class="drug-info">Sig: Take ${m.frequency}${m.duration ? " for " + m.duration : ""}</div>
-              ${m.instructions ? `<div class="drug-info instructions">${m.instructions}</div>` : ""}
+            <div style="flex:1">
+              <div class="drug-name">${i + 1}. ${m.name} <span class="drug-dose">${m.dose}</span></div>
+              <div class="drug-sig">Sig: Take ${m.frequency}${m.duration ? " for " + m.duration : ""}</div>
+              ${m.instructions ? `<div class="drug-note">${m.instructions}</div>` : ""}
             </div>
           </div>`).join("")
-      : "<p class='no-meds'>No medications prescribed</p>";
+      : "<p class='no-content'>No medications prescribed</p>";
 
     const planHtml = planLines.length > 0
-      ? `<ol class="plan-list">${planLines.map(l => `<li>${l.replace(/^\d+[\.\)]\s*/, "")}</li>`).join("")}</ol>`
-      : "<p class='no-meds'>No treatment plan recorded</p>";
+      ? `<ol class="rx-plan-list">${planLines.map(l => `<li>${l.replace(/^\d+[\.\)]\s*/, "")}</li>`).join("")}</ol>`
+      : "<p class='no-content'>No treatment plan recorded</p>";
 
-    const html = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8"/>
-  <title>Prescription - ${caseData.patientName}</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: "Georgia", serif; font-size: 13px; color: #1a1a1a; background: #fff; padding: 40px; max-width: 680px; margin: 0 auto; }
-    .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #0d9488; padding-bottom: 16px; margin-bottom: 20px; }
-    .clinic-name { font-size: 22px; font-weight: bold; color: #0d9488; letter-spacing: -0.5px; }
-    .clinic-sub { font-size: 11px; color: #64748b; margin-top: 2px; }
-    .date-block { text-align: right; font-size: 12px; color: #475569; }
-    .date-label { font-weight: bold; color: #1a1a1a; font-size: 13px; }
-    .patient-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; margin-bottom: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-    .patient-field { font-size: 12px; }
-    .patient-label { color: #64748b; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
-    .patient-value { font-weight: bold; font-size: 13px; margin-top: 1px; }
-    .section-title { font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #0d9488; border-bottom: 1px solid #ccfbf1; padding-bottom: 4px; margin-bottom: 12px; }
-    .section { margin-bottom: 22px; }
-    .rx-item { display: flex; gap: 12px; margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px dashed #e2e8f0; }
-    .rx-item:last-child { border-bottom: none; }
-    .rx-symbol { font-size: 26px; color: #0d9488; font-weight: bold; flex-shrink: 0; line-height: 1; }
-    .rx-details { flex: 1; }
-    .drug-name { font-size: 14px; font-weight: bold; color: #1e293b; }
-    .dose { font-weight: normal; color: #475569; }
-    .drug-info { font-size: 12px; color: #475569; margin-top: 3px; }
-    .instructions { font-style: italic; }
-    .no-meds { color: #94a3b8; font-style: italic; font-size: 12px; }
-    .plan-list { padding-left: 18px; }
-    .plan-list li { font-size: 12px; color: #334155; margin-bottom: 6px; line-height: 1.5; }
-    .diagnosis { font-size: 13px; color: #334155; line-height: 1.6; background: #f0fdf4; border-left: 3px solid #0d9488; padding: 10px 14px; border-radius: 0 6px 6px 0; }
-    .footer { margin-top: 36px; display: flex; justify-content: space-between; align-items: flex-end; }
-    .signature-block { text-align: center; }
-    .sig-line { width: 200px; border-bottom: 2px solid #1a1a1a; margin-bottom: 6px; height: 40px; }
-    .sig-label { font-size: 11px; color: #64748b; }
-    .watermark { font-size: 10px; color: #cbd5e1; text-align: right; }
-    @media print { body { padding: 20px; } }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <div>
-      <div class="clinic-name">MedNote AI</div>
-      <div class="clinic-sub">AI-Assisted Medical Documentation</div>
-    </div>
-    <div class="date-block">
-      <div class="date-label">${date}</div>
-      <div>${caseData.mrn ? "MRN: " + caseData.mrn : ""}</div>
-    </div>
-  </div>
+    // Inject prescription overlay directly into the page — works in WKWebView/iOS (no window.open needed)
+    const existing = document.getElementById("rx-print-overlay");
+    if (existing) existing.remove();
+    const existingStyle = document.getElementById("rx-print-style");
+    if (existingStyle) existingStyle.remove();
 
-  <div class="patient-box">
-    <div class="patient-field">
-      <div class="patient-label">Patient Name</div>
-      <div class="patient-value">${caseData.patientName}</div>
-    </div>
-    <div class="patient-field">
-      <div class="patient-label">Age / Gender</div>
-      <div class="patient-value">${caseData.age} yrs / ${caseData.gender}</div>
-    </div>
-    <div class="patient-field" style="grid-column: span 2;">
-      <div class="patient-label">Chief Complaint</div>
-      <div class="patient-value" style="font-weight: normal;">${caseData.chiefComplaint || "—"}</div>
-    </div>
-  </div>
+    const style = document.createElement("style");
+    style.id = "rx-print-style";
+    style.textContent = `
+      @media print {
+        body > *:not(#rx-print-overlay) { display: none !important; }
+        #rx-print-overlay {
+          display: block !important;
+          position: fixed; inset: 0; background: #fff;
+          font-family: Georgia, serif; font-size: 13px; color: #1a1a1a;
+          padding: 32px; max-width: 680px; margin: 0 auto; z-index: 99999;
+        }
+      }
+      #rx-print-overlay {
+        display: none;
+        font-family: Georgia, serif; font-size: 13px; color: #1a1a1a;
+      }
+      #rx-print-overlay .rx-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #0d9488; padding-bottom: 14px; margin-bottom: 18px; }
+      #rx-print-overlay .rx-clinic { font-size: 20px; font-weight: bold; color: #0d9488; }
+      #rx-print-overlay .rx-clinic-sub { font-size: 11px; color: #64748b; margin-top: 2px; }
+      #rx-print-overlay .rx-date { text-align: right; font-size: 12px; color: #475569; }
+      #rx-print-overlay .rx-date strong { display: block; font-size: 13px; color: #1a1a1a; }
+      #rx-print-overlay .rx-patient { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; margin-bottom: 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+      #rx-print-overlay .rx-field-label { font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+      #rx-print-overlay .rx-field-value { font-size: 13px; font-weight: bold; margin-top: 1px; }
+      #rx-print-overlay .rx-section { margin-bottom: 20px; }
+      #rx-print-overlay .rx-section-title { font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #0d9488; border-bottom: 1px solid #ccfbf1; padding-bottom: 4px; margin-bottom: 10px; }
+      #rx-print-overlay .rx-item { display: flex; gap: 10px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed #e2e8f0; }
+      #rx-print-overlay .rx-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+      #rx-print-overlay .rx-symbol { font-size: 24px; color: #0d9488; font-weight: bold; flex-shrink: 0; line-height: 1.1; }
+      #rx-print-overlay .drug-name { font-size: 14px; font-weight: bold; color: #1e293b; }
+      #rx-print-overlay .drug-dose { font-weight: normal; color: #475569; }
+      #rx-print-overlay .drug-sig { font-size: 12px; color: #475569; margin-top: 3px; }
+      #rx-print-overlay .drug-note { font-size: 12px; color: #475569; font-style: italic; }
+      #rx-print-overlay .rx-diagnosis { font-size: 12px; color: #334155; line-height: 1.6; background: #f0fdf4; border-left: 3px solid #0d9488; padding: 10px 14px; border-radius: 0 6px 6px 0; }
+      #rx-print-overlay .rx-plan-list { padding-left: 18px; }
+      #rx-print-overlay .rx-plan-list li { font-size: 12px; color: #334155; margin-bottom: 5px; line-height: 1.5; }
+      #rx-print-overlay .no-content { color: #94a3b8; font-style: italic; font-size: 12px; }
+      #rx-print-overlay .rx-footer { margin-top: 32px; display: flex; justify-content: space-between; align-items: flex-end; }
+      #rx-print-overlay .sig-block { text-align: center; }
+      #rx-print-overlay .sig-line { width: 190px; border-bottom: 2px solid #1a1a1a; margin-bottom: 5px; height: 36px; }
+      #rx-print-overlay .sig-label { font-size: 11px; color: #64748b; }
+      #rx-print-overlay .rx-watermark { font-size: 10px; color: #cbd5e1; }
+    `;
+    document.head.appendChild(style);
 
-  ${caseData.assessment ? `
-  <div class="section">
-    <div class="section-title">Diagnosis / Assessment</div>
-    <div class="diagnosis">${caseData.assessment}</div>
-  </div>` : ""}
+    const overlay = document.createElement("div");
+    overlay.id = "rx-print-overlay";
+    overlay.innerHTML = `
+      <div class="rx-header">
+        <div>
+          <div class="rx-clinic">MedNote AI</div>
+          <div class="rx-clinic-sub">AI-Assisted Medical Documentation</div>
+        </div>
+        <div class="rx-date">
+          <strong>${date}</strong>
+          ${caseData.mrn ? `<span>MRN: ${caseData.mrn}</span>` : ""}
+        </div>
+      </div>
 
-  <div class="section">
-    <div class="section-title">Medications Prescribed</div>
-    ${medsHtml}
-  </div>
+      <div class="rx-patient">
+        <div>
+          <div class="rx-field-label">Patient Name</div>
+          <div class="rx-field-value">${caseData.patientName}</div>
+        </div>
+        <div>
+          <div class="rx-field-label">Age / Gender</div>
+          <div class="rx-field-value">${caseData.age} yrs / ${caseData.gender}</div>
+        </div>
+        <div style="grid-column: span 2;">
+          <div class="rx-field-label">Chief Complaint</div>
+          <div class="rx-field-value" style="font-weight:normal;">${caseData.chiefComplaint || "—"}</div>
+        </div>
+      </div>
 
-  ${planLines.length > 0 ? `
-  <div class="section">
-    <div class="section-title">Treatment Plan</div>
-    ${planHtml}
-  </div>` : ""}
+      ${caseData.assessment ? `
+      <div class="rx-section">
+        <div class="rx-section-title">Diagnosis / Assessment</div>
+        <div class="rx-diagnosis">${caseData.assessment}</div>
+      </div>` : ""}
 
-  <div class="footer">
-    <div class="signature-block">
-      <div class="sig-line"></div>
-      <div class="sig-label">Physician Signature &amp; Stamp</div>
-    </div>
-    <div class="watermark">Generated by MedNote AI</div>
-  </div>
-</body>
-</html>`;
+      <div class="rx-section">
+        <div class="rx-section-title">Medications Prescribed</div>
+        ${medsHtml}
+      </div>
 
-    const win = window.open("", "_blank", "width=760,height=900");
-    if (!win) {
-      toast({ title: "Popup blocked", description: "Please allow popups to print prescriptions.", variant: "destructive" });
-      return;
-    }
-    win.document.write(html);
-    win.document.close();
-    win.focus();
-    setTimeout(() => { win.print(); }, 400);
+      ${planLines.length > 0 ? `
+      <div class="rx-section">
+        <div class="rx-section-title">Treatment Plan</div>
+        ${planHtml}
+      </div>` : ""}
+
+      <div class="rx-footer">
+        <div class="sig-block">
+          <div class="sig-line"></div>
+          <div class="sig-label">Physician Signature &amp; Stamp</div>
+        </div>
+        <div class="rx-watermark">Generated by MedNote AI</div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    const cleanup = () => {
+      overlay.remove();
+      style.remove();
+      window.removeEventListener("afterprint", cleanup);
+    };
+    window.addEventListener("afterprint", cleanup);
+
+    setTimeout(() => { window.print(); }, 100);
   };
 
   const handleExportPPT = async () => {
