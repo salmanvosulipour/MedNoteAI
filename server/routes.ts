@@ -130,7 +130,6 @@ export async function registerRoutes(
   // Auth middleware — supports Apple session, Replit session, or Bearer token
   const sessionAuth = async (req: any, res: any, next: any) => {
     const authHeader = req.headers.authorization;
-    console.log(`[auth] ${req.method} ${req.path} session:${req.session?.userId ?? 'none'} bearer:${authHeader ? authHeader.slice(7,23)+'...' : 'none'}`);
 
     // 1. Apple Sign In session (set by /api/auth/apple)
     if (req.session?.userId) {
@@ -154,9 +153,8 @@ export async function registerRoutes(
           req.authUserId = user.id;
           return next();
         }
-        console.log(`[auth] Bearer token not found in DB`);
       } catch (e) {
-        console.log(`[auth] Bearer token lookup error:`, e);
+        console.error(`[auth] Bearer token lookup error:`, e);
       }
     }
 
