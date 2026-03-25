@@ -1,0 +1,49 @@
+ VERSIONPLIST_PATH = App.app/version.plist
+    VERSION_INFO_BUILDER = builder
+    VERSION_INFO_FILE = App_vers.c
+    VERSION_INFO_STRING = "@(#)PROGRAM:App  PROJECT:App-1774432574"
+    WATCHOS_DEPLOYMENT_TARGET = 26.2
+    WORKSPACE_DIR = /Users/builder/clone/ios/App
+    WRAPPER_EXTENSION = app
+    WRAPPER_NAME = App.app
+    WRAPPER_SUFFIX = .app
+    WRAP_ASSET_PACKS_IN_SEPARATE_DIRECTORIES = NO
+    XCODE_APP_SUPPORT_DIR = /Applications/Xcode-26.2.app/Contents/Developer/Library/Xcode
+    XCODE_PRODUCT_BUILD_VERSION = 17C52
+    XCODE_VERSION_ACTUAL = 2620
+    XCODE_VERSION_MAJOR = 2600
+    XCODE_VERSION_MINOR = 2620
+    XPCSERVICES_FOLDER_PATH = App.app/XPCServices
+    XROS_DEPLOYMENT_TARGET = 26.2
+    YACC = yacc
+    _DISCOVER_COMMAND_LINE_LINKER_INPUTS = YES
+    _DISCOVER_COMMAND_LINE_LINKER_INPUTS_INCLUDE_WL = YES
+    _LD_MULTIARCH = YES
+    _WRAPPER_CONTENTS_DIR_SHALLOW_BUNDLE_NO = /Contents
+    _WRAPPER_PARENT_PATH_SHALLOW_BUNDLE_NO = /..
+    _WRAPPER_RESOURCES_DIR_SHALLOW_BUNDLE_NO = /Resources
+    __DIAGNOSE_DEPRECATED_ARCHS = YES
+    __IS_NOT_MACOS = YES
+    __IS_NOT_MACOS_macosx = NO
+    __IS_NOT_SIMULATOR = YES
+    __IS_NOT_SIMULATOR_simulator = NO
+    arch = undefined_arch
+    variant = normal
+
+[09:56:17] DEBUG > Completed "xcodebuild -workspace ios/App/App.xcworkspace -scheme App -showBuildSettings" with returncode 0 in 00:01
+[09:56:17] INFO  > Archive App.xcworkspace
+[09:56:17] DEBUG > Check for CoreSimulatorService health
+[09:56:17] DEBUG > Execute "xcrun simctl list devices"
+[09:56:44] DEBUG > Completed "xcrun simctl list devices" with returncode 0 in 00:26
+[09:56:44] DEBUG > CoreSimulatorService seems to be alright
+[09:56:44] INFO  > Execute "xcodebuild -workspace ios/App/App.xcworkspace -scheme App -archivePath /Users/builder/clone/build/ios/xcarchive/App_r6ezdib0.xcarchive archive COMPILER_INDEX_STORE_ENABLE=NO DEVELOPMENT_TEAM=8BCFM8V79Y 'CODE_SIGN_IDENTITY=Apple Distribution' CODE_SIGN_STYLE=Manual"
+
+[09:56:44] DEBUG > Execute "xcodebuild -workspace ios/App/App.xcworkspace -scheme App -archivePath /Users/builder/clone/build/ios/xcarchive/App_r6ezdib0.xcarchive archive COMPILER_INDEX_STORE_ENABLE=NO DEVELOPMENT_TEAM=8BCFM8V79Y 'CODE_SIGN_IDENTITY=Apple Distribution' CODE_SIGN_STYLE=Manual"
+[09:56:48] DEBUG > Completed "xcodebuild -workspace ios/App/App.xcworkspace -scheme App -archivePath /Users/builder/clone/build/ios/xcarchive/App_r6ezdib0.xcarchive archive COMPILER_INDEX_STORE_ENABLE=NO DEVELOPMENT_TEAM=8BCFM8V79Y 'CODE_SIGN_IDENTITY=Apple Distribution' CODE_SIGN_STYLE=Manual" with returncode 65 in 00:04
+    Run script build phase '[CP] Embed Pods Frameworks' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'App' from project 'App')
+    Run script build phase 'Set Build Number' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'App' from project 'App')
+[09:56:48] ERROR > Failed to archive ios/App/App.xcworkspace
+
+
+Build failed :|
+Step 10 script `Build and export IPA` exited with status code 65

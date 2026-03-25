@@ -77,7 +77,14 @@ workflows:
           pod install --repo-update
 
       - name: Set up code signing
-        script: xcode-project use-profiles
+        script: |
+          # use-profiles reads entitlements from project and fetches/creates a matching
+          # provisioning profile that includes Sign in with Apple
+          xcode-project use-profiles
+          echo "=== Installed provisioning profiles ==="
+          security cms -D -i ~/Library/MobileDevice/Provisioning\ Profiles/*.mobileprovision 2>/dev/null \
+            | plutil -extract Entitlements xml1 - -o - 2>/dev/null \
+            | grep -A1 "applesignin" || echo "Sign in with Apple not found in profile"
 
       - name: Increment build number
         script: |
