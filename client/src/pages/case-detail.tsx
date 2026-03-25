@@ -1,7 +1,7 @@
 import { MobileLayout } from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ChevronLeft, Share2, AlertTriangle, Pill, Plus, GraduationCap, Stethoscope, Activity, FlaskConical, FileImage, Loader2, CheckCircle, Check, Download, Printer, Presentation, TrendingUp, Mic, MicOff, ClipboardCheck, Pencil, RefreshCw, Brain, Heart, Zap, ShieldAlert } from "lucide-react";
+import { ChevronLeft, Share2, AlertTriangle, Pill, Plus, GraduationCap, Stethoscope, Activity, FlaskConical, FileImage, Loader2, CheckCircle, Check, Download, Printer, Presentation, TrendingUp, Mic, MicOff, ClipboardCheck, Pencil, RefreshCw, Brain, Heart, Zap, ShieldAlert, ScrollText } from "lucide-react";
 import { EditableSection, PhysicalExamDisplay, parseAIContent } from "@/components/EditableSection";
 import pptxgen from "pptxgenjs";
 import { Link, useRoute } from "wouter";
@@ -300,6 +300,132 @@ export default function CaseDetailPage() {
     window.print();
   };
 
+  const handlePrintPrescription = () => {
+    if (!caseData) return;
+
+    const date = format(new Date(), "MMMM d, yyyy");
+    const planLines = parseAIContent(caseData.plan || "");
+
+    const medsHtml = medications.length > 0
+      ? medications.map((m, i) => `
+          <div class="rx-item">
+            <div class="rx-symbol">℞</div>
+            <div class="rx-details">
+              <div class="drug-name">${i + 1}. ${m.name} <span class="dose">${m.dose}</span></div>
+              <div class="drug-info">Sig: Take ${m.frequency}${m.duration ? " for " + m.duration : ""}</div>
+              ${m.instructions ? `<div class="drug-info instructions">${m.instructions}</div>` : ""}
+            </div>
+          </div>`).join("")
+      : "<p class='no-meds'>No medications prescribed</p>";
+
+    const planHtml = planLines.length > 0
+      ? `<ol class="plan-list">${planLines.map(l => `<li>${l.replace(/^\d+[\.\)]\s*/, "")}</li>`).join("")}</ol>`
+      : "<p class='no-meds'>No treatment plan recorded</p>";
+
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Prescription - ${caseData.patientName}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: "Georgia", serif; font-size: 13px; color: #1a1a1a; background: #fff; padding: 40px; max-width: 680px; margin: 0 auto; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #0d9488; padding-bottom: 16px; margin-bottom: 20px; }
+    .clinic-name { font-size: 22px; font-weight: bold; color: #0d9488; letter-spacing: -0.5px; }
+    .clinic-sub { font-size: 11px; color: #64748b; margin-top: 2px; }
+    .date-block { text-align: right; font-size: 12px; color: #475569; }
+    .date-label { font-weight: bold; color: #1a1a1a; font-size: 13px; }
+    .patient-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; margin-bottom: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .patient-field { font-size: 12px; }
+    .patient-label { color: #64748b; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .patient-value { font-weight: bold; font-size: 13px; margin-top: 1px; }
+    .section-title { font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #0d9488; border-bottom: 1px solid #ccfbf1; padding-bottom: 4px; margin-bottom: 12px; }
+    .section { margin-bottom: 22px; }
+    .rx-item { display: flex; gap: 12px; margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px dashed #e2e8f0; }
+    .rx-item:last-child { border-bottom: none; }
+    .rx-symbol { font-size: 26px; color: #0d9488; font-weight: bold; flex-shrink: 0; line-height: 1; }
+    .rx-details { flex: 1; }
+    .drug-name { font-size: 14px; font-weight: bold; color: #1e293b; }
+    .dose { font-weight: normal; color: #475569; }
+    .drug-info { font-size: 12px; color: #475569; margin-top: 3px; }
+    .instructions { font-style: italic; }
+    .no-meds { color: #94a3b8; font-style: italic; font-size: 12px; }
+    .plan-list { padding-left: 18px; }
+    .plan-list li { font-size: 12px; color: #334155; margin-bottom: 6px; line-height: 1.5; }
+    .diagnosis { font-size: 13px; color: #334155; line-height: 1.6; background: #f0fdf4; border-left: 3px solid #0d9488; padding: 10px 14px; border-radius: 0 6px 6px 0; }
+    .footer { margin-top: 36px; display: flex; justify-content: space-between; align-items: flex-end; }
+    .signature-block { text-align: center; }
+    .sig-line { width: 200px; border-bottom: 2px solid #1a1a1a; margin-bottom: 6px; height: 40px; }
+    .sig-label { font-size: 11px; color: #64748b; }
+    .watermark { font-size: 10px; color: #cbd5e1; text-align: right; }
+    @media print { body { padding: 20px; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div class="clinic-name">MedNote AI</div>
+      <div class="clinic-sub">AI-Assisted Medical Documentation</div>
+    </div>
+    <div class="date-block">
+      <div class="date-label">${date}</div>
+      <div>${caseData.mrn ? "MRN: " + caseData.mrn : ""}</div>
+    </div>
+  </div>
+
+  <div class="patient-box">
+    <div class="patient-field">
+      <div class="patient-label">Patient Name</div>
+      <div class="patient-value">${caseData.patientName}</div>
+    </div>
+    <div class="patient-field">
+      <div class="patient-label">Age / Gender</div>
+      <div class="patient-value">${caseData.age} yrs / ${caseData.gender}</div>
+    </div>
+    <div class="patient-field" style="grid-column: span 2;">
+      <div class="patient-label">Chief Complaint</div>
+      <div class="patient-value" style="font-weight: normal;">${caseData.chiefComplaint || "—"}</div>
+    </div>
+  </div>
+
+  ${caseData.assessment ? `
+  <div class="section">
+    <div class="section-title">Diagnosis / Assessment</div>
+    <div class="diagnosis">${caseData.assessment}</div>
+  </div>` : ""}
+
+  <div class="section">
+    <div class="section-title">Medications Prescribed</div>
+    ${medsHtml}
+  </div>
+
+  ${planLines.length > 0 ? `
+  <div class="section">
+    <div class="section-title">Treatment Plan</div>
+    ${planHtml}
+  </div>` : ""}
+
+  <div class="footer">
+    <div class="signature-block">
+      <div class="sig-line"></div>
+      <div class="sig-label">Physician Signature &amp; Stamp</div>
+    </div>
+    <div class="watermark">Generated by MedNote AI</div>
+  </div>
+</body>
+</html>`;
+
+    const win = window.open("", "_blank", "width=760,height=900");
+    if (!win) {
+      toast({ title: "Popup blocked", description: "Please allow popups to print prescriptions.", variant: "destructive" });
+      return;
+    }
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); }, 400);
+  };
+
   const handleExportPPT = async () => {
     if (!caseData) return;
     
@@ -496,6 +622,9 @@ export default function CaseDetailPage() {
         </Link>
         <span className="font-semibold text-sm">Case #{id.slice(0, 8)}</span>
         <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={handlePrintPrescription} data-testid="button-print-rx" title="Print Prescription">
+            <ScrollText className="w-4 h-4" />
+          </Button>
           <Button variant="ghost" size="icon" className="h-9 w-9" onClick={handleExportPPT} data-testid="button-export-ppt" title="Export as PowerPoint">
             <Presentation className="w-4 h-4" />
           </Button>
