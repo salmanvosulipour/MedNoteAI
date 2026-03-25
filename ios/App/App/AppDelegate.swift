@@ -8,7 +8,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        // Force CapacitorCommunityAppleSignIn framework to load before Capacitor bridge
+        // initializes, so NSClassFromString("SignInWithApple") succeeds in registerPlugins()
+        _ = SignInWithApple.self
         return true
     }
 

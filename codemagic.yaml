@@ -24,39 +24,36 @@ workflows:
 
       - name: Sync web assets to iOS
         script: |
-          # Write root capacitor config so npx cap sync knows where web assets are
+          # Manually copy web assets — avoids npx cap sync overwriting Podfile / capacitor.config.json
+          mkdir -p ios/App/App/public
+          cp -r dist/public/. ios/App/App/public/
+
+          # Ensure capacitor.config.json inside iOS bundle has the correct packageClassList
+          # Capacitor 8 reads this to register plugins via NSClassFromString
           node -e "
             const fs = require('fs');
+            const cfgPath = 'ios/App/App/capacitor.config.json';
             const cfg = {
               appId: 'com.mednote.ai',
               appName: 'MedNote AI',
               webDir: 'dist/public',
               server: { url: 'https://098b918f-8c03-405d-b6f6-d89ed3290933-00-3q3amhlze1ape.kirk.replit.dev', cleartext: false },
-              ios: { contentInset: 'automatic' }
+              ios: { contentInset: 'automatic' },
+              packageClassList: ['SignInWithApple']
             };
-            fs.writeFileSync('capacitor.config.json', JSON.stringify(cfg, null, 2));
+            fs.writeFileSync(cfgPath, JSON.stringify(cfg, null, 2));
+            console.log('capacitor.config.json written:', JSON.stringify(cfg));
           "
-          # Create config.xml required by Xcode build if not present
+
+          # Ensure config.xml exists (required by Xcode build)
           node -e "
             const fs = require('fs');
             if (!fs.existsSync('ios/App/App/config.xml')) {
               fs.writeFileSync('ios/App/App/config.xml', '<?xml version=\'1.0\' encoding=\'utf-8\'?>\n<widget version=\"1.0.0\" xmlns=\"http://www.w3.org/ns/widgets\" xmlns:cdv=\"http://cordova.apache.org/ns/1.0\">\n  <access origin=\"*\" />\n</widget>\n');
             }
           "
-          # Sync web assets + register all Capacitor plugins (including Apple Sign In)
-          npx cap sync ios
 
-          # cap sync may overwrite capacitor.config.json inside the iOS bundle — patch it back
-          # Capacitor 8 reads packageClassList from this file to register plugins via NSClassFromString
-          node -e "
-            const fs = require('fs');
-            const cfgPath = 'ios/App/App/capacitor.config.json';
-            const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
-            cfg.packageClassList = ['SignInWithApple'];
-            fs.writeFileSync(cfgPath, JSON.stringify(cfg, null, 2));
-            console.log('Patched packageClassList:', cfg.packageClassList);
-          "
-          echo "=== capacitor.config.json ==="
+          echo "=== capacitor.config.json (final) ==="
           cat ios/App/App/capacitor.config.json
           echo "=== Podfile capacitor_pods section ==="
           grep -A 10 "def capacitor_pods" ios/App/Podfile
