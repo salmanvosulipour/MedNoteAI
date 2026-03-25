@@ -71,7 +71,9 @@ Key database tables:
 - **connect-pg-simple**: PostgreSQL session store for Express sessions
 
 ### Payment Processing
-- **Paddle**: Subscription billing ($15/month or $99/year) with 1 free token for new users
+- **Apple IAP**: Subscription billing ($15/month or $99/year) handled entirely through the App Store
+- **RevenueCat**: Webhook endpoint at `/api/webhooks/revenuecat` ready to receive subscription events and update user status
+- New users get 1 free case token; after that a Pro subscription is required
 
 ### Authentication
 - **Replit Auth**: OAuth-based authentication supporting Sign in with Apple (required for iOS App Store)

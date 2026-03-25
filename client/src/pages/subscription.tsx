@@ -1,86 +1,23 @@
 import { MobileLayout } from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
-import { Check, Star, X, Loader2, CreditCard, CheckCircle, Zap, Shield, Globe, Headphones } from "lucide-react";
-import { useState, useEffect, useCallback } from "react";
+import { Check, Star, X, Loader2, CheckCircle, Zap, Shield, Globe, Headphones, CreditCard, Apple } from "lucide-react";
+import { useState } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { useToast } from "@/hooks/use-toast";
-
-declare global {
-  interface Window {
-    Paddle?: {
-      Initialize: (options: { token: string; environment?: string }) => void;
-      Checkout: {
-        open: (options: {
-          items: Array<{ priceId: string; quantity: number }>;
-          customer?: { email: string };
-          customData?: Record<string, string>;
-          settings?: { successUrl?: string };
-        }) => void;
-      };
-    };
-  }
-}
-
-const PRICE_IDS = {
-  monthly: import.meta.env.VITE_PADDLE_MONTHLY_PRICE_ID || "",
-  yearly: import.meta.env.VITE_PADDLE_YEARLY_PRICE_ID || "",
-};
-const PADDLE_CLIENT_TOKEN = import.meta.env.VITE_PADDLE_CLIENT_TOKEN || "";
-const PADDLE_ENVIRONMENT = import.meta.env.VITE_PADDLE_ENVIRONMENT || "sandbox";
+import { useQuery } from "@tanstack/react-query";
 
 const features = [
   { icon: Zap, label: "Unlimited AI Scribing", desc: "No caps on recordings" },
   { icon: Globe, label: "Multilingual Transcription", desc: "30+ languages supported" },
   { icon: Shield, label: "HIPAA Compliant", desc: "Encrypted & secure" },
-  { icon: CreditCard, label: "Export to PDF & PPTX", desc: "Shareable notes instantly" },
+  { icon: CreditCard, label: "Export to PPTX & Text", desc: "Shareable notes instantly" },
   { icon: Headphones, label: "Priority Support", desc: "Dedicated physician support" },
-  { icon: Check, label: "Cloud Sync", desc: "iOS & Android included" },
+  { icon: Check, label: "Cloud Sync", desc: "iOS & web included" },
 ];
 
 export default function SubscriptionPage() {
   const [isYearly, setIsYearly] = useState(true);
-  const [paddleReady, setPaddleReady] = useState(false);
   const [, setLocation] = useLocation();
-  const { toast } = useToast();
-
-  const searchParams = new URLSearchParams(window.location.search);
-  const success = searchParams.get("success");
-  const canceled = searchParams.get("canceled");
-
-  useEffect(() => {
-    if (success) {
-      toast({ title: "Welcome to Pro!", description: "Your subscription is now active. Enjoy unlimited AI scribing!" });
-      window.history.replaceState({}, "", "/subscription");
-    }
-    if (canceled) {
-      toast({ title: "Checkout canceled", description: "No charges were made. You can try again anytime.", variant: "destructive" });
-      window.history.replaceState({}, "", "/subscription");
-    }
-  }, [success, canceled]);
-
-  useEffect(() => {
-    if (!PADDLE_CLIENT_TOKEN) return;
-
-    if (window.Paddle) {
-      window.Paddle.Initialize({ token: PADDLE_CLIENT_TOKEN, environment: PADDLE_ENVIRONMENT });
-      setPaddleReady(true);
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.src = "https://cdn.paddle.com/paddle/v2/paddle.js";
-    script.async = true;
-    script.onload = () => {
-      if (window.Paddle) {
-        window.Paddle.Initialize({ token: PADDLE_CLIENT_TOKEN, environment: PADDLE_ENVIRONMENT });
-        setPaddleReady(true);
-      }
-    };
-    document.body.appendChild(script);
-    return () => { if (script.parentNode) script.parentNode.removeChild(script); };
-  }, []);
 
   const { data: billingStatus, isLoading } = useQuery({
     queryKey: ["/api/billing/status"],
@@ -99,75 +36,6 @@ export default function SubscriptionPage() {
     retry: false,
   });
 
-  const checkoutMutation = useMutation({
-    mutationFn: async (priceId: string) => {
-      const authToken = localStorage.getItem("authToken");
-      const res = await fetch("/api/billing/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) },
-        body: JSON.stringify({ priceId }),
-        credentials: "include",
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        if (res.status === 401) throw new Error("Please log in again to continue.");
-        throw new Error(data.error || "Failed to start checkout");
-      }
-      return res.json();
-    },
-    onSuccess: (data) => {
-      if (!window.Paddle) {
-        toast({ title: "Error", description: "Payment system not ready. Please refresh.", variant: "destructive" });
-        return;
-      }
-      window.Paddle.Checkout.open({
-        items: [{ priceId: data.priceId, quantity: 1 }],
-        customer: data.email ? { email: data.email } : undefined,
-        customData: { userId: data.userId },
-        settings: { successUrl: `${window.location.origin}/subscription?success=true` },
-      });
-    },
-    onError: (error: Error) => {
-      toast({ title: "Error", description: error.message || "Failed to start checkout.", variant: "destructive" });
-    },
-  });
-
-  const portalMutation = useMutation({
-    mutationFn: async () => {
-      const authToken = localStorage.getItem("authToken");
-      const res = await fetch("/api/billing/portal", {
-        method: "POST",
-        credentials: "include",
-        headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Failed to open billing portal");
-      }
-      return res.json();
-    },
-    onSuccess: (data) => { if (data.url) window.open(data.url, "_blank", "noopener,noreferrer"); },
-    onError: (error: Error) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    },
-  });
-
-  const handleSubscribe = useCallback(() => {
-    const priceId = isYearly ? PRICE_IDS.yearly : PRICE_IDS.monthly;
-    if (!priceId || !PADDLE_CLIENT_TOKEN) {
-      toast({ title: "Coming Soon", description: "Payment is being configured. Please check back shortly.", variant: "destructive" });
-      return;
-    }
-    if (!paddleReady) {
-      toast({ title: "Please wait", description: "Payment system is loading. Try again in a moment." });
-      return;
-    }
-    checkoutMutation.mutate(priceId);
-  }, [isYearly, paddleReady, checkoutMutation]);
-
-  const isSubscribed = billingStatus?.isSubscribed;
-  const subscription = billingStatus?.subscription;
-
   if (isLoading) {
     return (
       <MobileLayout showNav={false} className="bg-[#080B14] text-white relative overflow-hidden">
@@ -178,7 +46,7 @@ export default function SubscriptionPage() {
     );
   }
 
-  if (isSubscribed) {
+  if (billingStatus?.isSubscribed) {
     return (
       <MobileLayout showNav={false} className="bg-[#080B14] text-white relative overflow-hidden">
         <div className="absolute inset-0 pointer-events-none">
@@ -229,15 +97,15 @@ export default function SubscriptionPage() {
                     <div>
                       <p className="font-semibold text-white text-sm">Pro Subscription</p>
                       <p className="text-xs text-emerald-400 font-medium capitalize">
-                        {subscription?.status === "trialing" ? "Trial Active" : "Active"}
+                        {billingStatus?.subscription?.status === "trialing" ? "Trial Active" : "Active"}
                       </p>
                     </div>
                   </div>
-                  {subscription?.currentPeriodEnd && (
+                  {billingStatus?.subscription?.currentPeriodEnd && (
                     <p className="text-xs text-slate-500 border-t border-white/8 pt-3">
-                      {subscription.cancelAtPeriodEnd
-                        ? `Cancels ${new Date(subscription.currentPeriodEnd * 1000).toLocaleDateString()}`
-                        : `Renews ${new Date(subscription.currentPeriodEnd * 1000).toLocaleDateString()}`}
+                      {billingStatus.subscription.cancelAtPeriodEnd
+                        ? `Cancels ${new Date(billingStatus.subscription.currentPeriodEnd * 1000).toLocaleDateString()}`
+                        : `Renews ${new Date(billingStatus.subscription.currentPeriodEnd * 1000).toLocaleDateString()}`}
                     </p>
                   )}
                 </div>
@@ -245,16 +113,17 @@ export default function SubscriptionPage() {
             </motion.div>
 
             <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="w-full max-w-sm">
+              <p className="text-xs text-center text-slate-500 mb-4">
+                To manage or cancel your subscription, go to iPhone Settings → Apple ID → Subscriptions.
+              </p>
               <Button
                 size="lg"
                 variant="outline"
-                onClick={() => portalMutation.mutate()}
-                disabled={portalMutation.isPending}
+                onClick={() => setLocation("/home")}
                 className="w-full h-14 rounded-2xl border-white/15 text-white bg-white/5 hover:bg-white/10 text-base"
-                data-testid="button-manage-subscription"
+                data-testid="button-go-home"
               >
-                {portalMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <CreditCard className="w-5 h-5 mr-2" />}
-                Manage Subscription
+                Back to Home
               </Button>
             </motion.div>
           </div>
@@ -262,8 +131,6 @@ export default function SubscriptionPage() {
       </MobileLayout>
     );
   }
-
-  const isPaddleConfigured = !!PADDLE_CLIENT_TOKEN;
 
   return (
     <MobileLayout showNav={false} className="bg-[#080B14] text-white relative overflow-hidden">
@@ -369,21 +236,15 @@ export default function SubscriptionPage() {
         <div className="px-6 pb-8 space-y-3">
           <Button
             size="lg"
-            onClick={handleSubscribe}
-            disabled={checkoutMutation.isPending}
-            className="w-full h-14 rounded-2xl text-base font-bold bg-gradient-to-r from-blue-600 via-blue-500 to-violet-600 hover:from-blue-500 hover:to-violet-500 shadow-xl shadow-blue-500/30 border-t border-white/20 transition-all"
+            className="w-full h-14 rounded-2xl text-base font-bold bg-gradient-to-r from-blue-600 via-blue-500 to-violet-600 hover:from-blue-500 hover:to-violet-500 shadow-xl shadow-blue-500/30 border-t border-white/20 transition-all flex items-center justify-center gap-2"
             data-testid="button-subscribe"
+            disabled
           >
-            {checkoutMutation.isPending ? (
-              <><Loader2 className="w-5 h-5 animate-spin mr-2" />Processing...</>
-            ) : isYearly ? (
-              "Start 7-Day Free Trial"
-            ) : (
-              "Subscribe Now"
-            )}
+            <Apple className="w-5 h-5" />
+            {isYearly ? "Subscribe via App Store — $99/yr" : "Subscribe via App Store — $15/mo"}
           </Button>
-          <p className="text-xs text-center text-slate-600">
-            Recurring billing · Cancel anytime · Secure payment
+          <p className="text-xs text-center text-slate-500">
+            Billed through your Apple ID · Cancel anytime in iPhone Settings
           </p>
         </div>
       </div>

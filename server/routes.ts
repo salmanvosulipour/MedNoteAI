@@ -8,7 +8,6 @@ import { sendCaseSummaryEmail } from "./services/resend";
 import { insertCaseSchema } from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
-import { getPaddleClient, verifyPaddleWebhook } from "./paddleClient";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { createRemoteJWKSet, jwtVerify } from "jose";
@@ -605,7 +604,7 @@ export async function registerRoutes(
     }
   });
 
-  // Billing Routes - Paddle
+  // Billing Routes
 
   app.get('/api/billing/status', sessionAuth, async (req: any, res) => {
     try {
@@ -635,132 +634,52 @@ export async function registerRoutes(
     }
   });
 
-  app.post('/api/billing/checkout', sessionAuth, async (req: any, res) => {
+  // Apple IAP webhook — RevenueCat will POST here when subscription status changes
+  app.post('/api/webhooks/revenuecat', async (req, res) => {
     try {
-      const userId = req.authUserId;
-      const user = await storage.getUser(userId);
-      
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
+      const event = req.body;
+      const eventType = event?.event?.type;
+      const appUserId = event?.event?.app_user_id;
 
-      const schema = z.object({
-        priceId: z.string(),
-      });
-      
-      const parsed = schema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({ message: "Invalid request - priceId required" });
-      }
+      if (!appUserId) return res.status(400).send('Missing app_user_id');
 
-      res.json({ 
-        priceId: parsed.data.priceId,
-        email: user.email,
-        userId: userId,
-      });
-    } catch (error) {
-      console.error("Error preparing checkout:", error);
-      res.status(500).json({ error: "Failed to prepare checkout" });
-    }
-  });
-
-  app.post('/api/billing/portal', sessionAuth, async (req: any, res) => {
-    try {
-      const userId = req.authUserId;
-      const subscription = await storage.getSubscriptionByUserId(userId);
-      
-      if (!subscription || !subscription.paddleCustomerId) {
-        return res.status(400).json({ message: "No active subscription found" });
-      }
-
-      try {
-        const paddle = getPaddleClient();
-        const portalSession = await paddle.customers.generateAuthToken(subscription.paddleCustomerId);
-        
-        const baseUrl = process.env.PADDLE_VENDOR_ID 
-          ? `https://customer-portal.paddle.com/cpl_${process.env.PADDLE_VENDOR_ID}`
-          : 'https://customer-portal.paddle.com';
-        
-        res.json({ 
-          url: baseUrl,
-          authToken: portalSession,
-        });
-      } catch (paddleError) {
-        console.error("Paddle portal error:", paddleError);
-        res.status(500).json({ error: "Failed to get billing portal" });
-      }
-    } catch (error) {
-      console.error("Error getting portal URL:", error);
-      res.status(500).json({ error: "Failed to get billing portal" });
-    }
-  });
-
-  // Paddle Webhook Handler
-  app.post('/api/webhooks/paddle', async (req, res) => {
-    try {
-      const signature = req.headers['paddle-signature'] as string;
-      const rawBody = JSON.stringify(req.body);
-      
-      let event;
-      try {
-        event = await verifyPaddleWebhook(rawBody, signature);
-      } catch (verifyError) {
-        console.error('Invalid Paddle webhook signature:', verifyError);
-        return res.status(401).send('Invalid signature');
-      }
-
-      const eventType = event.eventType;
-      const data = event.data as any;
-
-      console.log('Paddle webhook received:', eventType);
-
-      switch (eventType) {
-        case 'subscription.created': {
-          const customData = data.customData || {};
-          const userId = customData.userId;
-          
-          if (!userId) {
-            console.error('No userId in webhook customData');
-            return res.status(400).send('Missing userId');
-          }
-
+      if (['INITIAL_PURCHASE', 'RENEWAL', 'UNCANCELLATION', 'PRODUCT_CHANGE'].includes(eventType)) {
+        const periodEnd = event?.event?.expiration_at_ms
+          ? new Date(event.event.expiration_at_ms)
+          : null;
+        const existing = await storage.getSubscriptionByUserId(appUserId);
+        if (existing) {
+          await storage.updateSubscription(existing.paddleSubscriptionId!, {
+            status: 'active',
+            currentPeriodEnd: periodEnd,
+            cancelAtPeriodEnd: false,
+          });
+        } else {
           await storage.createSubscription({
-            userId,
-            paddleSubscriptionId: data.id,
-            paddleCustomerId: data.customerId,
-            priceId: data.items?.[0]?.price?.id,
-            status: data.status,
-            currentPeriodEnd: data.currentBillingPeriod?.endsAt ? new Date(data.currentBillingPeriod.endsAt) : null,
-            cancelAtPeriodEnd: data.scheduledChange?.action === 'cancel',
+            userId: appUserId,
+            paddleSubscriptionId: event?.event?.product_id || 'apple-iap',
+            paddleCustomerId: null,
+            priceId: event?.event?.product_id || null,
+            status: 'active',
+            currentPeriodEnd: periodEnd,
+            cancelAtPeriodEnd: false,
           });
-
-          await storage.updateUser(userId, {
-            paddleCustomerId: data.customerId,
-          });
-          break;
         }
+      }
 
-        case 'subscription.updated': {
-          await storage.updateSubscription(data.id, {
-            status: data.status,
-            currentPeriodEnd: data.currentBillingPeriod?.endsAt ? new Date(data.currentBillingPeriod.endsAt) : null,
-            cancelAtPeriodEnd: data.scheduledChange?.action === 'cancel',
-          });
-          break;
-        }
-
-        case 'subscription.canceled': {
-          await storage.updateSubscription(data.id, {
+      if (['CANCELLATION', 'EXPIRATION'].includes(eventType)) {
+        const existing = await storage.getSubscriptionByUserId(appUserId);
+        if (existing) {
+          await storage.updateSubscription(existing.paddleSubscriptionId!, {
             status: 'canceled',
             cancelAtPeriodEnd: true,
           });
-          break;
         }
       }
 
       res.status(200).send('OK');
     } catch (error) {
-      console.error('Webhook error:', error);
+      console.error('RevenueCat webhook error:', error);
       res.status(500).send('Webhook processing failed');
     }
   });
