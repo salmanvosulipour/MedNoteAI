@@ -109,6 +109,20 @@ export function parseAIContent(content: string): string[] {
       });
     }
   } catch {
+    // Handle set-like syntax {"item1","item2"} — invalid JSON but sometimes returned by AI
+    // Replace outer braces with brackets and try parsing as array.
+    // A real JSON object {"key":"value"} becomes ["key":"value"] which is still invalid JSON,
+    // so this only succeeds for the set-like pattern.
+    if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+      try {
+        const asArray = "[" + trimmed.slice(1, -1) + "]";
+        const parsed = JSON.parse(asArray);
+        if (Array.isArray(parsed) && parsed.every(v => typeof v === "string")) {
+          return parsed;
+        }
+      } catch {}
+    }
+
     // Full parse failed — try extracting a leading JSON block (handles "JSON + trailing text" pattern)
     if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
       const extracted = extractLeadingJson(trimmed);

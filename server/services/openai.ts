@@ -19,7 +19,7 @@ export interface MedicalSummary {
   physicalExam: string;
   assessment: string;
   differentialDiagnosis: Array<{ diagnosis: string; icdCode: string }>;
-  plan: string;
+  plan: string[] | string;
   patientEducation: string;
   treatmentRedFlags: string;
 }
@@ -34,7 +34,7 @@ Output a JSON object with the following fields:
 - physicalExam: Formatted physical examination findings
 - assessment: Clinical assessment and reasoning
 - differentialDiagnosis: Array of objects with {diagnosis, icdCode} - include ICD-10 codes
-- plan: Treatment plan with numbered steps
+- plan: Array of strings, each a numbered treatment step. Example: ["1. Order chest X-ray.", "2. Obtain blood tests (CBC, BMP)."]
 - patientEducation: Patient-friendly education about their condition
 - treatmentRedFlags: Warning signs that require immediate medical attention
 
