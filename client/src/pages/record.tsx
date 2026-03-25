@@ -243,6 +243,11 @@ export default function RecordPage() {
       toast({ title: "Medical Note Generated", description: "Your case has been processed successfully." });
       setLocation(`/cases/${result.id}`);
     } catch (error: any) {
+      if (error?.code === "SUBSCRIPTION_REQUIRED") {
+        toast({ title: "Free Trial Used", description: "You've used your free case. Subscribe to keep scribing." });
+        setLocation("/subscription");
+        return;
+      }
       toast({ title: "Processing Failed", description: error.message || "Failed to generate medical note.", variant: "destructive" });
       setIsProcessing(false);
       setPatientDetailsConfirmed(false);

@@ -56,7 +56,12 @@ export async function createCase(data: {
     credentials: "include",
     body: JSON.stringify({ ...data, status: "draft" }),
   });
-  if (!res.ok) throw new Error("Failed to create case");
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    const err: any = new Error(body.message || "Failed to create case");
+    err.code = body.error;
+    throw err;
+  }
   return res.json();
 }
 

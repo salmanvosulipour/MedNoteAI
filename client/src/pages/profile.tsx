@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { ChevronDown } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
 import { clearStoredUser, useAuth } from "@/hooks/useAuth";
@@ -49,6 +50,20 @@ export default function ProfilePage() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const defaultName = user ? `${user.firstName || ''}${user.lastName ? ' ' + user.lastName : ''}`.trim() || 'User' : 'User';
+
+  const { data: billingStatus } = useQuery({
+    queryKey: ["/api/billing/status"],
+    queryFn: async () => {
+      const authToken = localStorage.getItem("authToken");
+      const res = await fetch("/api/billing/status", {
+        credentials: "include",
+        headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+      });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    retry: false,
+  });
   const [avatar, setAvatar] = useState("https://api.dicebear.com/7.x/avataaars/svg?seed=Felix");
   const [fullName, setFullName] = useState(defaultName);
   const [specialty, setSpecialty] = useState("Emergency Medicine");
@@ -254,7 +269,16 @@ export default function ProfilePage() {
                 <CreditCard className="w-5 h-5 text-slate-400" />
                 <span className="text-sm font-medium">Subscription & Billing</span>
               </div>
-              <ChevronRight className="w-4 h-4 text-slate-300" />
+              <div className="flex items-center gap-2">
+                {billingStatus?.isSubscribed ? (
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">Pro</span>
+                ) : billingStatus != null ? (
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                    {billingStatus.freeTokensRemaining === 0 ? "Upgrade" : `${billingStatus.freeTokensRemaining} free case`}
+                  </span>
+                ) : null}
+                <ChevronRight className="w-4 h-4 text-slate-300" />
+              </div>
             </Link>
             <Separator />
             <Link href="/security" className="w-full flex items-center justify-between p-4 hover:bg-slate-50 transition-colors" data-testid="button-security">
