@@ -18,3 +18,9 @@ id = "9_Cx-jtU6oMF2yxlkzxCx"
 uri = "file://public/subscription-screenshot.png"
 type = "image"
 title = "MedNote AI - Subscription Screen Screenshot"
+
+[[outputs]]
+id = "s3N2nyzXTg9QrZMKuaABR"
+uri = "file://public/subscription-screenshot-1242x2208.png"
+type = "image"
+title = "Subscription Screenshot — Apple compliant (1242×2208)"
