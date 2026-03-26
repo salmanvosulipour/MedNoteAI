@@ -24,3 +24,21 @@ id = "s3N2nyzXTg9QrZMKuaABR"
 uri = "file://public/subscription-screenshot-1242x2208.png"
 type = "image"
 title = "Subscription Screenshot — Apple compliant (1242×2208)"
+
+[[outputs]]
+id = "1-Z14BhnKS1t-NnmT6ECH"
+uri = "file://public/appstore-1-home.png"
+type = "image"
+title = "Screenshot 1 — Home Dashboard (1242×2688)"
+
+[[outputs]]
+id = "b5MLcqGkSY5WN5enOL7Mh"
+uri = "file://public/appstore-2-recording.png"
+type = "image"
+title = "Screenshot 2 — Voice Recording (1242×2688)"
+
+[[outputs]]
+id = "U0YU65zMuE7NzDA8XJQip"
+uri = "file://public/appstore-3-notes.png"
+type = "image"
+title = "Screenshot 3 — AI Clinical Notes (1242×2688)"
