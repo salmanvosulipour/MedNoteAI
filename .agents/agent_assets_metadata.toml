@@ -12,3 +12,9 @@ id = "h_rN_hJb9JWj7n3Ad6OPl"
 uri = "file://mednote-ios.tar.gz"
 type = "unspecified"
 title = "MedNote iOS Project (mednote-ios.tar.gz)"
+
+[[outputs]]
+id = "9_Cx-jtU6oMF2yxlkzxCx"
+uri = "file://public/subscription-screenshot.png"
+type = "image"
+title = "MedNote AI - Subscription Screen Screenshot"
