@@ -4,6 +4,8 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
+import { useEffect } from "react";
+import { initializeRevenueCat } from "@/lib/iap";
 import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth";
 import TermsPage from "@/pages/terms";
@@ -25,6 +27,13 @@ const MAINTENANCE_MODE = false;
 
 function Router() {
   const { user, isLoading, isAuthenticated } = useAuth();
+
+  // Initialize RevenueCat as soon as we have a user ID
+  useEffect(() => {
+    if (user?.id) {
+      initializeRevenueCat(String(user.id)).catch(console.error);
+    }
+  }, [user?.id]);
 
   if (MAINTENANCE_MODE) {
     return <MaintenancePage />;

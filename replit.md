@@ -71,9 +71,13 @@ Key database tables:
 - **connect-pg-simple**: PostgreSQL session store for Express sessions
 
 ### Payment Processing
-- **Apple IAP**: Subscription billing ($15/month or $99/year) handled entirely through the App Store
-- **RevenueCat**: Webhook endpoint at `/api/webhooks/revenuecat` ready to receive subscription events and update user status
+- **Apple IAP via RevenueCat**: Subscription billing ($15/month or $99/year) through the App Store
+- **RevenueCat Capacitor SDK**: `@revenuecat/purchases-capacitor` initialized in App.tsx on login with user ID as `appUserID`
+- **Entitlement**: `pro` — linked to both `mednote.monthly` and `mednote.yearly` products in RevenueCat dashboard
+- **Webhook**: `POST /api/webhooks/revenuecat` updates subscription records in DB on purchase/renewal/cancellation
+- **Client**: `client/src/lib/iap.ts` wraps RevenueCat SDK; subscription page shows real App Store prices on native iOS
 - New users get 1 free case token; after that a Pro subscription is required
+- RevenueCat iOS API Key: stored in `iap.ts` (public key, safe for client)
 
 ### Authentication
 - **Replit Auth**: OAuth-based authentication supporting Sign in with Apple (required for iOS App Store)

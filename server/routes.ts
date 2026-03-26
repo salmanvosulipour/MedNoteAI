@@ -634,19 +634,21 @@ export async function registerRoutes(
     }
   });
 
-  // Apple IAP webhook — RevenueCat will POST here when subscription status changes
+  // RevenueCat webhook — fires on every subscription lifecycle event
   app.post('/api/webhooks/revenuecat', async (req, res) => {
     try {
-      const event = req.body;
-      const eventType = event?.event?.type;
-      const appUserId = event?.event?.app_user_id;
+      const event = req.body?.event;
+      const eventType = event?.type;
+      const appUserId = event?.app_user_id;     // we set this to the user's DB id
+      const productId = event?.product_id || 'apple-iap';
+      const periodEnd = event?.expiration_at_ms ? new Date(event.expiration_at_ms) : null;
 
       if (!appUserId) return res.status(400).send('Missing app_user_id');
 
-      if (['INITIAL_PURCHASE', 'RENEWAL', 'UNCANCELLATION', 'PRODUCT_CHANGE'].includes(eventType)) {
-        const periodEnd = event?.event?.expiration_at_ms
-          ? new Date(event.event.expiration_at_ms)
-          : null;
+      const ACTIVE_EVENTS = ['INITIAL_PURCHASE', 'RENEWAL', 'UNCANCELLATION', 'PRODUCT_CHANGE', 'SUBSCRIBER_ALIAS'];
+      const CANCEL_EVENTS = ['CANCELLATION', 'EXPIRATION', 'BILLING_ISSUE'];
+
+      if (ACTIVE_EVENTS.includes(eventType)) {
         const existing = await storage.getSubscriptionByUserId(appUserId);
         if (existing) {
           await storage.updateSubscription(existing.paddleSubscriptionId!, {
@@ -657,21 +659,26 @@ export async function registerRoutes(
         } else {
           await storage.createSubscription({
             userId: appUserId,
-            paddleSubscriptionId: event?.event?.product_id || 'apple-iap',
+            paddleSubscriptionId: productId,
             paddleCustomerId: null,
-            priceId: event?.event?.product_id || null,
+            priceId: productId,
             status: 'active',
             currentPeriodEnd: periodEnd,
             cancelAtPeriodEnd: false,
           });
         }
+        // Also clear any free token debt so they can create cases immediately
+        const user = await storage.getUser(appUserId);
+        if (user && (user.freeTokensRemaining ?? 0) < 0) {
+          await storage.updateUser(appUserId, { freeTokensRemaining: 0 });
+        }
       }
 
-      if (['CANCELLATION', 'EXPIRATION'].includes(eventType)) {
+      if (CANCEL_EVENTS.includes(eventType)) {
         const existing = await storage.getSubscriptionByUserId(appUserId);
         if (existing) {
           await storage.updateSubscription(existing.paddleSubscriptionId!, {
-            status: 'canceled',
+            status: eventType === 'BILLING_ISSUE' ? 'past_due' : 'canceled',
             cancelAtPeriodEnd: true,
           });
         }

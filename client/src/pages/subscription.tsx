@@ -1,10 +1,20 @@
 import { MobileLayout } from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
-import { Check, Star, X, Loader2, CheckCircle, Zap, Shield, Globe, Headphones, CreditCard, Apple } from "lucide-react";
-import { useState } from "react";
+import { Check, Star, X, Loader2, CheckCircle, Zap, Shield, Globe, Headphones, CreditCard, Apple, RotateCcw } from "lucide-react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import {
+  getOfferings,
+  purchasePackage,
+  restorePurchases,
+  hasProEntitlement,
+  isNative,
+  MONTHLY_PRODUCT_ID,
+  YEARLY_PRODUCT_ID,
+} from "@/lib/iap";
 
 const features = [
   { icon: Zap, label: "Unlimited AI Scribing", desc: "No caps on recordings" },
@@ -15,17 +25,28 @@ const features = [
   { icon: Check, label: "Cloud Sync", desc: "iOS & web included" },
 ];
 
+function authHeaders() {
+  const token = localStorage.getItem("authToken");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 export default function SubscriptionPage() {
   const [isYearly, setIsYearly] = useState(true);
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const [offerings, setOfferings] = useState<any>(null);
+  const [purchasing, setPurchasing] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+  const [purchaseSuccess, setPurchaseSuccess] = useState(false);
 
   const { data: billingStatus, isLoading } = useQuery({
     queryKey: ["/api/billing/status"],
     queryFn: async () => {
-      const authToken = localStorage.getItem("authToken");
       const res = await fetch("/api/billing/status", {
         credentials: "include",
-        headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+        headers: authHeaders(),
       });
       if (!res.ok) {
         if (res.status === 401) return { isSubscribed: false, freeTokensRemaining: 0, subscription: null };
@@ -35,6 +56,73 @@ export default function SubscriptionPage() {
     },
     retry: false,
   });
+
+  // Load RevenueCat offerings on native iOS
+  useEffect(() => {
+    if (isNative()) {
+      getOfferings().then(setOfferings).catch(console.error);
+    }
+  }, []);
+
+  // Find the right package from the current RevenueCat offering
+  const selectedPackage = offerings?.availablePackages?.find((p: any) =>
+    isYearly
+      ? p.product?.productIdentifier === YEARLY_PRODUCT_ID
+      : p.product?.productIdentifier === MONTHLY_PRODUCT_ID
+  );
+
+  // Real price from RevenueCat (falls back to hardcoded for web)
+  const displayPrice = selectedPackage?.product?.localizedPriceString
+    ?? (isYearly ? "$99/yr" : "$15/mo");
+
+  const handlePurchase = async () => {
+    if (!isNative()) {
+      toast({ title: "Open the iOS App", description: "Subscribe inside the MedNote AI app on your iPhone." });
+      return;
+    }
+    if (!selectedPackage) {
+      toast({ title: "Loading products…", description: "Please wait a moment and try again." });
+      return;
+    }
+    setPurchasing(true);
+    try {
+      const result = await purchasePackage(selectedPackage);
+      if (result.cancelled) return;
+      if (result.success && hasProEntitlement(result.customerInfo)) {
+        // Sync subscription status with our server via the RevenueCat webhook
+        // The webhook fires automatically; we just refresh billing status
+        await queryClient.invalidateQueries({ queryKey: ["/api/billing/status"] });
+        setPurchaseSuccess(true);
+        toast({ title: "Welcome to Pro!", description: "Your subscription is now active." });
+      }
+    } catch (e: any) {
+      toast({ title: "Purchase failed", description: e.message || "Please try again.", variant: "destructive" });
+    } finally {
+      setPurchasing(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    if (!isNative()) {
+      toast({ title: "Restore available on iOS only", description: "Open the app on your iPhone." });
+      return;
+    }
+    setRestoring(true);
+    try {
+      const customerInfo = await restorePurchases();
+      if (hasProEntitlement(customerInfo)) {
+        await queryClient.invalidateQueries({ queryKey: ["/api/billing/status"] });
+        setPurchaseSuccess(true);
+        toast({ title: "Purchase restored!", description: "Your Pro subscription is active." });
+      } else {
+        toast({ title: "No active subscription found", description: "If you believe this is wrong, contact support." });
+      }
+    } catch (e: any) {
+      toast({ title: "Restore failed", description: e.message || "Please try again.", variant: "destructive" });
+    } finally {
+      setRestoring(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -46,7 +134,7 @@ export default function SubscriptionPage() {
     );
   }
 
-  if (billingStatus?.isSubscribed) {
+  if (billingStatus?.isSubscribed || purchaseSuccess) {
     return (
       <MobileLayout showNav={false} className="bg-[#080B14] text-white relative overflow-hidden">
         <div className="absolute inset-0 pointer-events-none">
@@ -96,9 +184,7 @@ export default function SubscriptionPage() {
                     </div>
                     <div>
                       <p className="font-semibold text-white text-sm">Pro Subscription</p>
-                      <p className="text-xs text-emerald-400 font-medium capitalize">
-                        {billingStatus?.subscription?.status === "trialing" ? "Trial Active" : "Active"}
-                      </p>
+                      <p className="text-xs text-emerald-400 font-medium">Active</p>
                     </div>
                   </div>
                   {billingStatus?.subscription?.currentPeriodEnd && (
@@ -114,7 +200,7 @@ export default function SubscriptionPage() {
 
             <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="w-full max-w-sm">
               <p className="text-xs text-center text-slate-500 mb-4">
-                To manage or cancel your subscription, go to iPhone Settings → Apple ID → Subscriptions.
+                To manage or cancel, go to iPhone Settings → Apple ID → Subscriptions.
               </p>
               <Button
                 size="lg"
@@ -202,7 +288,12 @@ export default function SubscriptionPage() {
                   {isYearly ? (
                     <p className="text-xs text-emerald-400 font-semibold">Save $81 per year · $8.25/mo</p>
                   ) : (
-                    <p className="text-xs text-slate-500">Billed monthly</p>
+                    <p className="text-xs text-slate-500">Billed monthly · Cancel anytime</p>
+                  )}
+                  {isNative() && selectedPackage?.product?.localizedPriceString && (
+                    <p className="text-xs text-slate-500 mt-1">
+                      App Store price: {selectedPackage.product.localizedPriceString}
+                    </p>
                   )}
                 </motion.div>
               </div>
@@ -236,13 +327,33 @@ export default function SubscriptionPage() {
         <div className="px-6 pb-8 space-y-3">
           <Button
             size="lg"
+            onClick={handlePurchase}
+            disabled={purchasing || restoring}
             className="w-full h-14 rounded-2xl text-base font-bold bg-gradient-to-r from-blue-600 via-blue-500 to-violet-600 hover:from-blue-500 hover:to-violet-500 shadow-xl shadow-blue-500/30 border-t border-white/20 transition-all flex items-center justify-center gap-2"
             data-testid="button-subscribe"
-            disabled
           >
-            <Apple className="w-5 h-5" />
-            {isYearly ? "Subscribe via App Store — $99/yr" : "Subscribe via App Store — $15/mo"}
+            {purchasing ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <Apple className="w-5 h-5" />
+            )}
+            {purchasing
+              ? "Processing…"
+              : isNative()
+                ? `Subscribe — ${displayPrice}`
+                : `Subscribe — ${isYearly ? "$99/yr" : "$15/mo"}`}
           </Button>
+
+          <button
+            onClick={handleRestore}
+            disabled={restoring || purchasing}
+            className="w-full flex items-center justify-center gap-2 py-2 text-xs text-slate-500 hover:text-slate-300 transition-colors"
+            data-testid="button-restore"
+          >
+            {restoring ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}
+            Restore previous purchase
+          </button>
+
           <p className="text-xs text-center text-slate-500">
             Billed through your Apple ID · Cancel anytime in iPhone Settings
           </p>
