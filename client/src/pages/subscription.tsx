@@ -8,7 +8,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import {
   getOfferings,
+  getProducts,
   purchasePackage,
+  purchaseProduct,
   restorePurchases,
   hasProEntitlement,
   isNative,
@@ -37,6 +39,7 @@ export default function SubscriptionPage() {
   const queryClient = useQueryClient();
 
   const [offerings, setOfferings] = useState<any>(null);
+  const [directProducts, setDirectProducts] = useState<any[]>([]);
   const [purchasing, setPurchasing] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [purchaseSuccess, setPurchaseSuccess] = useState(false);
@@ -57,94 +60,131 @@ export default function SubscriptionPage() {
     retry: false,
   });
 
-  // Load RevenueCat offerings on native iOS — retry up to 3 times if empty
+  // Load RevenueCat offerings on native iOS.
+  // If offerings return no packages, fall back to fetching products directly from StoreKit.
   useEffect(() => {
     if (!isNative()) return;
+
     let attempts = 0;
-    const load = () => {
+    const load = async () => {
       attempts++;
-      getOfferings()
-        .then((o) => {
-          console.log("[RC] offerings:", JSON.stringify(o));
-          setOfferings(o);
-          if ((!o?.availablePackages?.length) && attempts < 3) {
-            setTimeout(load, 2000);
-          }
-        })
-        .catch((err) => {
-          console.error("[RC] getOfferings error:", err);
-          if (attempts < 3) setTimeout(load, 2000);
-        });
+      try {
+        const o = await getOfferings();
+        setOfferings(o);
+        if (o?.availablePackages?.length) return; // offerings have products — done
+      } catch (err) {
+        console.error("[RC] getOfferings error:", err);
+      }
+
+      // Offerings empty — try direct StoreKit fetch
+      const prods = await getProducts();
+      if (prods.length) {
+        setDirectProducts(prods);
+        return;
+      }
+
+      // Still nothing — retry up to 3 times with a delay
+      if (attempts < 3) setTimeout(load, 3000);
     };
+
     load();
   }, []);
 
-  // Find the right package — match by packageType / identifier / product ID.
-  // Falls back to ANY available package so the button is never silently broken.
+  // Find the right package from RevenueCat offerings.
+  // Falls back to ANY available package, then to directly-fetched StoreKit products.
   const selectedPackage = (() => {
     const pkgs: any[] = offerings?.availablePackages ?? [];
-    if (!pkgs.length) return null;
 
-    const match = pkgs.find((p: any) => {
-      if (isYearly) {
-        return (
-          p.packageType === "ANNUAL" ||
-          p.identifier === "$rc_annual" ||
-          p.product?.productIdentifier?.toLowerCase().includes("annual") ||
-          p.product?.productIdentifier?.toLowerCase().includes("yearly") ||
-          p.product?.productIdentifier === YEARLY_PRODUCT_ID
-        );
-      } else {
-        return (
-          p.packageType === "MONTHLY" ||
-          p.identifier === "$rc_monthly" ||
-          p.product?.productIdentifier?.toLowerCase().includes("monthly") ||
-          p.product?.productIdentifier === MONTHLY_PRODUCT_ID
-        );
-      }
-    });
-
-    // If no exact match, fall back to first / last package heuristic
-    if (!match) {
-      return isYearly ? pkgs[pkgs.length - 1] : pkgs[0];
+    if (pkgs.length) {
+      const match = pkgs.find((p: any) => {
+        if (isYearly) {
+          return (
+            p.packageType === "ANNUAL" ||
+            p.identifier === "$rc_annual" ||
+            p.product?.productIdentifier?.toLowerCase().includes("annual") ||
+            p.product?.productIdentifier?.toLowerCase().includes("yearly") ||
+            p.product?.productIdentifier === YEARLY_PRODUCT_ID
+          );
+        } else {
+          return (
+            p.packageType === "MONTHLY" ||
+            p.identifier === "$rc_monthly" ||
+            p.product?.productIdentifier?.toLowerCase().includes("monthly") ||
+            p.product?.productIdentifier === MONTHLY_PRODUCT_ID
+          );
+        }
+      });
+      return match ?? (isYearly ? pkgs[pkgs.length - 1] : pkgs[0]);
     }
-    return match;
+
+    return null; // will use directProducts path instead
   })();
 
-  // Real price from RevenueCat (falls back to hardcoded for web)
-  const displayPrice = selectedPackage?.product?.localizedPriceString
-    ?? (isYearly ? "$99/yr" : "$15/mo");
+  // Direct StoreKit product (fallback when offerings return no packages)
+  const selectedDirectProduct = !selectedPackage && directProducts.length
+    ? directProducts.find((p: any) =>
+        isYearly
+          ? p.productIdentifier === YEARLY_PRODUCT_ID
+          : p.productIdentifier === MONTHLY_PRODUCT_ID
+      ) ?? (isYearly ? directProducts[directProducts.length - 1] : directProducts[0])
+    : null;
+
+  // Real price — prefer RC offering, then direct StoreKit, then hardcoded fallback
+  const displayPrice =
+    selectedPackage?.product?.localizedPriceString ??
+    selectedDirectProduct?.localizedPriceString ??
+    (isYearly ? "$99/yr" : "$15/mo");
 
   const handlePurchase = async () => {
     if (!isNative()) {
       toast({ title: "Open the iOS App", description: "Subscribe inside the MedNote AI app on your iPhone." });
       return;
     }
-    if (!selectedPackage) {
-      // Trigger a fresh load and tell the user
-      getOfferings().then(setOfferings).catch(console.error);
-      toast({
-        title: "Store products loading…",
-        description: `Fetching App Store prices. Please try again in a few seconds.`,
-      });
+
+    // Path 1: use RevenueCat package (preferred)
+    if (selectedPackage) {
+      setPurchasing(true);
+      try {
+        const result = await purchasePackage(selectedPackage);
+        if (result.cancelled) return;
+        if (result.success && hasProEntitlement(result.customerInfo)) {
+          await queryClient.invalidateQueries({ queryKey: ["/api/billing/status"] });
+          setPurchaseSuccess(true);
+          toast({ title: "Welcome to Pro!", description: "Your subscription is now active." });
+        }
+      } catch (e: any) {
+        toast({ title: "Purchase failed", description: e.message || "Please try again.", variant: "destructive" });
+      } finally {
+        setPurchasing(false);
+      }
       return;
     }
-    setPurchasing(true);
-    try {
-      const result = await purchasePackage(selectedPackage);
-      if (result.cancelled) return;
-      if (result.success && hasProEntitlement(result.customerInfo)) {
-        // Sync subscription status with our server via the RevenueCat webhook
-        // The webhook fires automatically; we just refresh billing status
-        await queryClient.invalidateQueries({ queryKey: ["/api/billing/status"] });
-        setPurchaseSuccess(true);
-        toast({ title: "Welcome to Pro!", description: "Your subscription is now active." });
+
+    // Path 2: direct StoreKit product fallback
+    if (selectedDirectProduct) {
+      setPurchasing(true);
+      try {
+        const result = await purchaseProduct(selectedDirectProduct);
+        if (result.cancelled) return;
+        if (result.success) {
+          await queryClient.invalidateQueries({ queryKey: ["/api/billing/status"] });
+          setPurchaseSuccess(true);
+          toast({ title: "Welcome to Pro!", description: "Your subscription is now active." });
+        }
+      } catch (e: any) {
+        toast({ title: "Purchase failed", description: e.message || "Please try again.", variant: "destructive" });
+      } finally {
+        setPurchasing(false);
       }
-    } catch (e: any) {
-      toast({ title: "Purchase failed", description: e.message || "Please try again.", variant: "destructive" });
-    } finally {
-      setPurchasing(false);
+      return;
     }
+
+    // Nothing loaded yet — retry
+    getProducts().then(setDirectProducts).catch(console.error);
+    toast({
+      title: "Store products loading…",
+      description: "Fetching App Store prices. Please try again in a few seconds.",
+    });
   };
 
   const handleRestore = async () => {
