@@ -64,12 +64,26 @@ export default function SubscriptionPage() {
     }
   }, []);
 
-  // Find the right package from the current RevenueCat offering
-  const selectedPackage = offerings?.availablePackages?.find((p: any) =>
-    isYearly
-      ? p.product?.productIdentifier === YEARLY_PRODUCT_ID
-      : p.product?.productIdentifier === MONTHLY_PRODUCT_ID
-  );
+  // Find the right package — match by packageType first (works for both Test Store
+  // and App Store), then fall back to product identifier for custom packages
+  const selectedPackage = offerings?.availablePackages?.find((p: any) => {
+    if (isYearly) {
+      return (
+        p.packageType === "ANNUAL" ||
+        p.identifier === "$rc_annual" ||
+        p.product?.productIdentifier?.toLowerCase().includes("annual") ||
+        p.product?.productIdentifier?.toLowerCase().includes("yearly") ||
+        p.product?.productIdentifier === YEARLY_PRODUCT_ID
+      );
+    } else {
+      return (
+        p.packageType === "MONTHLY" ||
+        p.identifier === "$rc_monthly" ||
+        p.product?.productIdentifier?.toLowerCase().includes("monthly") ||
+        p.product?.productIdentifier === MONTHLY_PRODUCT_ID
+      );
+    }
+  });
 
   // Real price from RevenueCat (falls back to hardcoded for web)
   const displayPrice = selectedPackage?.product?.localizedPriceString
