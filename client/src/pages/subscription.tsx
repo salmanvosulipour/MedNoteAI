@@ -375,9 +375,9 @@ export default function SubscriptionPage() {
                   ) : (
                     <p className="text-xs text-slate-500">Billed monthly · Cancel anytime</p>
                   )}
-                  {isNative() && selectedPackage?.product?.localizedPriceString && (
-                    <p className="text-xs text-slate-500 mt-1">
-                      App Store price: {selectedPackage.product.localizedPriceString}
+                  {isNative() && (
+                    <p className="text-[10px] text-slate-600 mt-1" data-testid="debug-rc">
+                      RC pkgs: {offerings?.availablePackages?.length ?? 0} · direct: {directProducts.length}
                     </p>
                   )}
                 </motion.div>
