@@ -18,6 +18,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { fetchCase, updateCase, invalidateCase, paraphraseNote, type Case } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { isNative } from "@/lib/iap";
 
 type DiagnosticStudy = {
   type: string;
@@ -345,8 +346,30 @@ export default function CaseDetailPage() {
     });
   };
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = async () => {
+    if (isNative()) {
+      // On iOS, window.print() is not supported in WebView.
+      // Share the note as text — iOS share sheet includes AirPrint.
+      const summary = generateCaseSummaryText();
+      const filename = `case-${caseData?.patientName?.replace(/\s+/g, "-") || id}-summary.txt`;
+      const blob = new Blob([summary], { type: "text/plain" });
+      const file = new File([blob], filename, { type: "text/plain" });
+      try {
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: `MedNote — ${caseData?.patientName || "Case"}` });
+        } else if (navigator.share) {
+          await navigator.share({ title: `MedNote — ${caseData?.patientName || "Case"}`, text: summary });
+        } else {
+          toast({ title: "Print not available", description: "Use the download button to save the note." });
+        }
+      } catch (err: any) {
+        if (err?.name !== "AbortError") {
+          toast({ title: "Could not open share sheet", description: String(err) });
+        }
+      }
+    } else {
+      window.print();
+    }
   };
 
   const handlePrintPrescription = () => {
