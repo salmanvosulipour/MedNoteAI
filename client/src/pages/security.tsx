@@ -43,15 +43,7 @@ export default function SecurityPage() {
   }, []);
 
   const fetchTwoFactorStatus = async () => {
-    try {
-      const res = await fetch(`/api/auth/2fa/status/${DEMO_USER_ID}`);
-      if (res.ok) {
-        const data = await res.json();
-        setTwoFactorStatus(data);
-      }
-    } catch (error) {
-      console.error("Failed to fetch 2FA status:", error);
-    }
+    // 2FA backend not yet implemented — keep default disabled state
   };
 
   const startSetup = async () => {
@@ -240,17 +232,14 @@ export default function SecurityPage() {
                     </p>
                   </div>
                 </div>
-                <Switch
-                  checked={twoFactorStatus.enabled}
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      startSetup();
-                    } else {
-                      setDisableDialogOpen(true);
-                    }
-                  }}
-                  data-testid="switch-2fa"
-                />
+                <div className="flex flex-col items-end gap-0.5">
+                  <Switch
+                    checked={false}
+                    disabled={true}
+                    data-testid="switch-2fa"
+                  />
+                  <span className="text-[10px] text-muted-foreground">Coming soon</span>
+                </div>
               </div>
 
               {twoFactorStatus.enabled && (
