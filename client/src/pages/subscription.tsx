@@ -57,33 +57,59 @@ export default function SubscriptionPage() {
     retry: false,
   });
 
-  // Load RevenueCat offerings on native iOS
+  // Load RevenueCat offerings on native iOS — retry up to 3 times if empty
   useEffect(() => {
-    if (isNative()) {
-      getOfferings().then(setOfferings).catch(console.error);
-    }
+    if (!isNative()) return;
+    let attempts = 0;
+    const load = () => {
+      attempts++;
+      getOfferings()
+        .then((o) => {
+          console.log("[RC] offerings:", JSON.stringify(o));
+          setOfferings(o);
+          if ((!o?.availablePackages?.length) && attempts < 3) {
+            setTimeout(load, 2000);
+          }
+        })
+        .catch((err) => {
+          console.error("[RC] getOfferings error:", err);
+          if (attempts < 3) setTimeout(load, 2000);
+        });
+    };
+    load();
   }, []);
 
-  // Find the right package — match by packageType first (works for both Test Store
-  // and App Store), then fall back to product identifier for custom packages
-  const selectedPackage = offerings?.availablePackages?.find((p: any) => {
-    if (isYearly) {
-      return (
-        p.packageType === "ANNUAL" ||
-        p.identifier === "$rc_annual" ||
-        p.product?.productIdentifier?.toLowerCase().includes("annual") ||
-        p.product?.productIdentifier?.toLowerCase().includes("yearly") ||
-        p.product?.productIdentifier === YEARLY_PRODUCT_ID
-      );
-    } else {
-      return (
-        p.packageType === "MONTHLY" ||
-        p.identifier === "$rc_monthly" ||
-        p.product?.productIdentifier?.toLowerCase().includes("monthly") ||
-        p.product?.productIdentifier === MONTHLY_PRODUCT_ID
-      );
+  // Find the right package — match by packageType / identifier / product ID.
+  // Falls back to ANY available package so the button is never silently broken.
+  const selectedPackage = (() => {
+    const pkgs: any[] = offerings?.availablePackages ?? [];
+    if (!pkgs.length) return null;
+
+    const match = pkgs.find((p: any) => {
+      if (isYearly) {
+        return (
+          p.packageType === "ANNUAL" ||
+          p.identifier === "$rc_annual" ||
+          p.product?.productIdentifier?.toLowerCase().includes("annual") ||
+          p.product?.productIdentifier?.toLowerCase().includes("yearly") ||
+          p.product?.productIdentifier === YEARLY_PRODUCT_ID
+        );
+      } else {
+        return (
+          p.packageType === "MONTHLY" ||
+          p.identifier === "$rc_monthly" ||
+          p.product?.productIdentifier?.toLowerCase().includes("monthly") ||
+          p.product?.productIdentifier === MONTHLY_PRODUCT_ID
+        );
+      }
+    });
+
+    // If no exact match, fall back to first / last package heuristic
+    if (!match) {
+      return isYearly ? pkgs[pkgs.length - 1] : pkgs[0];
     }
-  });
+    return match;
+  })();
 
   // Real price from RevenueCat (falls back to hardcoded for web)
   const displayPrice = selectedPackage?.product?.localizedPriceString
@@ -95,7 +121,12 @@ export default function SubscriptionPage() {
       return;
     }
     if (!selectedPackage) {
-      toast({ title: "Loading products…", description: "Please wait a moment and try again." });
+      // Trigger a fresh load and tell the user
+      getOfferings().then(setOfferings).catch(console.error);
+      toast({
+        title: "Store products loading…",
+        description: `Fetching App Store prices. Please try again in a few seconds.`,
+      });
       return;
     }
     setPurchasing(true);
