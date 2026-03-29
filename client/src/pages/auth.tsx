@@ -21,12 +21,13 @@ export default function AuthPage() {
   const handleNativeAppleSignIn = async () => {
     setIsLoading(true);
     try {
+      const randomHex = () => Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b => b.toString(16).padStart(2, "0")).join("");
       const options: SignInWithAppleOptions = {
         clientId: "com.mednote.ai",
-        redirectURI: "",
+        redirectURI: "https://med-note-ai-1--salmanvosuli.replit.app",
         scopes: "email name",
-        state: Math.random().toString(36).substring(7),
-        nonce: Math.random().toString(36).substring(7),
+        state: randomHex(),
+        nonce: randomHex(),
       };
       const result = await SignInWithApple.authorize(options);
       const { identityToken, givenName, familyName, email } = result.response;
