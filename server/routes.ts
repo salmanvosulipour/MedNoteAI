@@ -42,7 +42,8 @@ export async function registerRoutes(
 
       const { deviceId, deviceName, platform } = req.body;
       const boundDeviceId = deviceId || `server-${crypto.randomBytes(8).toString("hex")}`;
-      await storage.createDeviceSession({ userId: user.id, token, deviceId: boundDeviceId, deviceName, platform: platform || "web" });
+      const safePlatform = platform === "ios" ? "ios" : "web";
+      await storage.createDeviceSession({ userId: user.id, token, deviceId: boundDeviceId, deviceName, platform: safePlatform });
 
       const { password: _, ...safeUser } = user as any;
       return res.json({ user: { ...safeUser, currentAuthToken: undefined }, token });
@@ -66,7 +67,8 @@ export async function registerRoutes(
 
       const token = crypto.randomBytes(32).toString("hex");
       const boundDeviceId = deviceId || `server-${crypto.randomBytes(8).toString("hex")}`;
-      await storage.createDeviceSession({ userId: user.id, token, deviceId: boundDeviceId, deviceName, platform: platform || "web" });
+      const safePlatform = platform === "ios" ? "ios" : "web";
+      await storage.createDeviceSession({ userId: user.id, token, deviceId: boundDeviceId, deviceName, platform: safePlatform });
 
       const { password: _, currentAuthToken: __, ...safeUser } = user as any;
       return res.json({ user: safeUser, token });
@@ -111,7 +113,8 @@ export async function registerRoutes(
       // so native iOS uses this token for all subsequent API calls
       const token = crypto.randomBytes(32).toString("hex");
       const boundDeviceId = deviceId || `server-${crypto.randomBytes(8).toString("hex")}`;
-      await storage.createDeviceSession({ userId: user.id, token, deviceId: boundDeviceId, deviceName, platform: platform || "ios" });
+      const safePlatform = platform === "web" ? "web" : "ios";
+      await storage.createDeviceSession({ userId: user.id, token, deviceId: boundDeviceId, deviceName, platform: safePlatform });
 
       const { password: _, currentAuthToken: __, ...safeUser } = user as any;
       return res.json({ user: safeUser, token });
@@ -137,6 +140,10 @@ export async function registerRoutes(
   });
 
   // Auth middleware — supports Apple session, Replit session, or Bearer token
+  // Note on backward compat: tokens issued before device_sessions migration are
+  // not in the device_sessions table and will fall through to 401, requiring
+  // users to log in again. This is intentional — users without device binding
+  // must re-authenticate to get a bound token.
   const sessionAuth = async (req: any, res: any, next: any) => {
     const authHeader = req.headers.authorization;
 
