@@ -32,11 +32,12 @@ export default function AuthPage() {
       const { identityToken, givenName, familyName, email } = result.response;
 
       const [deviceId, deviceName] = await Promise.all([getDeviceId(), getDeviceName()]).catch(() => ["", ""]) as [string, string];
+      const platform = Capacitor.isNativePlatform() ? "ios" : "web";
       const res = await fetch("/api/auth/apple", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ identityToken, firstName: givenName, lastName: familyName, email, deviceId, deviceName }),
+        body: JSON.stringify({ identityToken, firstName: givenName, lastName: familyName, email, deviceId, deviceName, platform }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -64,11 +65,12 @@ export default function AuthPage() {
     setIsLoading(true);
     try {
       const [deviceId, deviceName] = await Promise.all([getDeviceId(), getDeviceName()]).catch(() => ["", ""]) as [string, string];
+      const platform = Capacitor.isNativePlatform() ? "ios" : "web";
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ email: form.email, password: form.password, deviceId, deviceName }),
+        body: JSON.stringify({ email: form.email, password: form.password, deviceId, deviceName, platform }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -97,11 +99,12 @@ export default function AuthPage() {
     setIsLoading(true);
     try {
       const [deviceId, deviceName] = await Promise.all([getDeviceId(), getDeviceName()]).catch(() => ["", ""]) as [string, string];
+      const platform = Capacitor.isNativePlatform() ? "ios" : "web";
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ email: form.email, password: form.password, firstName: form.firstName, lastName: form.lastName, deviceId, deviceName }),
+        body: JSON.stringify({ email: form.email, password: form.password, firstName: form.firstName, lastName: form.lastName, deviceId, deviceName, platform }),
       });
       if (!res.ok) {
         const err = await res.json();

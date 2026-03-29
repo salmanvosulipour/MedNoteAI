@@ -40,9 +40,9 @@ export async function registerRoutes(
       const token = crypto.randomBytes(32).toString("hex");
       const user = await storage.createUser({ email: email.toLowerCase(), password: hashed, firstName, lastName });
 
-      const { deviceId, deviceName } = req.body;
+      const { deviceId, deviceName, platform } = req.body;
       const boundDeviceId = deviceId || `server-${crypto.randomBytes(8).toString("hex")}`;
-      await storage.createDeviceSession({ userId: user.id, token, deviceId: boundDeviceId, deviceName, platform: deviceId ? "ios" : "web" });
+      await storage.createDeviceSession({ userId: user.id, token, deviceId: boundDeviceId, deviceName, platform: platform || "web" });
 
       const { password: _, ...safeUser } = user as any;
       return res.json({ user: { ...safeUser, currentAuthToken: undefined }, token });
@@ -55,7 +55,7 @@ export async function registerRoutes(
   // Login with email/password
   app.post('/api/auth/login', async (req, res) => {
     try {
-      const { email, password, deviceId, deviceName } = req.body;
+      const { email, password, deviceId, deviceName, platform } = req.body;
       if (!email || !password) return res.status(400).json({ message: "Email and password are required" });
 
       const user = await storage.getUserByEmail(email.toLowerCase());
@@ -66,7 +66,7 @@ export async function registerRoutes(
 
       const token = crypto.randomBytes(32).toString("hex");
       const boundDeviceId = deviceId || `server-${crypto.randomBytes(8).toString("hex")}`;
-      await storage.createDeviceSession({ userId: user.id, token, deviceId: boundDeviceId, deviceName, platform: deviceId ? "ios" : "web" });
+      await storage.createDeviceSession({ userId: user.id, token, deviceId: boundDeviceId, deviceName, platform: platform || "web" });
 
       const { password: _, currentAuthToken: __, ...safeUser } = user as any;
       return res.json({ user: safeUser, token });
@@ -79,7 +79,7 @@ export async function registerRoutes(
   // Sign in with Apple — verifies identity token, creates session
   app.post('/api/auth/apple', async (req: any, res) => {
     try {
-      const { identityToken, firstName, lastName, email, deviceId, deviceName } = req.body;
+      const { identityToken, firstName, lastName, email, deviceId, deviceName, platform } = req.body;
       if (!identityToken) return res.status(400).json({ message: "identityToken required" });
 
       // Verify the token with Apple's public keys
@@ -111,7 +111,7 @@ export async function registerRoutes(
       // so native iOS uses this token for all subsequent API calls
       const token = crypto.randomBytes(32).toString("hex");
       const boundDeviceId = deviceId || `server-${crypto.randomBytes(8).toString("hex")}`;
-      await storage.createDeviceSession({ userId: user.id, token, deviceId: boundDeviceId, deviceName, platform: deviceId ? "ios" : "web" });
+      await storage.createDeviceSession({ userId: user.id, token, deviceId: boundDeviceId, deviceName, platform: platform || "ios" });
 
       const { password: _, currentAuthToken: __, ...safeUser } = user as any;
       return res.json({ user: safeUser, token });
