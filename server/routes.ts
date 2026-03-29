@@ -39,7 +39,10 @@ export async function registerRoutes(
       const hashed = await bcrypt.hash(password, 12);
       const token = crypto.randomBytes(32).toString("hex");
       const user = await storage.createUser({ email: email.toLowerCase(), password: hashed, firstName, lastName });
-      await storage.updateUser(user.id, { currentAuthToken: token });
+
+      const { deviceId, deviceName } = req.body;
+      const boundDeviceId = deviceId || `server-${crypto.randomBytes(8).toString("hex")}`;
+      await storage.createDeviceSession({ userId: user.id, token, deviceId: boundDeviceId, deviceName, platform: deviceId ? "ios" : "web" });
 
       const { password: _, ...safeUser } = user as any;
       return res.json({ user: { ...safeUser, currentAuthToken: undefined }, token });
@@ -52,7 +55,7 @@ export async function registerRoutes(
   // Login with email/password
   app.post('/api/auth/login', async (req, res) => {
     try {
-      const { email, password } = req.body;
+      const { email, password, deviceId, deviceName } = req.body;
       if (!email || !password) return res.status(400).json({ message: "Email and password are required" });
 
       const user = await storage.getUserByEmail(email.toLowerCase());
@@ -62,7 +65,8 @@ export async function registerRoutes(
       if (!valid) return res.status(401).json({ message: "Invalid email or password" });
 
       const token = crypto.randomBytes(32).toString("hex");
-      await storage.updateUser(user.id, { currentAuthToken: token });
+      const boundDeviceId = deviceId || `server-${crypto.randomBytes(8).toString("hex")}`;
+      await storage.createDeviceSession({ userId: user.id, token, deviceId: boundDeviceId, deviceName, platform: deviceId ? "ios" : "web" });
 
       const { password: _, currentAuthToken: __, ...safeUser } = user as any;
       return res.json({ user: safeUser, token });
@@ -75,7 +79,7 @@ export async function registerRoutes(
   // Sign in with Apple — verifies identity token, creates session
   app.post('/api/auth/apple', async (req: any, res) => {
     try {
-      const { identityToken, firstName, lastName, email } = req.body;
+      const { identityToken, firstName, lastName, email, deviceId, deviceName } = req.body;
       if (!identityToken) return res.status(400).json({ message: "identityToken required" });
 
       // Verify the token with Apple's public keys
@@ -103,10 +107,11 @@ export async function registerRoutes(
         req.session.save((err: any) => (err ? reject(err) : resolve()))
       );
 
-      // Also generate a Bearer token — Capacitor/WKWebView loses session cookies
+      // Generate a device-bound Bearer token — Capacitor/WKWebView loses session cookies
       // so native iOS uses this token for all subsequent API calls
       const token = crypto.randomBytes(32).toString("hex");
-      await storage.updateUser(user.id, { currentAuthToken: token });
+      const boundDeviceId = deviceId || `server-${crypto.randomBytes(8).toString("hex")}`;
+      await storage.createDeviceSession({ userId: user.id, token, deviceId: boundDeviceId, deviceName, platform: deviceId ? "ios" : "web" });
 
       const { password: _, currentAuthToken: __, ...safeUser } = user as any;
       return res.json({ user: safeUser, token });
@@ -119,6 +124,11 @@ export async function registerRoutes(
   // Logout - clear all sessions
   app.post('/api/auth/logout', async (req: any, res) => {
     try {
+      const authHeader = req.headers.authorization;
+      if (authHeader?.startsWith("Bearer ")) {
+        const token = authHeader.slice(7);
+        await storage.deleteDeviceSession(token).catch(() => {});
+      }
       req.session?.destroy(() => {});
       return res.json({ success: true });
     } catch {
@@ -143,13 +153,20 @@ export async function registerRoutes(
       return next();
     }
 
-    // 3. Bearer token (email/password + Apple Sign In on Capacitor)
+    // 3. Bearer token — device-bound (email/password + Apple Sign In on Capacitor)
     if (authHeader?.startsWith("Bearer ")) {
       const token = authHeader.slice(7);
       try {
-        const user = await storage.getUserByToken(token);
-        if (user) {
-          req.authUserId = user.id;
+        const session = await storage.getDeviceSessionByToken(token);
+        if (session) {
+          // Validate device binding if the client sends X-Device-ID
+          const incomingDeviceId = req.headers["x-device-id"] as string | undefined;
+          if (incomingDeviceId && incomingDeviceId !== session.deviceId) {
+            return res.status(401).json({ message: "Unauthorized", reason: "device_mismatch" });
+          }
+          req.authUserId = session.userId;
+          // Update lastSeenAt in background — don't block the request
+          storage.touchDeviceSession(token).catch(() => {});
           return next();
         }
       } catch (e) {

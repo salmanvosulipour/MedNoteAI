@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { getDeviceId } from "@/lib/device";
 import type { User } from "@shared/schema";
 
 function getStoredUser(): User | null {
@@ -39,14 +40,25 @@ export function useAuth() {
       const token = (stored as any)?.token;
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
+      try {
+        const deviceId = await getDeviceId();
+        headers["X-Device-ID"] = deviceId;
+      } catch { /* non-fatal */ }
 
       const res = await fetch("/api/auth/user", { credentials: "include", headers });
       if (res.ok) {
         const userData = await res.json();
-        // Preserve the token when refreshing user data
         storeUser({ ...userData, token: token || userData.token });
         setUser({ ...userData, token: token || userData.token });
       } else {
+        if (res.status === 401) {
+          const body = await res.json().catch(() => ({}));
+          if (body?.reason === "device_mismatch") {
+            clearStoredUser();
+            window.location.href = "/?reason=device_mismatch";
+            return;
+          }
+        }
         clearStoredUser();
         setUser(null);
       }
@@ -71,9 +83,17 @@ export function useAuth() {
   }, [fetchUser]);
 
   const logout = useCallback(async () => {
+    const stored = getStoredUser();
+    const token = (stored as any)?.token;
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    try {
+      const deviceId = await getDeviceId();
+      headers["X-Device-ID"] = deviceId;
+    } catch { /* non-fatal */ }
     clearStoredUser();
     setUser(null);
-    await fetch("/api/auth/logout", { method: "POST", credentials: "include" }).catch(() => {});
+    await fetch("/api/auth/logout", { method: "POST", credentials: "include", headers }).catch(() => {});
     window.location.href = "/";
   }, []);
 

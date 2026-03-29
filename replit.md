@@ -81,6 +81,7 @@ Key database tables:
 
 ### Authentication
 - **Replit Auth**: OAuth-based authentication supporting Sign in with Apple (required for iOS App Store)
+- **Device Binding**: Each Bearer token is bound to the device that created it via the `device_sessions` table. The server validates the `X-Device-ID` request header on every authenticated API call — mismatched device = immediate 401 with `reason: "device_mismatch"`. The client reads the hardware UUID on iOS (`@capacitor/device`) or generates a stable UUID in localStorage on web.
 
 ### iOS App (Capacitor)
 - **Framework**: Capacitor for wrapping the web app as a native iOS app

@@ -1,4 +1,4 @@
-import { users, cases, passwordResetTokens, emailVerificationTokens, subscriptions, type User, type UpsertUser, type Case, type InsertCase, type PasswordResetToken, type EmailVerificationToken, type Subscription, type InsertSubscription } from "@shared/schema";
+import { users, cases, passwordResetTokens, emailVerificationTokens, subscriptions, deviceSessions, type User, type UpsertUser, type Case, type InsertCase, type PasswordResetToken, type EmailVerificationToken, type Subscription, type InsertSubscription, type DeviceSession } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gt, sql, or } from "drizzle-orm";
 
@@ -30,6 +30,13 @@ export interface IStorage {
   // Free token methods
   decrementFreeTokens(userId: string): Promise<User | undefined>;
   
+  // Device session methods
+  createDeviceSession(data: { userId: string; token: string; deviceId: string; deviceName?: string; platform?: string }): Promise<DeviceSession>;
+  getDeviceSessionByToken(token: string): Promise<DeviceSession | null>;
+  touchDeviceSession(token: string): Promise<void>;
+  deleteDeviceSession(token: string): Promise<void>;
+  deleteAllDeviceSessions(userId: string): Promise<void>;
+
   // Case methods
   getCase(id: string): Promise<Case | undefined>;
   getCasesByUserId(userId: string, limit?: number): Promise<Case[]>;
@@ -211,6 +218,42 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, userId))
       .returning();
     return updated || undefined;
+  }
+
+  // Device session methods
+  async createDeviceSession(data: { userId: string; token: string; deviceId: string; deviceName?: string; platform?: string }): Promise<DeviceSession> {
+    const [session] = await db
+      .insert(deviceSessions)
+      .values(data)
+      .returning();
+    return session;
+  }
+
+  async getDeviceSessionByToken(token: string): Promise<DeviceSession | null> {
+    const [session] = await db
+      .select()
+      .from(deviceSessions)
+      .where(eq(deviceSessions.token, token));
+    return session || null;
+  }
+
+  async touchDeviceSession(token: string): Promise<void> {
+    await db
+      .update(deviceSessions)
+      .set({ lastSeenAt: new Date() })
+      .where(eq(deviceSessions.token, token));
+  }
+
+  async deleteDeviceSession(token: string): Promise<void> {
+    await db
+      .delete(deviceSessions)
+      .where(eq(deviceSessions.token, token));
+  }
+
+  async deleteAllDeviceSessions(userId: string): Promise<void> {
+    await db
+      .delete(deviceSessions)
+      .where(eq(deviceSessions.userId, userId));
   }
 
   // Case methods

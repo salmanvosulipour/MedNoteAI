@@ -5,6 +5,7 @@ import { SignInWithApple, type SignInWithAppleOptions } from "@capacitor-communi
 import logoIcon from "@assets/generated_images/minimalist_medical_ai_logo_icon.png";
 import { storeUser } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { getDeviceId, getDeviceName } from "@/lib/device";
 import { Loader2, Mail, Lock, User, Eye, EyeOff } from "lucide-react";
 
 type Mode = "landing" | "login" | "register";
@@ -30,11 +31,12 @@ export default function AuthPage() {
       const result = await SignInWithApple.authorize(options);
       const { identityToken, givenName, familyName, email } = result.response;
 
+      const [deviceId, deviceName] = await Promise.all([getDeviceId(), getDeviceName()]).catch(() => ["", ""]) as [string, string];
       const res = await fetch("/api/auth/apple", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ identityToken, firstName: givenName, lastName: familyName, email }),
+        body: JSON.stringify({ identityToken, firstName: givenName, lastName: familyName, email, deviceId, deviceName }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -61,11 +63,12 @@ export default function AuthPage() {
     }
     setIsLoading(true);
     try {
+      const [deviceId, deviceName] = await Promise.all([getDeviceId(), getDeviceName()]).catch(() => ["", ""]) as [string, string];
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ email: form.email, password: form.password }),
+        body: JSON.stringify({ email: form.email, password: form.password, deviceId, deviceName }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -93,11 +96,12 @@ export default function AuthPage() {
     }
     setIsLoading(true);
     try {
+      const [deviceId, deviceName] = await Promise.all([getDeviceId(), getDeviceName()]).catch(() => ["", ""]) as [string, string];
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ email: form.email, password: form.password, firstName: form.firstName, lastName: form.lastName }),
+        body: JSON.stringify({ email: form.email, password: form.password, firstName: form.firstName, lastName: form.lastName, deviceId, deviceName }),
       });
       if (!res.ok) {
         const err = await res.json();
