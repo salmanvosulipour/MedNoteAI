@@ -41,12 +41,12 @@ export async function registerRoutes(
       const user = await storage.createUser({ email: email.toLowerCase(), password: hashed, firstName, lastName });
 
       const { deviceId, deviceName, platform } = req.body;
-      const boundDeviceId = deviceId || `server-${crypto.randomBytes(8).toString("hex")}`;
+      const boundDeviceId = deviceId || `web-${crypto.randomBytes(8).toString("hex")}`;
       const safePlatform = platform === "ios" ? "ios" : "web";
       await storage.createDeviceSession({ userId: user.id, token, deviceId: boundDeviceId, deviceName, platform: safePlatform });
 
       const { password: _, ...safeUser } = user as any;
-      return res.json({ user: { ...safeUser, currentAuthToken: undefined }, token });
+      return res.json({ user: { ...safeUser, currentAuthToken: undefined }, token, boundDeviceId });
     } catch (error: any) {
       console.error("Register error:", error);
       return res.status(500).json({ message: "Registration failed" });
@@ -66,12 +66,12 @@ export async function registerRoutes(
       if (!valid) return res.status(401).json({ message: "Invalid email or password" });
 
       const token = crypto.randomBytes(32).toString("hex");
-      const boundDeviceId = deviceId || `server-${crypto.randomBytes(8).toString("hex")}`;
+      const boundDeviceId = deviceId || `web-${crypto.randomBytes(8).toString("hex")}`;
       const safePlatform = platform === "ios" ? "ios" : "web";
       await storage.createDeviceSession({ userId: user.id, token, deviceId: boundDeviceId, deviceName, platform: safePlatform });
 
       const { password: _, currentAuthToken: __, ...safeUser } = user as any;
-      return res.json({ user: safeUser, token });
+      return res.json({ user: safeUser, token, boundDeviceId });
     } catch (error: any) {
       console.error("Login error:", error);
       return res.status(500).json({ message: "Login failed" });
@@ -112,12 +112,12 @@ export async function registerRoutes(
       // Generate a device-bound Bearer token — Capacitor/WKWebView loses session cookies
       // so native iOS uses this token for all subsequent API calls
       const token = crypto.randomBytes(32).toString("hex");
-      const boundDeviceId = deviceId || `server-${crypto.randomBytes(8).toString("hex")}`;
+      const boundDeviceId = deviceId || `ios-${crypto.randomBytes(8).toString("hex")}`;
       const safePlatform = platform === "web" ? "web" : "ios";
       await storage.createDeviceSession({ userId: user.id, token, deviceId: boundDeviceId, deviceName, platform: safePlatform });
 
       const { password: _, currentAuthToken: __, ...safeUser } = user as any;
-      return res.json({ user: safeUser, token });
+      return res.json({ user: safeUser, token, boundDeviceId });
     } catch (error: any) {
       console.error("Apple auth error:", error);
       return res.status(401).json({ message: "Apple Sign In failed. Please try again." });

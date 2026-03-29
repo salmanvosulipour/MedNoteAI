@@ -3,6 +3,11 @@ import { Capacitor } from "@capacitor/core";
 let cachedDeviceId: string | null = null;
 let cachedDeviceName: string | null = null;
 
+export function overrideStoredDeviceId(id: string): void {
+  cachedDeviceId = id;
+  localStorage.setItem("mednote_device_id", id);
+}
+
 function generateUUID(): string {
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;

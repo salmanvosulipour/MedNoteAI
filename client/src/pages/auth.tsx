@@ -5,7 +5,7 @@ import { SignInWithApple, type SignInWithAppleOptions } from "@capacitor-communi
 import logoIcon from "@assets/generated_images/minimalist_medical_ai_logo_icon.png";
 import { storeUser } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { getDeviceId, getDeviceName } from "@/lib/device";
+import { getDeviceId, getDeviceName, overrideStoredDeviceId } from "@/lib/device";
 import { Loader2, Mail, Lock, User, Eye, EyeOff } from "lucide-react";
 
 type Mode = "landing" | "login" | "register";
@@ -43,7 +43,8 @@ export default function AuthPage() {
         const err = await res.json();
         throw new Error(err.message || "Sign in failed");
       }
-      const { user, token } = await res.json();
+      const { user, token, boundDeviceId } = await res.json();
+      if (boundDeviceId && boundDeviceId !== deviceId) overrideStoredDeviceId(boundDeviceId);
       storeUser({ ...user, token });
       window.location.href = "/home";
     } catch (err: any) {
@@ -76,7 +77,8 @@ export default function AuthPage() {
         const err = await res.json();
         throw new Error(err.message || "Login failed");
       }
-      const { user, token } = await res.json();
+      const { user, token, boundDeviceId } = await res.json();
+      if (boundDeviceId && boundDeviceId !== deviceId) overrideStoredDeviceId(boundDeviceId);
       storeUser({ ...user, token });
       window.location.href = "/home";
     } catch (err: any) {
@@ -110,7 +112,8 @@ export default function AuthPage() {
         const err = await res.json();
         throw new Error(err.message || "Registration failed");
       }
-      const { user, token } = await res.json();
+      const { user, token, boundDeviceId } = await res.json();
+      if (boundDeviceId && boundDeviceId !== deviceId) overrideStoredDeviceId(boundDeviceId);
       storeUser({ ...user, token });
       window.location.href = "/home";
     } catch (err: any) {
