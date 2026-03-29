@@ -159,9 +159,9 @@ export async function registerRoutes(
       try {
         const session = await storage.getDeviceSessionByToken(token);
         if (session) {
-          // Validate device binding if the client sends X-Device-ID
+          // Device binding: X-Device-ID is required and must match the stored device
           const incomingDeviceId = req.headers["x-device-id"] as string | undefined;
-          if (incomingDeviceId && incomingDeviceId !== session.deviceId) {
+          if (!incomingDeviceId || incomingDeviceId !== session.deviceId) {
             return res.status(401).json({ message: "Unauthorized", reason: "device_mismatch" });
           }
           req.authUserId = session.userId;
