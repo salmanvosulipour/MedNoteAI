@@ -42,3 +42,21 @@ id = "U0YU65zMuE7NzDA8XJQip"
 uri = "file://public/appstore-3-notes.png"
 type = "image"
 title = "Screenshot 3 — AI Clinical Notes (1242×2688)"
+
+[[outputs]]
+id = "P-qF91HzPOe4_Uk97ZmjE"
+uri = "file://public/ipad-screenshot-1-home.png"
+type = "image"
+title = "iPad Screenshot 1 — Home"
+
+[[outputs]]
+id = "oKrgRopDftDoPlHnvb_Dm"
+uri = "file://public/ipad-screenshot-2-recording.png"
+type = "image"
+title = "iPad Screenshot 2 — Recording"
+
+[[outputs]]
+id = "rLvYiNhrqzpOup0m1JDqY"
+uri = "file://public/ipad-screenshot-3-notes.png"
+type = "image"
+title = "iPad Screenshot 3 — Notes"
