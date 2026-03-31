@@ -8,6 +8,9 @@ import { useToast } from "@/hooks/use-toast";
 import { getDeviceId, getDeviceName, overrideStoredDeviceId } from "@/lib/device";
 import { Loader2, Mail, Lock, User, Eye, EyeOff } from "lucide-react";
 
+const PRODUCTION_URL = "https://med-note-ai-1--salmanvosuli.replit.app";
+const apiBase = Capacitor.isNativePlatform() ? `${PRODUCTION_URL}/api` : "/api";
+
 type Mode = "landing" | "login" | "register";
 
 export default function AuthPage() {
@@ -34,7 +37,7 @@ export default function AuthPage() {
 
       const [deviceId, deviceName] = await Promise.all([getDeviceId(), getDeviceName()]).catch(() => ["", ""]) as [string, string];
       const platform = Capacitor.isNativePlatform() ? "ios" : "web";
-      const res = await fetch("/api/auth/apple", {
+      const res = await fetch(`${apiBase}/auth/apple`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -68,7 +71,7 @@ export default function AuthPage() {
     try {
       const [deviceId, deviceName] = await Promise.all([getDeviceId(), getDeviceName()]).catch(() => ["", ""]) as [string, string];
       const platform = Capacitor.isNativePlatform() ? "ios" : "web";
-      const res = await fetch("/api/auth/login", {
+      const res = await fetch(`${apiBase}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -103,7 +106,7 @@ export default function AuthPage() {
     try {
       const [deviceId, deviceName] = await Promise.all([getDeviceId(), getDeviceName()]).catch(() => ["", ""]) as [string, string];
       const platform = Capacitor.isNativePlatform() ? "ios" : "web";
-      const res = await fetch("/api/auth/register", {
+      const res = await fetch(`${apiBase}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

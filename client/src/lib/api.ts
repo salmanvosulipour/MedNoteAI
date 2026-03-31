@@ -1,7 +1,9 @@
 import { queryClient } from "./queryClient";
 import { getDeviceId } from "./device";
+import { Capacitor } from "@capacitor/core";
 
-const API_BASE = "/api";
+const PRODUCTION_URL = "https://med-note-ai-1--salmanvosuli.replit.app";
+const API_BASE = Capacitor.isNativePlatform() ? `${PRODUCTION_URL}/api` : "/api";
 
 function getStoredToken(): string | null {
   try {
