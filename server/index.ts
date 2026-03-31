@@ -100,6 +100,25 @@ async function initStripe() {
     }
   );
 
+  const allowedOrigins = [
+    "capacitor://localhost",
+    "https://localhost",
+    "http://localhost:5000",
+    "https://med-note-ai-1--salmanvosuli.replit.app",
+  ];
+
+  app.use((req, res, next) => {
+    const origin = req.headers.origin || "";
+    if (allowedOrigins.includes(origin)) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+    }
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization,X-Device-ID");
+    if (req.method === "OPTIONS") return res.sendStatus(204);
+    next();
+  });
+
   app.use(
     express.json({
       verify: (req, _res, buf) => {
