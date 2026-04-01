@@ -4,7 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { initializeRevenueCat } from "@/lib/iap";
 import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth";
@@ -22,11 +22,15 @@ import ProfilePage from "@/pages/profile";
 import SecurityPage from "@/pages/security";
 import VerifyEmailPage from "@/pages/verify-email";
 import MaintenancePage from "@/pages/maintenance";
+import AiConsentPage, { AI_CONSENT_KEY } from "@/pages/ai-consent";
 
 const MAINTENANCE_MODE = false;
 
 function Router() {
   const { user, isLoading, isAuthenticated } = useAuth();
+  const [aiConsentGiven, setAiConsentGiven] = useState(
+    () => !!localStorage.getItem(AI_CONSENT_KEY)
+  );
 
   // Initialize RevenueCat as soon as we have a user ID
   useEffect(() => {
@@ -70,6 +74,10 @@ function Router() {
         <Route component={TermsPage} />
       </Switch>
     );
+  }
+
+  if (!aiConsentGiven) {
+    return <AiConsentPage onAccept={() => setAiConsentGiven(true)} />;
   }
 
   return (

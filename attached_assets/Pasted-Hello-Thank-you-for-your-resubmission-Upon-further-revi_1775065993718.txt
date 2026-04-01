@@ -1,0 +1,78 @@
+Hello,
+
+Thank you for your resubmission. Upon further review, we identified additional issues that need your attention. See below for more information.
+
+If you have any questions, we are here to help. Reply to this message in App Store Connect and let us know.
+
+Review Environment
+
+Submission ID: afa31496-3ea5-4a84-9341-526957aa1b79
+Review date: April 01, 2026
+Review Device: iPad Air 11-inch (M3)
+Version reviewed: 1.0
+
+Guideline 4 - Design
+
+
+Issue Description
+
+Parts of the app's user interface were crowded, laid out, or displayed in a way that made it difficult to use the app when reviewed on iPad Air 11-inch (M3) running iPadOS 26.4.
+
+Next Steps
+
+To resolve this issue, revise the app to ensure that the content and controls on the screen are easy to read and interact with.
+
+Note that users expect apps they download to function on all the devices where they are available. For example, apps that may be downloaded onto iPad devices should function as expected for iPad users. Learn more about supporting apps on compatible devices.
+
+Resources
+
+- Learn foundational design principles from Apple designers and the developer community.
+- See documentation for the UIKit framework.
+- Learn more about design requirements in guideline 4.
+Guideline 2.3.8 - Performance - Accurate Metadata
+
+
+Issue Description
+
+The app or its metadata does not appear to include final content. Specifically, the app icons appear to be placeholder icons.
+
+Next Steps
+
+To resolve this issue, please ensure all the app icons are finalized and similar enough to each other to avoid creating confusion. When users search for the app on their devices, they should be able to recognize it.
+
+Resources
+
+- Learn more about adding icons.
+- Learn more about accurate metadata requirements in guideline 2.3.8.
+Guidelines 5.1.1(i) - Legal - Privacy - Data Collection and 5.1.2(i) - Legal - Privacy - Data Use
+
+
+Issue Description
+
+The app appears to share the user’s personal data with a third-party AI service but the app does not clearly explain what data is sent, identify who the data is sent to, and ask the user’s permission before sharing the data. 
+
+Apps may only use, transmit, or share personal data after they meet all of the following requirements: 
+
+- Disclose what data will be sent
+- Specify who the data is sent to
+- Obtain the user’s permission before sending data
+- Identify in the privacy policy what data the app collects, how it collects that data, all uses of that data, and confirm any third party the app shares data with provides the same or equal protection
+
+Next Steps
+
+If the app sends user data to a third-party AI service, revise the app to explain what data is sent, identify who the data is sent to, and ask the user’s permission before sharing personal data with a third-party AI service.
+
+If it does not already, the app’s privacy policy must also identify what data the app collects, how it collects that data, and all uses of that data, including if it is shared with a third-party AI service. Note that only including this information in the app's Terms of Service or Privacy Policy is not sufficient.
+
+If the app does not send user data to a third-party AI service or does not include a third-party AI service, reply to this rejection to confirm and add this information to the App Review Information section of App Store Connect.
+
+Resources
+
+- Learn more about privacy policy requirements in guideline 5.1.1(i).
+- Learn more about data use and sharing requirements in guideline 5.1.2(i).
+- Learn more about providing information to App Review in App Store Connect.
+Support
+
+- Reply to this message in your preferred language if you need assistance. If you need additional support, use the Contact Us module.
+- Consult with fellow developers and Apple engineers on the Apple Developer Forums.
+- Provide feedback on this message and your review experience by completing a short survey.

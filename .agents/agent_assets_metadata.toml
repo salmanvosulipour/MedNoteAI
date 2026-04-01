@@ -18,6 +18,18 @@ uri = "file://ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png"
 type = "image"
 title = "generated_image"
 
+[[generated]]
+id = "XaEXYgOi9fQgh-O-vMXZ6"
+uri = "file://attached_assets/mednote_app_icon.png"
+type = "image"
+title = "mednote_app_icon"
+
+[[generated]]
+id = "UOTrDMfyWO3Zsa-oyxp2w"
+uri = "file://attached_assets/mednote_app_icon_v2.png"
+type = "image"
+title = "mednote_app_icon_v2"
+
 [[outputs]]
 id = "pTtgsmERw6QOFw7et5UOI"
 uri = "file://mednote-ios.zip"
