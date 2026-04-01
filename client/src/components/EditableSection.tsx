@@ -81,7 +81,11 @@ export function parseAIContent(content: string): string[] {
   try {
     const parsed = JSON.parse(trimmed);
 
-    if (typeof parsed === "string") return [parsed];
+    if (typeof parsed === "string") {
+      // Might be double-stringified — try one more parse before giving up
+      if (parsed !== trimmed) return parseAIContent(parsed);
+      return [parsed];
+    }
 
     if (Array.isArray(parsed)) {
       return parsed.flatMap(item =>
