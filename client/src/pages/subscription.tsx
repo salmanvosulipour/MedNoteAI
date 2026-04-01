@@ -28,9 +28,16 @@ const features = [
   { icon: Check, label: "Cloud Sync", desc: "iOS & web included" },
 ];
 
-function authHeaders() {
-  const token = localStorage.getItem("authToken");
-  return token ? { Authorization: `Bearer ${token}` } : {};
+function authHeaders(): Record<string, string> {
+  try {
+    const stored = localStorage.getItem("user");
+    if (!stored) return {};
+    const user = JSON.parse(stored);
+    const token = user?.token;
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  } catch {
+    return {};
+  }
 }
 
 export default function SubscriptionPage() {
