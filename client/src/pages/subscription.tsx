@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { resolveUrl } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
   getOfferings,
@@ -47,7 +48,7 @@ export default function SubscriptionPage() {
   const { data: billingStatus, isLoading } = useQuery({
     queryKey: ["/api/billing/status"],
     queryFn: async () => {
-      const res = await fetch("/api/billing/status", {
+      const res = await fetch(resolveUrl("/api/billing/status"), {
         credentials: "include",
         headers: authHeaders(),
       });

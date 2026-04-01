@@ -1,8 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { User } from "@shared/models/auth";
+import { resolveUrl } from "@/lib/queryClient";
 
 async function fetchUser(): Promise<User | null> {
-  const response = await fetch("/api/auth/user", { credentials: "include" });
+  const response = await fetch(resolveUrl("/api/auth/user"), { credentials: "include" });
   if (response.status === 401) return null;
   if (!response.ok) throw new Error(`${response.status}: ${response.statusText}`);
   return response.json();

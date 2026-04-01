@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { getDeviceId } from "@/lib/device";
+import { resolveUrl } from "@/lib/queryClient";
 import type { User } from "@shared/schema";
 
 function getStoredUser(): User | null {
@@ -45,7 +46,7 @@ export function useAuth() {
         headers["X-Device-ID"] = deviceId;
       } catch { /* non-fatal */ }
 
-      const res = await fetch("/api/auth/user", { credentials: "include", headers });
+      const res = await fetch(resolveUrl("/api/auth/user"), { credentials: "include", headers });
       if (res.ok) {
         const userData = await res.json();
         storeUser({ ...userData, token: token || userData.token });
@@ -93,7 +94,7 @@ export function useAuth() {
     } catch { /* non-fatal */ }
     clearStoredUser();
     setUser(null);
-    await fetch("/api/auth/logout", { method: "POST", credentials: "include", headers }).catch(() => {});
+    await fetch(resolveUrl("/api/auth/logout"), { method: "POST", credentials: "include", headers }).catch(() => {});
     window.location.href = "/";
   }, []);
 

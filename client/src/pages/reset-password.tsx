@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { motion } from "framer-motion";
 import { useMutation } from "@tanstack/react-query";
+import { resolveUrl } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Lock, CheckCircle, XCircle } from "lucide-react";
 import logoIcon from "@assets/generated_images/minimalist_medical_ai_logo_icon.png";
@@ -23,7 +24,7 @@ export default function ResetPasswordPage() {
 
   const resetPasswordMutation = useMutation({
     mutationFn: async (data: { token: string; password: string }) => {
-      const res = await fetch("/api/auth/reset-password", {
+      const res = await fetch(resolveUrl("/api/auth/reset-password"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),

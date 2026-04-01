@@ -14,7 +14,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
 import { clearStoredUser, useAuth } from "@/hooks/useAuth";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, resolveUrl } from "@/lib/queryClient";
 
 const SPECIALTIES = [
   "Emergency Medicine",
@@ -55,7 +55,7 @@ export default function ProfilePage() {
     queryKey: ["/api/billing/status"],
     queryFn: async () => {
       const authToken = localStorage.getItem("authToken");
-      const res = await fetch("/api/billing/status", {
+      const res = await fetch(resolveUrl("/api/billing/status"), {
         credentials: "include",
         headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
       });

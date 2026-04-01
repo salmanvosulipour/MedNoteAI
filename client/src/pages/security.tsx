@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
+import { resolveUrl } from "@/lib/queryClient";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
 const DEMO_USER_ID = "demo-user";
@@ -49,7 +50,7 @@ export default function SecurityPage() {
   const startSetup = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch("/api/auth/2fa/setup", {
+      const res = await fetch(resolveUrl("/api/auth/2fa/setup"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: DEMO_USER_ID }),
@@ -78,7 +79,7 @@ export default function SecurityPage() {
 
     setIsLoading(true);
     try {
-      const res = await fetch("/api/auth/2fa/enable", {
+      const res = await fetch(resolveUrl("/api/auth/2fa/enable"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -117,7 +118,7 @@ export default function SecurityPage() {
 
     setIsLoading(true);
     try {
-      const res = await fetch("/api/auth/2fa/disable", {
+      const res = await fetch(resolveUrl("/api/auth/2fa/disable"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -155,7 +156,7 @@ export default function SecurityPage() {
 
     setIsLoading(true);
     try {
-      const res = await fetch("/api/auth/2fa/regenerate-backup-codes", {
+      const res = await fetch(resolveUrl("/api/auth/2fa/regenerate-backup-codes"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

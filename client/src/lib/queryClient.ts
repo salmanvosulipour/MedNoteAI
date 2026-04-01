@@ -3,7 +3,7 @@ import { Capacitor } from "@capacitor/core";
 
 const PRODUCTION_URL = "https://med-note-ai-1--salmanvosuli.replit.app";
 
-function resolveUrl(url: string): string {
+export function resolveUrl(url: string): string {
   if (Capacitor.isNativePlatform() && url.startsWith("/")) {
     return `${PRODUCTION_URL}${url}`;
   }
