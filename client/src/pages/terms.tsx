@@ -7,11 +7,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { motion } from "framer-motion";
 import { Shield, AlertTriangle, FileText, CheckCircle } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import { resolveUrl } from "@/lib/queryClient";
 import { storeUser, clearStoredUser } from "@/hooks/useAuth";
+import { getDeviceId } from "@/lib/device";
+import { useToast } from "@/hooks/use-toast";
 
 export default function TermsPage() {
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
   const [hasReadTerms, setHasReadTerms] = useState(false);
   const [understandsEducational, setUnderstandsEducational] = useState(false);
   const [understandsNotReplacement, setUnderstandsNotReplacement] = useState(false);
@@ -19,13 +22,38 @@ export default function TermsPage() {
   const acceptTermsMutation = useMutation({
     mutationFn: async () => {
       const authToken = localStorage.getItem("authToken");
-      const res = await apiRequest("POST", "/api/auth/accept-terms", { authToken });
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (authToken) {
+        headers["Authorization"] = `Bearer ${authToken}`;
+      }
+      try {
+        const deviceId = await getDeviceId();
+        headers["X-Device-ID"] = deviceId;
+      } catch { /* non-fatal */ }
+
+      const res = await fetch(resolveUrl("/api/auth/accept-terms"), {
+        method: "POST",
+        headers,
+        credentials: "include",
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(text || `Server error ${res.status}`);
+      }
       return res.json();
     },
     onSuccess: (updatedUser) => {
-      localStorage.removeItem("authToken");
       storeUser(updatedUser);
-      setLocation("/home");
+      // Full reload so useAuth re-reads the updated user from localStorage
+      window.location.href = "/home";
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Could not accept terms",
+        description: err?.message || "Please try again.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -176,12 +204,12 @@ export default function TermsPage() {
             variant="ghost"
             onClick={async () => {
               try {
-                await apiRequest("POST", "/api/auth/logout");
+                await fetch(resolveUrl("/api/auth/logout"), { method: "POST", credentials: "include" });
               } catch (e) {
                 // Ignore errors
               }
               clearStoredUser();
-              setLocation("/auth");
+              window.location.href = "/auth";
             }}
             className="w-full"
             data-testid="button-decline-logout"
