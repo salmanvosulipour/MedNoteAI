@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { MobileLayout } from "@/components/MobileLayout";
 import { AudioVisualizer } from "@/components/AudioVisualizer";
-import { ChevronLeft, Square, Mic, Sparkles, Loader2, Play, Pause } from "lucide-react";
+import { ChevronLeft, Square, Mic, Sparkles, Loader2, Play, Pause, Shield } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { createCase, processText } from "@/lib/api";
@@ -12,6 +12,8 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
+
+const AI_CONSENT_KEY = "mednote_ai_consent_v1";
 
 interface SpeechRecognitionEvent extends Event {
   results: SpeechRecognitionResultList;
@@ -62,6 +64,7 @@ export default function RecordPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
+  const [showAiConsentDialog, setShowAiConsentDialog] = useState(false);
   const [showPatientDialog, setShowPatientDialog] = useState(false);
   const [patientName, setPatientName] = useState("");
   const [patientMrn, setPatientMrn] = useState("");
@@ -207,6 +210,11 @@ export default function RecordPage() {
 
   const handleMainButtonClick = () => {
     if (!patientDetailsConfirmed) {
+      const consentGiven = localStorage.getItem(AI_CONSENT_KEY);
+      if (!consentGiven) {
+        setShowAiConsentDialog(true);
+        return;
+      }
       setShowPatientDialog(true);
     } else if (isRecording) {
       handlePause();
@@ -444,6 +452,64 @@ export default function RecordPage() {
           Powered by OpenAI & Gemini
         </motion.p>
       </div>
+
+      <Dialog open={showAiConsentDialog} onOpenChange={setShowAiConsentDialog}>
+        <DialogContent className="max-w-sm mx-4 bg-slate-900 border-slate-700 text-white rounded-3xl">
+          <DialogHeader>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-10 h-10 rounded-2xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center">
+                <Shield className="w-5 h-5 text-blue-400" />
+              </div>
+              <DialogTitle className="text-white text-lg">AI Data Usage Notice</DialogTitle>
+            </div>
+          </DialogHeader>
+          <div className="space-y-4 py-1 text-sm text-slate-300 leading-relaxed">
+            <p>
+              Before recording, please understand how your data is processed:
+            </p>
+            <div className="space-y-3">
+              <div className="flex gap-3 p-3 rounded-xl bg-white/5 border border-white/10">
+                <span className="text-blue-400 font-bold mt-0.5">1.</span>
+                <div>
+                  <p className="font-medium text-white text-xs uppercase tracking-wide mb-1">Audio Transcription</p>
+                  <p className="text-slate-400 text-xs">Your voice recording is sent to <span className="text-white font-medium">Google Gemini AI</span> to convert speech to text.</p>
+                </div>
+              </div>
+              <div className="flex gap-3 p-3 rounded-xl bg-white/5 border border-white/10">
+                <span className="text-blue-400 font-bold mt-0.5">2.</span>
+                <div>
+                  <p className="font-medium text-white text-xs uppercase tracking-wide mb-1">Note Generation</p>
+                  <p className="text-slate-400 text-xs">The transcription is sent to <span className="text-white font-medium">OpenAI</span> to generate a structured medical note.</p>
+                </div>
+              </div>
+            </div>
+            <p className="text-xs text-slate-500">
+              By continuing, you confirm you have obtained appropriate patient consent before recording any personal health information, in accordance with applicable laws.
+            </p>
+          </div>
+          <DialogFooter className="gap-2 mt-2">
+            <Button
+              variant="ghost"
+              onClick={() => setShowAiConsentDialog(false)}
+              className="text-slate-400 hover:text-white rounded-xl"
+              data-testid="button-consent-cancel"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                localStorage.setItem(AI_CONSENT_KEY, "true");
+                setShowAiConsentDialog(false);
+                setShowPatientDialog(true);
+              }}
+              className="bg-gradient-to-r from-blue-600 to-violet-600 text-white rounded-xl flex-1"
+              data-testid="button-consent-accept"
+            >
+              I Understand
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showPatientDialog} onOpenChange={setShowPatientDialog}>
         <DialogContent className="max-w-sm mx-4 bg-slate-900 border-slate-700 text-white rounded-3xl">
