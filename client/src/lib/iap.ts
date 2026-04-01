@@ -7,6 +7,7 @@ export const MONTHLY_PRODUCT_ID = "mednote.monthly";
 export const YEARLY_PRODUCT_ID = "mednote.yearly";
 
 let initialized = false;
+let initPromise: Promise<void> | null = null;
 
 export async function initializeRevenueCat(userId: string): Promise<void> {
   if (!Capacitor.isNativePlatform()) return;
@@ -14,9 +15,37 @@ export async function initializeRevenueCat(userId: string): Promise<void> {
     await Purchases.logIn({ appUserID: userId });
     return;
   }
-  await Purchases.setLogLevel({ level: LOG_LEVEL.DEBUG });
-  await Purchases.configure({ apiKey: RC_IOS_API_KEY, appUserID: userId });
-  initialized = true;
+  if (initPromise) {
+    await initPromise;
+    await Purchases.logIn({ appUserID: userId });
+    return;
+  }
+  initPromise = (async () => {
+    await Purchases.setLogLevel({ level: LOG_LEVEL.DEBUG });
+    await Purchases.configure({ apiKey: RC_IOS_API_KEY, appUserID: userId });
+    initialized = true;
+  })();
+  await initPromise;
+}
+
+export function isInitialized(): boolean {
+  return initialized;
+}
+
+export async function waitForInit(timeoutMs = 8000): Promise<void> {
+  if (initialized) return;
+  if (initPromise) {
+    await Promise.race([
+      initPromise,
+      new Promise<void>((_, reject) => setTimeout(() => reject(new Error("RC init timeout")), timeoutMs)),
+    ]);
+    return;
+  }
+  // Not yet started — poll briefly
+  const start = Date.now();
+  while (!initialized && Date.now() - start < timeoutMs) {
+    await new Promise(r => setTimeout(r, 300));
+  }
 }
 
 export async function getOfferings() {

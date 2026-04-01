@@ -15,6 +15,7 @@ import {
   restorePurchases,
   hasProEntitlement,
   isNative,
+  waitForInit,
   MONTHLY_PRODUCT_ID,
   YEARLY_PRODUCT_ID,
 } from "@/lib/iap";
@@ -69,33 +70,44 @@ export default function SubscriptionPage() {
   });
 
   // Load RevenueCat offerings on native iOS.
-  // If offerings return no packages, fall back to fetching products directly from StoreKit.
+  // Wait for SDK initialization, then fall back to direct StoreKit if offerings empty.
   useEffect(() => {
     if (!isNative()) return;
 
+    let cancelled = false;
     let attempts = 0;
+
     const load = async () => {
       attempts++;
       try {
+        // Wait for RevenueCat to finish configuring before fetching
+        await waitForInit(10000);
+        if (cancelled) return;
+
         const o = await getOfferings();
+        if (cancelled) return;
         setOfferings(o);
-        if (o?.availablePackages?.length) return; // offerings have products — done
+        if (o?.availablePackages?.length) return;
       } catch (err) {
         console.error("[RC] getOfferings error:", err);
       }
 
+      if (cancelled) return;
+
       // Offerings empty — try direct StoreKit fetch
       const prods = await getProducts();
+      if (cancelled) return;
       if (prods.length) {
         setDirectProducts(prods);
         return;
       }
 
-      // Still nothing — retry up to 3 times with a delay
-      if (attempts < 3) setTimeout(load, 3000);
+      // Still nothing — retry up to 4 times with increasing delay
+      if (attempts < 4) setTimeout(load, attempts * 2000);
     };
 
     load();
+    return () => { cancelled = true; };
   }, []);
 
   // Find the right package from RevenueCat offerings.
