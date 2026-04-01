@@ -1,5 +1,16 @@
 uploads = []
-generated = []
+
+[[generated]]
+id = "55WbhkI9QGbpPDIEM95dp"
+uri = "file://attached_assets/iap_promo_monthly.png"
+type = "image"
+title = "monthly subscription promo"
+
+[[generated]]
+id = "ofX_1DMUwwfB1HKLsznTu"
+uri = "file://attached_assets/iap_promo_yearly.png"
+type = "image"
+title = "yearly subscription promo"
 
 [[outputs]]
 id = "pTtgsmERw6QOFw7et5UOI"
@@ -60,3 +71,15 @@ id = "rLvYiNhrqzpOup0m1JDqY"
 uri = "file://public/ipad-screenshot-3-notes.png"
 type = "image"
 title = "iPad Screenshot 3 — Notes"
+
+[[outputs]]
+id = "zf6p_e59xi-zV8xTab1Ij"
+uri = "file://attached_assets/iap_promo_monthly.png"
+type = "image"
+title = "Monthly Plan Promotional Image (upload to mednote.monthly in App Store Connect)"
+
+[[outputs]]
+id = "oiOBjdWMVgMgjb7BFSuh0"
+uri = "file://attached_assets/iap_promo_yearly.png"
+type = "image"
+title = "Yearly Plan Promotional Image (upload to mednote.yearly in App Store Connect)"
