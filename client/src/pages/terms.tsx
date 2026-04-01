@@ -21,7 +21,9 @@ export default function TermsPage() {
 
   const acceptTermsMutation = useMutation({
     mutationFn: async () => {
-      const authToken = localStorage.getItem("authToken");
+      // Token lives inside the stored user object, not as a separate key
+      const storedUser = (() => { try { return JSON.parse(localStorage.getItem("user") || "{}"); } catch { return {}; } })();
+      const authToken = storedUser?.token;
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (authToken) {
         headers["Authorization"] = `Bearer ${authToken}`;
