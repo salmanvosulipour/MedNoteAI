@@ -113,3 +113,9 @@ id = "8bHRCXF5JXzjCtCd36JjX"
 uri = "file://attached_assets/subscription_screenshot.png"
 type = "image"
 title = "MedNote Pro Subscription Screenshot"
+
+[[outputs]]
+id = "zgZkcNz4iA3n8U3GMpVkT"
+uri = "file://attached_assets/subscription_screenshot_1242x2208.png"
+type = "image"
+title = "Subscription Screenshot (1242×2208) — Apple Required Size"
