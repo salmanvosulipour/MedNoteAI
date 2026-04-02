@@ -30,6 +30,12 @@ uri = "file://attached_assets/mednote_app_icon_v2.png"
 type = "image"
 title = "mednote_app_icon_v2"
 
+[[generated]]
+id = "C5JfYyh6NiV8j21Xs6Izj"
+uri = "file://attached_assets/subscription_screenshot.png"
+type = "image"
+title = "subscription_screenshot"
+
 [[outputs]]
 id = "pTtgsmERw6QOFw7et5UOI"
 uri = "file://mednote-ios.zip"
@@ -101,3 +107,9 @@ id = "oiOBjdWMVgMgjb7BFSuh0"
 uri = "file://attached_assets/iap_promo_yearly.png"
 type = "image"
 title = "Yearly Plan Promotional Image (upload to mednote.yearly in App Store Connect)"
+
+[[outputs]]
+id = "8bHRCXF5JXzjCtCd36JjX"
+uri = "file://attached_assets/subscription_screenshot.png"
+type = "image"
+title = "MedNote Pro Subscription Screenshot"
