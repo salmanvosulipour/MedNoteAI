@@ -143,3 +143,9 @@ id = "NMe9geathMbt1jwzMPat6"
 uri = "file://attached_assets/subscription_promo_final_v2.png"
 type = "image"
 title = "Subscription Promo Image v2 — Sharp corners, no text (use for both Monthly & Yearly)"
+
+[[outputs]]
+id = "5zYCgY77p37D46Po11v_s"
+uri = "file://attached_assets/subscription_promo_no_alpha.png"
+type = "image"
+title = "Subscription Promo Image — Final (no alpha, no transparency, 1024×1024)"
