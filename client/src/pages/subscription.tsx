@@ -199,12 +199,8 @@ export default function SubscriptionPage() {
       return;
     }
 
-    // Nothing loaded yet — retry
+    // Nothing loaded yet — retry silently
     getProducts().then(setDirectProducts).catch(console.error);
-    toast({
-      title: "Store products loading…",
-      description: "Fetching App Store prices. Please try again in a few seconds.",
-    });
   };
 
   const handleRestore = async () => {
