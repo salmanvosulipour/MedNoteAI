@@ -42,6 +42,12 @@ uri = "file://attached_assets/subscription_promo_1024x1024.png"
 type = "image"
 title = "subscription_promo_1024"
 
+[[generated]]
+id = "MjB0x9ybt_TriKPaLLp4s"
+uri = "file://attached_assets/subscription_promo_v2.png"
+type = "image"
+title = "subscription_promo_v2"
+
 [[outputs]]
 id = "pTtgsmERw6QOFw7et5UOI"
 uri = "file://mednote-ios.zip"
@@ -131,3 +137,9 @@ id = "t1a7tBTicOLjcehZadQHy"
 uri = "file://attached_assets/subscription_promo_final.png"
 type = "image"
 title = "Subscription Promo Image (1024×1024) — use for both Monthly and Yearly"
+
+[[outputs]]
+id = "NMe9geathMbt1jwzMPat6"
+uri = "file://attached_assets/subscription_promo_final_v2.png"
+type = "image"
+title = "Subscription Promo Image v2 — Sharp corners, no text (use for both Monthly & Yearly)"
