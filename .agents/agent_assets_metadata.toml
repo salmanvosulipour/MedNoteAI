@@ -36,6 +36,12 @@ uri = "file://attached_assets/subscription_screenshot.png"
 type = "image"
 title = "subscription_screenshot"
 
+[[generated]]
+id = "q_XYHJZhHlhD-lTV80g-I"
+uri = "file://attached_assets/subscription_promo_1024x1024.png"
+type = "image"
+title = "subscription_promo_1024"
+
 [[outputs]]
 id = "pTtgsmERw6QOFw7et5UOI"
 uri = "file://mednote-ios.zip"
@@ -119,3 +125,9 @@ id = "zgZkcNz4iA3n8U3GMpVkT"
 uri = "file://attached_assets/subscription_screenshot_1242x2208.png"
 type = "image"
 title = "Subscription Screenshot (1242×2208) — Apple Required Size"
+
+[[outputs]]
+id = "t1a7tBTicOLjcehZadQHy"
+uri = "file://attached_assets/subscription_promo_final.png"
+type = "image"
+title = "Subscription Promo Image (1024×1024) — use for both Monthly and Yearly"
