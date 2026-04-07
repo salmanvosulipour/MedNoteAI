@@ -1,6 +1,7 @@
 import UIKit
 import Capacitor
 import CapacitorCommunityAppleSignIn
+import RevenuecatPurchasesCapacitor
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -8,9 +9,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Force CapacitorCommunityAppleSignIn framework to load before Capacitor bridge
-        // initializes, so NSClassFromString("SignInWithApple") succeeds in registerPlugins()
+        // Force frameworks to load before Capacitor bridge initializes
         _ = SignInWithApple.self
+        _ = PurchasesPlugin.self
         return true
     }
 

@@ -38,7 +38,7 @@ workflows:
               appName: 'MedNote AI',
               webDir: 'dist/public',
               ios: { contentInset: 'automatic' },
-              packageClassList: ['SignInWithApple']
+              packageClassList: ['SignInWithApple', 'PurchasesPlugin']
             };
             fs.writeFileSync(cfgPath, JSON.stringify(cfg, null, 2));
             console.log('capacitor.config.json written:', JSON.stringify(cfg));
@@ -66,7 +66,13 @@ workflows:
           else
             echo "CapacitorCommunityAppleSignIn already imported"
           fi
-          cat "$APPDELEGATE" | head -5
+          if ! grep -q "RevenuecatPurchasesCapacitor" "$APPDELEGATE"; then
+            sed -i '' 's/^import Capacitor$/import Capacitor\nimport RevenuecatPurchasesCapacitor/' "$APPDELEGATE"
+            echo "Injected RevenuecatPurchasesCapacitor import into AppDelegate.swift"
+          else
+            echo "RevenuecatPurchasesCapacitor already imported"
+          fi
+          cat "$APPDELEGATE" | head -6
 
       - name: Install CocoaPods dependencies
         script: |
