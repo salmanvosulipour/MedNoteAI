@@ -149,3 +149,15 @@ id = "5zYCgY77p37D46Po11v_s"
 uri = "file://attached_assets/subscription_promo_no_alpha.png"
 type = "image"
 title = "Subscription Promo Image — Final (no alpha, no transparency, 1024×1024)"
+
+[[outputs]]
+id = "bxzOZOmG_XTs_zO8XU1sf"
+uri = "file://attached_assets/promo_monthly.png"
+type = "image"
+title = "Monthly Subscription Promo Image (Blue)"
+
+[[outputs]]
+id = "L5e4QGxLmd2xKqP_jzwmv"
+uri = "file://attached_assets/promo_yearly.png"
+type = "image"
+title = "Yearly Subscription Promo Image (Purple)"
