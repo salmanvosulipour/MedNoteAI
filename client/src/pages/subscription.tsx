@@ -49,6 +49,7 @@ export default function SubscriptionPage() {
 
   const [offerings, setOfferings] = useState<any>(null);
   const [directProducts, setDirectProducts] = useState<any[]>([]);
+  const [productsLoadDone, setProductsLoadDone] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [purchaseSuccess, setPurchaseSuccess] = useState(false);
@@ -87,7 +88,7 @@ export default function SubscriptionPage() {
         const o = await getOfferings();
         if (cancelled) return;
         setOfferings(o);
-        if (o?.availablePackages?.length) return;
+        if (o?.availablePackages?.length) { setProductsLoadDone(true); return; }
       } catch (err) {
         console.error("[RC] getOfferings error:", err);
       }
@@ -99,13 +100,20 @@ export default function SubscriptionPage() {
       if (cancelled) return;
       if (prods.length) {
         setDirectProducts(prods);
+        setProductsLoadDone(true);
         return;
       }
 
       // Still nothing — retry up to 4 times with increasing delay
-      if (attempts < 4) setTimeout(load, attempts * 2000);
+      if (attempts < 4) {
+        setTimeout(load, attempts * 2000);
+      } else {
+        if (!cancelled) setProductsLoadDone(true);
+      }
+      return;
     };
 
+    setProductsLoadDone(false);
     load();
     return () => { cancelled = true; };
   }, []);
@@ -199,8 +207,12 @@ export default function SubscriptionPage() {
       return;
     }
 
-    // Nothing loaded yet — retry silently
-    getProducts().then(setDirectProducts).catch(console.error);
+    // Products unavailable
+    toast({
+      title: "Subscription Unavailable",
+      description: "In-app purchases are not available on this device right now. Please try again later.",
+      variant: "destructive",
+    });
   };
 
   const handleRestore = async () => {
@@ -421,24 +433,30 @@ export default function SubscriptionPage() {
         </div>
 
         <div className="px-6 pb-8 space-y-3">
-          <Button
-            size="lg"
-            onClick={handlePurchase}
-            disabled={purchasing || restoring}
-            className="w-full h-14 rounded-2xl text-base font-bold bg-gradient-to-r from-blue-600 via-blue-500 to-violet-600 hover:from-blue-500 hover:to-violet-500 shadow-xl shadow-blue-500/30 border-t border-white/20 transition-all flex items-center justify-center gap-2"
-            data-testid="button-subscribe"
-          >
-            {purchasing ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <Apple className="w-5 h-5" />
-            )}
-            {purchasing
-              ? "Processing…"
-              : isNative()
-                ? `Subscribe — ${displayPrice}`
-                : `Subscribe — ${isYearly ? "$99/yr" : "$15/mo"}`}
-          </Button>
+          {isNative() && productsLoadDone && !selectedPackage && !selectedDirectProduct ? (
+            <div className="w-full h-14 rounded-2xl flex items-center justify-center gap-2 bg-white/5 border border-white/10 text-slate-400 text-sm">
+              Subscriptions currently unavailable — please try again later
+            </div>
+          ) : (
+            <Button
+              size="lg"
+              onClick={handlePurchase}
+              disabled={purchasing || restoring}
+              className="w-full h-14 rounded-2xl text-base font-bold bg-gradient-to-r from-blue-600 via-blue-500 to-violet-600 hover:from-blue-500 hover:to-violet-500 shadow-xl shadow-blue-500/30 border-t border-white/20 transition-all flex items-center justify-center gap-2"
+              data-testid="button-subscribe"
+            >
+              {purchasing ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Apple className="w-5 h-5" />
+              )}
+              {purchasing
+                ? "Processing…"
+                : isNative()
+                  ? `Subscribe — ${displayPrice}`
+                  : `Subscribe — ${isYearly ? "$99/yr" : "$15/mo"}`}
+            </Button>
+          )}
 
           <button
             onClick={handleRestore}
