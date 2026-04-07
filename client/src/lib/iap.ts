@@ -75,14 +75,23 @@ export async function getProducts(): Promise<any[]> {
   }
 }
 
+function isCancellation(e: any): boolean {
+  return (
+    e?.code === "1" ||
+    e?.code === "PURCHASE_CANCELLED" ||
+    e?.userCancelled === true ||
+    e?.message?.toLowerCase().includes("cancel") ||
+    e?.message?.toLowerCase().includes("dismissed") ||
+    e?.underlyingErrorMessage?.toLowerCase().includes("cancel")
+  );
+}
+
 export async function purchasePackage(rcPackage: any): Promise<{ success: boolean; customerInfo?: any; cancelled?: boolean }> {
   try {
     const { customerInfo } = await Purchases.purchasePackage({ aPackage: rcPackage });
     return { success: true, customerInfo };
   } catch (e: any) {
-    if (e?.code === "1" || e?.message?.includes("cancel")) {
-      return { success: false, cancelled: true };
-    }
+    if (isCancellation(e)) return { success: false, cancelled: true };
     throw e;
   }
 }
@@ -93,9 +102,7 @@ export async function purchaseProduct(storeProduct: any): Promise<{ success: boo
     const { customerInfo } = await Purchases.purchaseStoreProduct({ product: storeProduct });
     return { success: true, customerInfo };
   } catch (e: any) {
-    if (e?.code === "1" || e?.message?.includes("cancel")) {
-      return { success: false, cancelled: true };
-    }
+    if (isCancellation(e)) return { success: false, cancelled: true };
     throw e;
   }
 }
