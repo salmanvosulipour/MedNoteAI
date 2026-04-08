@@ -1,7 +1,7 @@
 import { Capacitor } from "@capacitor/core";
 import { Purchases, LOG_LEVEL } from "@revenuecat/purchases-capacitor";
 
-const RC_IOS_API_KEY = "appl_qEyiFLlgqTdoUtQrYJtoCXMWvDJ";
+const RC_IOS_API_KEY = "appl_qEyiFLlgqTdoUtQrYJtoCXWWvDJ";
 export const ENTITLEMENT_ID = "pro";
 export const MONTHLY_PRODUCT_ID = "mednote.monthly";
 export const YEARLY_PRODUCT_ID = "mednote.yearly";
