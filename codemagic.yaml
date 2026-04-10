@@ -6,7 +6,6 @@ workflows:
     integrations:
       app_store_connect: MedNote
     environment:
-      xcode: 17
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.mednote.ai
@@ -17,6 +16,15 @@ workflows:
         XCODE_CONFIGURATION: Release
       node: 20.11.0
     scripts:
+      - name: Select stable Xcode
+        script: |
+          # Switch to the latest stable (non-beta, non-RC) Xcode on this machine
+          STABLE=$(ls /Applications/ | grep -E "^Xcode_[0-9]" | grep -iv "beta\|rc" | sort -V | tail -1)
+          echo "Available Xcodes: $(ls /Applications/ | grep Xcode)"
+          echo "Selecting: $STABLE"
+          sudo xcode-select -s "/Applications/$STABLE/Contents/Developer"
+          xcodebuild -version
+
       - name: Install dependencies
         script: npm install
 
