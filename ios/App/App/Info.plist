@@ -28,7 +28,7 @@
         <string>Main</string>
         <key>UIRequiredDeviceCapabilities</key>
         <array>
-                <string>armv7</string>
+                <string>arm64</string>
         </array>
         <key>UISupportedInterfaceOrientations</key>
         <array>
@@ -51,5 +51,7 @@
         <string>MedNote AI uses speech recognition to transcribe your recordings into medical notes.</string>
         <key>NSCameraUsageDescription</key>
         <string>MedNote AI needs camera access to capture images for medical documentation.</string>
+        <key>ITSAppUsesNonExemptEncryption</key>
+        <false/>
 </dict>
 </plist>
