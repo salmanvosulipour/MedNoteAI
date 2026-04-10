@@ -6,6 +6,7 @@ workflows:
     integrations:
       app_store_connect: MedNote
     environment:
+      xcode: latest-stable
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.mednote.ai
