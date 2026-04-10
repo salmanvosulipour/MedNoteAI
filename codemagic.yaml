@@ -112,7 +112,19 @@ workflows:
           xcode-project build-ipa \
             --workspace "$XCODE_WORKSPACE" \
             --scheme "$XCODE_SCHEME" \
+            --config "$XCODE_CONFIGURATION" \
+            --export-options-plist ios/App/ExportOptions.plist \
             --verbose
+
+      - name: Validate IPA before publish
+        script: |
+          IPA=$(find build/ios/ipa -name "*.ipa" | head -1)
+          echo "=== IPA path: $IPA ==="
+          echo "=== IPA size: $(du -sh "$IPA") ==="
+          # Verify code signing
+          codesign -dv --verbose=4 "$IPA" 2>&1 | head -20 || true
+          # List IPA contents
+          unzip -l "$IPA" | grep -E "\.app|embedded\.mobileprovision|Info\.plist" | head -20
 
     artifacts:
       - build/ios/ipa/*.ipa
