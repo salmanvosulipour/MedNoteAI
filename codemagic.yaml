@@ -98,7 +98,7 @@ workflows:
           # Patch Info.plist with literal value (no variable reference)
           PLIST="ios/App/App/Info.plist"
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" "$PLIST"
-          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 1.1" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 1.2" "$PLIST"
           echo "=== Info.plist after patch ==="
           /usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$PLIST"
           /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$PLIST"
