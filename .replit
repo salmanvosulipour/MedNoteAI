@@ -45,3 +45,8 @@ integrations = ["javascript_database:1.0.0", "javascript_openai_ai_integrations:
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 120000
+
+[userenv]
+
+[userenv.shared]
+VITE_APPLE_WEB_CLIENT_ID = "web.com.mednote.ai"
