@@ -84,7 +84,9 @@ export async function registerRoutes(
       if (!email || !password) return res.status(400).json({ message: "Email and password are required" });
 
       const user = await storage.getUserByEmail(email.toLowerCase());
-      if (!user || !user.password) return res.status(401).json({ message: "Invalid email or password" });
+      if (!user) return res.status(401).json({ message: "Invalid email or password" });
+      // Account exists but was created via Sign in with Apple (no password stored)
+      if (!user.password) return res.status(401).json({ error: "APPLE_ACCOUNT", message: "This account was created with Sign in with Apple. Please use Sign in with Apple to log in." });
 
       const valid = await bcrypt.compare(password, user.password);
       if (!valid) return res.status(401).json({ message: "Invalid email or password" });

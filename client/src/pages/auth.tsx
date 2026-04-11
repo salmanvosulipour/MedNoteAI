@@ -79,6 +79,15 @@ export default function AuthPage() {
       });
       if (!res.ok) {
         const err = await res.json();
+        // Apple account detected — guide user to correct sign-in method
+        if (err.error === "APPLE_ACCOUNT") {
+          toast({
+            title: "Sign in with Apple required",
+            description: "This account was created using Sign in with Apple. Please use the iOS app to sign in, or create a new account with email.",
+            variant: "destructive",
+          });
+          return;
+        }
         throw new Error(err.message || "Login failed");
       }
       const { user, token, boundDeviceId } = await res.json();
@@ -180,9 +189,22 @@ export default function AuthPage() {
               ) : (
                 <>
                   <button
+                    onClick={() => {
+                      toast({
+                        title: "Sign in with Apple",
+                        description: "Open the MedNote AI iOS app to sign in with your Apple ID. Your cases will sync automatically.",
+                      });
+                    }}
+                    data-testid="button-sign-in-apple-web"
+                    className="w-full h-14 flex items-center justify-center gap-3 bg-white text-black font-semibold text-base rounded-2xl shadow-xl hover:bg-white/90 active:scale-[0.98] transition-all"
+                  >
+                    <AppleLogo />
+                    Sign in with Apple
+                  </button>
+                  <button
                     onClick={() => setMode("login")}
                     data-testid="button-sign-in-email"
-                    className="w-full h-14 flex items-center justify-center gap-3 bg-white text-black font-semibold text-base rounded-2xl shadow-xl hover:bg-white/90 active:scale-[0.98] transition-all"
+                    className="w-full h-14 flex items-center justify-center gap-3 bg-white/10 border border-white/20 text-white font-semibold text-base rounded-2xl hover:bg-white/15 active:scale-[0.98] transition-all"
                   >
                     <Mail className="w-5 h-5" />
                     Sign in with Email
@@ -190,9 +212,9 @@ export default function AuthPage() {
                   <button
                     onClick={() => setMode("register")}
                     data-testid="button-create-account"
-                    className="w-full h-14 flex items-center justify-center gap-3 bg-white/10 border border-white/20 text-white font-semibold text-base rounded-2xl hover:bg-white/15 active:scale-[0.98] transition-all"
+                    className="w-full h-14 flex items-center justify-center gap-3 bg-white/5 border border-white/10 text-white/70 font-semibold text-base rounded-2xl hover:bg-white/10 active:scale-[0.98] transition-all"
                   >
-                    Create Account
+                    Create Account with Email
                   </button>
                 </>
               )}
