@@ -72,6 +72,30 @@ uri = "file://attached_assets/generated_images/poster_burnout.png"
 type = "image"
 title = "generated_image"
 
+[[generated]]
+id = "5Wgcg-m9EOpU_jZeVZrY9"
+uri = "file://attached_assets/generated_images/doctor_with_app.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "tjFnJFWu4YvSb9rWBmpre"
+uri = "file://attached_assets/generated_images/app_notes_screen.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "qBmc8N3V8XxHIBo8ZUthJ"
+uri = "file://attached_assets/generated_images/app_recording_screen.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "d4PuwTiR0ycnN0tp-sPVr"
+uri = "file://attached_assets/generated_images/app_title_card.png"
+type = "image"
+title = "generated_image"
+
 [[outputs]]
 id = "pTtgsmERw6QOFw7et5UOI"
 uri = "file://mednote-ios.zip"
@@ -232,4 +256,4 @@ title = "Poster 4 — Physician Portrait"
 id = "kIoeeE-82Hq3qUQfcowWt"
 uri = "file://attached_assets/generated_videos/mednote_ai_promo_final.mp4"
 type = "video"
-title = "MedNote AI — Promo Video (Ready for Voiceover)"
+title = "MedNote AI — Cinematic Promo Video (48 seconds)"
