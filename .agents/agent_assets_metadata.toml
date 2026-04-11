@@ -227,3 +227,9 @@ id = "3nSI9sKPVPuy6fF5Yc0rO"
 uri = "file://attached_assets/generated_images/poster_ai_brain.png"
 type = "image"
 title = "Poster 4 — Physician Portrait"
+
+[[outputs]]
+id = "kIoeeE-82Hq3qUQfcowWt"
+uri = "file://attached_assets/generated_videos/mednote_ai_promo_final.mp4"
+type = "video"
+title = "MedNote AI — Full Promo Video (43 seconds)"
