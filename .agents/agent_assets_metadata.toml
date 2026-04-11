@@ -275,3 +275,9 @@ id = "9IVJ5Jx6zAt4erkEjJHlM"
 uri = "file://attached_assets/founder_scene_final.jpg"
 type = "image"
 title = "Founder + AI Robot Scene Preview"
+
+[[outputs]]
+id = "jcWADRKcnmj4nLDLdZZl2"
+uri = "file://attached_assets/generated_videos/mednote_linkedin.mp4"
+type = "video"
+title = "MedNote AI — LinkedIn Professional Version (1:1, Subtitles, 50s)"
