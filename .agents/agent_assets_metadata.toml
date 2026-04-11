@@ -102,6 +102,12 @@ uri = "file://attached_assets/ai_robot.png"
 type = "image"
 title = "ai_female_robot"
 
+[[generated]]
+id = "fjQgMjA3NvNPcBKNZSjsE"
+uri = "file://attached_assets/scene_background.png"
+type = "image"
+title = "cinematic_hospital_background"
+
 [[outputs]]
 id = "pTtgsmERw6QOFw7et5UOI"
 uri = "file://mednote-ios.zip"
@@ -262,4 +268,10 @@ title = "Poster 4 — Physician Portrait"
 id = "kIoeeE-82Hq3qUQfcowWt"
 uri = "file://attached_assets/generated_videos/mednote_ai_promo_final.mp4"
 type = "video"
-title = "MedNote AI — Final Promo with Your Real Photo + AI Robot (57s)"
+title = "MedNote AI — Promo v4 (ER + Disaster, Excited Voice, No Subtitles)"
+
+[[outputs]]
+id = "9IVJ5Jx6zAt4erkEjJHlM"
+uri = "file://attached_assets/founder_scene_final.jpg"
+type = "image"
+title = "Founder + AI Robot Scene Preview"
