@@ -15,6 +15,30 @@ import { createRemoteJWKSet, jwtVerify } from "jose";
 // Apple's public keys for verifying Sign in with Apple tokens
 const APPLE_JWKS = createRemoteJWKSet(new URL("https://appleid.apple.com/auth/keys"));
 
+// Check RevenueCat entitlement live — used as fallback when local DB has no subscription
+async function checkRevenueCatEntitlement(userId: string): Promise<boolean> {
+  const secretKey = process.env.REVENUECAT_SECRET_KEY;
+  if (!secretKey) return false;
+  try {
+    const res = await fetch(`https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(userId)}`, {
+      headers: {
+        Authorization: `Bearer ${secretKey}`,
+        "Content-Type": "application/json",
+      },
+    });
+    if (!res.ok) return false;
+    const data = await res.json() as any;
+    const entitlement = data?.subscriber?.entitlements?.pro;
+    if (!entitlement) return false;
+    const expiresDate = entitlement.expires_date;
+    // null expires_date means lifetime; otherwise check it hasn't expired
+    if (expiresDate === null) return true;
+    return new Date(expiresDate) > new Date();
+  } catch {
+    return false;
+  }
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -273,6 +297,12 @@ export async function registerRoutes(
       const subscription = await storage.getSubscriptionByUserId(userId);
       if (subscription) {
         hasActiveSubscription = ['active', 'on_trial'].includes(subscription.status);
+      }
+
+      // Fallback: check RevenueCat live API (covers iOS subscribers using the web app
+      // when the webhook hasn't fired yet or was missed)
+      if (!hasActiveSubscription) {
+        hasActiveSubscription = await checkRevenueCatEntitlement(userId);
       }
 
       const hasFreeTokens = (user.freeTokensRemaining || 0) > 0;
