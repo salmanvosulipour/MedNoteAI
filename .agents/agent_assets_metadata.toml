@@ -161,3 +161,21 @@ id = "L5e4QGxLmd2xKqP_jzwmv"
 uri = "file://attached_assets/promo_yearly.png"
 type = "image"
 title = "Upload this to mednote.yearly (Purple)"
+
+[[outputs]]
+id = "xTTKAgsoxYdE8mOwB2iM5"
+uri = "file://attached_assets/generated_videos/doctor_burnout_opening.mp4"
+type = "video"
+title = "Scene 1 — Doctor Burnout (Opening)"
+
+[[outputs]]
+id = "TYqiKXYU1QtFMwYIC6tID"
+uri = "file://attached_assets/generated_videos/ai_activation_waveform.mp4"
+type = "video"
+title = "Scene 2 — AI Activation & Waveform"
+
+[[outputs]]
+id = "XNMXpnBB6r5xg1mXyocsH"
+uri = "file://attached_assets/generated_videos/doctor_calm_closing.mp4"
+type = "video"
+title = "Scene 3 — Doctor Calm (Closing)"
