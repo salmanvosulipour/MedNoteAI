@@ -48,6 +48,30 @@ uri = "file://attached_assets/subscription_promo_v2.png"
 type = "image"
 title = "subscription_promo_v2"
 
+[[generated]]
+id = "6-zyNXFsh8q_mx5fhXir1"
+uri = "file://attached_assets/generated_images/poster_before_after.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "Z_AxU32Bthe8mrfG1jPYx"
+uri = "file://attached_assets/generated_images/poster_ai_brain.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "tQDOOTcxFQ1qeZDwrEAUm"
+uri = "file://attached_assets/generated_images/poster_app_showcase.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "Xzsk41i1g5jlAeJS546-y"
+uri = "file://attached_assets/generated_images/poster_burnout.png"
+type = "image"
+title = "generated_image"
+
 [[outputs]]
 id = "pTtgsmERw6QOFw7et5UOI"
 uri = "file://mednote-ios.zip"
@@ -179,3 +203,27 @@ id = "XNMXpnBB6r5xg1mXyocsH"
 uri = "file://attached_assets/generated_videos/doctor_calm_closing.mp4"
 type = "video"
 title = "Scene 3 — Doctor Calm (Closing)"
+
+[[outputs]]
+id = "IlkywPSW0QSn5Ag3TiHGc"
+uri = "file://attached_assets/generated_images/poster_burnout.png"
+type = "image"
+title = "Poster 1 — Burnout & Awareness"
+
+[[outputs]]
+id = "dSD_jNBxXuR2Ks4xP6ISx"
+uri = "file://attached_assets/generated_images/poster_app_showcase.png"
+type = "image"
+title = "Poster 2 — App Showcase"
+
+[[outputs]]
+id = "H3lK3ffZ_NQ5i0G6ZGO7H"
+uri = "file://attached_assets/generated_images/poster_before_after.png"
+type = "image"
+title = "Poster 3 — Before & After"
+
+[[outputs]]
+id = "3nSI9sKPVPuy6fF5Yc0rO"
+uri = "file://attached_assets/generated_images/poster_ai_brain.png"
+type = "image"
+title = "Poster 4 — AI Intelligence"
