@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Capacitor } from "@capacitor/core";
 import { SignInWithApple, type SignInWithAppleOptions } from "@capacitor-community/apple-sign-in";
@@ -11,6 +11,23 @@ import { Loader2, Mail, Lock, User, Eye, EyeOff } from "lucide-react";
 const PRODUCTION_URL = "https://med-note-ai-1--salmanvosuli.replit.app";
 const apiBase = Capacitor.isNativePlatform() ? `${PRODUCTION_URL}/api` : "/api";
 
+// Web Apple Sign In — requires Services ID configured in Apple Developer
+// Set VITE_APPLE_WEB_CLIENT_ID in environment after creating the Services ID
+const APPLE_WEB_CLIENT_ID = import.meta.env.VITE_APPLE_WEB_CLIENT_ID as string | undefined;
+const APPLE_WEB_REDIRECT_URI = "https://mednoteai.net/api/auth/apple/web/callback";
+
+function buildAppleOAuthURL() {
+  const params = new URLSearchParams({
+    client_id: APPLE_WEB_CLIENT_ID!,
+    redirect_uri: APPLE_WEB_REDIRECT_URI,
+    response_type: "code id_token",
+    scope: "name email",
+    response_mode: "form_post",
+    state: Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b => b.toString(16).padStart(2, "0")).join(""),
+  });
+  return `https://appleid.apple.com/auth/authorize?${params.toString()}`;
+}
+
 type Mode = "landing" | "login" | "register";
 
 export default function AuthPage() {
@@ -19,6 +36,22 @@ export default function AuthPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({ email: "", password: "", firstName: "", lastName: "" });
   const { toast } = useToast();
+
+  // Show error if redirected back from a failed Apple Sign In
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const appleError = params.get("apple_error");
+    if (appleError) {
+      toast({
+        title: "Sign in failed",
+        description: "Sign in with Apple did not complete. Please try again.",
+        variant: "destructive",
+      });
+      // Remove the error param from the URL without reloading
+      const clean = window.location.pathname;
+      window.history.replaceState({}, "", clean);
+    }
+  }, []);
 
   // Native iOS: Apple Sign In sheet (no Replit, no redirect)
   const handleNativeAppleSignIn = async () => {
@@ -190,10 +223,16 @@ export default function AuthPage() {
                 <>
                   <button
                     onClick={() => {
-                      toast({
-                        title: "Sign in with Apple",
-                        description: "Open the MedNote AI iOS app to sign in with your Apple ID. Your cases will sync automatically.",
-                      });
+                      if (APPLE_WEB_CLIENT_ID) {
+                        // Full web OAuth flow — redirect to Apple
+                        window.location.href = buildAppleOAuthURL();
+                      } else {
+                        // Services ID not yet configured — direct user to iOS app
+                        toast({
+                          title: "Use the iOS app",
+                          description: "Sign in with Apple is available in the MedNote AI iOS app. Download it from the App Store to use your Apple ID.",
+                        });
+                      }
                     }}
                     data-testid="button-sign-in-apple-web"
                     className="w-full h-14 flex items-center justify-center gap-3 bg-white text-black font-semibold text-base rounded-2xl shadow-xl hover:bg-white/90 active:scale-[0.98] transition-all"

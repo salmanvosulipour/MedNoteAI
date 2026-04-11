@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { initializeRevenueCat } from "@/lib/iap";
 import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth";
+import AppleCallbackPage from "@/pages/apple-callback";
 import TermsPage from "@/pages/terms";
 import ForgotPasswordPage from "@/pages/forgot-password";
 import ResetPasswordPage from "@/pages/reset-password";
@@ -43,6 +44,12 @@ function Router() {
     return <MaintenancePage />;
   }
 
+  // Apple web callback — must render before auth state resolves so the
+  // page can read the token from the URL and complete the sign-in flow.
+  if (window.location.pathname === "/apple-callback") {
+    return <AppleCallbackPage />;
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -57,6 +64,7 @@ function Router() {
         <Route path="/" component={AuthPage} />
         <Route path="/auth" component={AuthPage} />
         <Route path="/home" component={AuthPage} />
+        <Route path="/apple-callback" component={AppleCallbackPage} />
         <Route path="/terms" component={TermsPage} />
         <Route path="/forgot-password" component={ForgotPasswordPage} />
         <Route path="/reset-password" component={ResetPasswordPage} />

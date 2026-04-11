@@ -150,6 +150,54 @@ export async function registerRoutes(
     }
   });
 
+  // Apple Sign In — web OAuth callback (Apple POSTs here after user authenticates)
+  app.post('/api/auth/apple/web/callback', async (req: any, res) => {
+    try {
+      const { id_token, user: userJson } = req.body;
+      if (!id_token) return res.redirect('/?apple_error=missing_token');
+
+      // Parse name from Apple's first-login JSON blob
+      let firstName: string | null = null;
+      let lastName: string | null = null;
+      if (userJson) {
+        try {
+          const parsed = JSON.parse(userJson);
+          firstName = parsed?.name?.firstName || null;
+          lastName  = parsed?.name?.lastName  || null;
+        } catch { /* Apple didn't send user info — that's normal after first sign-in */ }
+      }
+
+      // Verify token with Apple's public keys (same as native iOS flow)
+      const { payload } = await jwtVerify(id_token, APPLE_JWKS, {
+        issuer: "https://appleid.apple.com",
+      });
+
+      const appleUserId = payload.sub as string;
+      if (!appleUserId) return res.redirect('/?apple_error=invalid_token');
+
+      let user = await storage.getUser(appleUserId);
+      if (!user) {
+        user = await storage.upsertUser({
+          id: appleUserId,
+          email: (payload.email as string) || null,
+          firstName,
+          lastName,
+        });
+      }
+
+      // Create a web device session and return token via redirect
+      const token = crypto.randomBytes(32).toString("hex");
+      const deviceId = `web-apple-${crypto.randomBytes(8).toString("hex")}`;
+      await storage.createDeviceSession({ userId: user.id, token, deviceId, platform: "web" });
+
+      // Redirect to frontend callback page with the token
+      res.redirect(`/apple-callback?token=${token}&deviceId=${encodeURIComponent(deviceId)}`);
+    } catch (error: any) {
+      console.error("Apple web callback error:", error);
+      res.redirect('/?apple_error=auth_failed');
+    }
+  });
+
   // Logout - clear all sessions
   app.post('/api/auth/logout', async (req: any, res) => {
     try {
