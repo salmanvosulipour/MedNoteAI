@@ -287,3 +287,9 @@ id = "uOWNybYqpyIwqBAcn_Djm"
 uri = "file://attached_assets/generated_videos/mednote_linkedin_cinematic.mp4"
 type = "video"
 title = "MedNote AI — Cinematic LinkedIn Video"
+
+[[outputs]]
+id = "eGf8VzwM796W6ASYC-Rd1"
+uri = "file://attached_assets/generated_videos/mednote_explainer.mp4"
+type = "video"
+title = "MedNote AI — How It Works (Explainer)"
