@@ -281,3 +281,9 @@ id = "jcWADRKcnmj4nLDLdZZl2"
 uri = "file://attached_assets/generated_videos/mednote_linkedin.mp4"
 type = "video"
 title = "MedNote AI — LinkedIn Version (No ‘free’)"
+
+[[outputs]]
+id = "uOWNybYqpyIwqBAcn_Djm"
+uri = "file://attached_assets/generated_videos/mednote_linkedin_cinematic.mp4"
+type = "video"
+title = "MedNote AI — Cinematic LinkedIn Video"
