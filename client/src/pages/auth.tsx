@@ -87,7 +87,13 @@ export default function AuthPage() {
     } catch (err: any) {
       const cancelled = err?.message?.includes("1001") || err?.code === "1001";
       if (!cancelled) {
-        toast({ title: "Sign in failed", description: err.message || "Please try again.", variant: "destructive" });
+        const isNetworkError = err?.message?.toLowerCase().includes("load failed") ||
+          err?.message?.toLowerCase().includes("network") ||
+          err?.message?.toLowerCase().includes("fetch");
+        const description = isNetworkError
+          ? "Could not reach the server. Please check your connection and try again."
+          : err.message || "Please try again.";
+        toast({ title: "Sign in failed", description, variant: "destructive" });
       }
     } finally {
       setIsLoading(false);
