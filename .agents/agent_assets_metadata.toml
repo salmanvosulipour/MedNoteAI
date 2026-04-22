@@ -293,3 +293,9 @@ id = "eGf8VzwM796W6ASYC-Rd1"
 uri = "file://attached_assets/generated_videos/mednote_explainer.mp4"
 type = "video"
 title = "MedNote AI — How It Works (Explainer)"
+
+[[outputs]]
+id = "-AN-dRdjXd-ggoMrNuzav"
+uri = "file://attached_assets/generated_videos/mednote_explainer_narrated.mp4"
+type = "video"
+title = "MedNote AI — Explainer with Narration"
