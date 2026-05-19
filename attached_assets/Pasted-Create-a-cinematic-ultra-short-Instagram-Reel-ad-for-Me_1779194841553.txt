@@ -1,0 +1,168 @@
+Create a cinematic ultra-short Instagram Reel ad for “MedNote AI” in vertical format (9:16), optimized for Instagram Reels and TikTok.
+
+STYLE:
+
+* Apple-style minimalism mixed with cinematic ER atmosphere
+* Dark blue / black premium color palette
+* Realistic emergency department environment
+* Moody lighting, realistic shadows
+* Emotional and relatable for doctors
+* Modern healthcare AI aesthetic
+* Fast pacing in first 3 seconds to maximize retention
+* Clean typography
+* High-end commercial quality
+* NOT cartoonish
+* NOT generic SaaS template
+
+MAIN MESSAGE:
+“Medicine is hard enough. Documentation shouldn’t be.”
+
+DURATION:
+20–25 seconds
+
+SCENE-BY-SCENE BREAKDOWN:
+
+SCENE 1 (0–3 sec)
+VISUAL:
+Close-up of exhausted female ER doctor with blonde hair in messy bun at 3AM shift.
+Multiple patient charts, coffee cup, hospital monitor sounds in background.
+She is typing fast on a keyboard looking stressed.
+
+TEXT ON SCREEN:
+“2 hours of notes…”
+then:
+“After every shift.”
+
+SOUND:
+
+* Fast keyboard typing
+* Distant ER monitor beeps
+* Overhead hospital ambience
+* Slight cinematic bass hit
+
+VOICEOVER (calm cinematic female voice):
+“After every shift… the documentation begins.”
+
+⸻
+
+SCENE 2 (3–6 sec)
+VISUAL:
+The doctor stops typing.
+Looks exhausted.
+Silence moment.
+She grabs her phone and opens MedNote AI.
+
+TEXT ON SCREEN:
+“Or…”
+
+SOUND:
+
+* Typing abruptly stops
+* Ambient sound fades quieter
+* Soft cinematic whoosh
+
+VOICEOVER:
+“Or… just speak naturally.”
+
+⸻
+
+SCENE 3 (6–10 sec)
+VISUAL:
+Close-up of phone recording screen.
+Beautiful animated waveform reacting to voice.
+Doctor speaks naturally while walking inside ER.
+
+Doctor says:
+“56-year-old male with chest pain radiating to left arm…”
+
+AI transforms speech into structured clinical note in real time.
+
+TEXT ON SCREEN:
+“Voice → Clinical Note”
+
+SOUND:
+
+* Soft futuristic UI sounds
+* Voice recording waveform pulses
+* Hospital ambience continues subtly
+
+VOICEOVER:
+“MedNote AI turns real clinical conversations into structured notes in seconds.”
+
+⸻
+
+SCENE 4 (10–15 sec)
+VISUAL:
+Fast cinematic transitions:
+
+* AI summary generated
+* One-click copy
+* Export to PowerPoint
+* Clean structured note UI
+* Doctor smiling slightly with relief
+
+TEXT ON SCREEN:
+“AI Summaries”
+“One-click Copy”
+“Export to PPT”
+
+SOUND:
+
+* Smooth futuristic UI clicks
+* Elegant transition sounds
+* Deep cinematic pulse
+
+VOICEOVER:
+“No more endless typing. No more staying late for documentation.”
+
+⸻
+
+SCENE 5 (15–20 sec)
+VISUAL:
+Doctor finally leaves ER hallway calmly.
+Blue cinematic lighting.
+Slow-motion walking shot.
+Phone screen glows with completed note.
+
+TEXT ON SCREEN (large elegant typography):
+“Less typing.”
+“More medicine.”
+
+Then:
+“MedNote AI”
+
+Final CTA:
+“Download on the App Store”
+
+SOUND:
+
+* Emotional cinematic music rises
+* Soft piano + deep ambient synth
+* Hospital ambience fades out
+
+VOICEOVER:
+“Medicine is hard enough. Documentation shouldn’t be.”
+
+⸻
+
+VISUAL DETAILS:
+
+* Female doctor MUST remain consistent across all scenes
+* Blonde hair
+* Attractive but realistic
+* Natural facial expressions
+* ER environment realistic and premium
+* Cinematic depth of field
+* iPhone-style UI
+* Purple/blue waveform accents
+* Minimal clean typography
+* NO overly crowded text
+* NO cheesy stock footage vibe
+
+ENDING FRAME:
+
+* MedNote AI logo
+* App Store badge
+* Website: MedNoteAI.net
+* Tagline:
+    “Your AI clinical assistant.”
