@@ -305,3 +305,9 @@ id = "oOHUMf6g5U2Mq1G74Z1GB"
 uri = "file://attached_assets/generated_videos/mednote_reel_final.mp4"
 type = "video"
 title = "MedNote AI — Instagram Reel (9:16, 22s)"
+
+[[outputs]]
+id = "_2_SJpR5a12cNGPa5iWN_"
+uri = "file://attached_assets/generated_videos/mednote_reel_v2.mp4"
+type = "video"
+title = "MedNote AI — Instagram Reel v2 (9:16, 34s, with your character)"

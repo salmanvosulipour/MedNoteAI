@@ -1,0 +1,151 @@
+Create a hyper-realistic cinematic vertical ad for MedNote AI (9:16 format, premium Apple-style aesthetic, emotional storytelling, realistic hospital atmosphere, subtle luxury look, not over-designed).
+
+STYLE:
+
+* Dark cinematic lighting
+* Realistic emergency department / hospital environment
+* Emotional, relatable, modern
+* Smooth camera movement
+* Ultra realistic female blonde doctor (same character across scenes)
+* Natural facial expressions
+* Soft blue/purple AI glow accents
+* Minimal clean typography
+* Emotional background piano + subtle ambient hospital sounds
+* Extremely polished like a premium Apple or Netflix commercial
+
+VIDEO TITLE:
+“The Shift Never Really Ends”
+
+DURATION:
+30–35 seconds
+
+SCENE 1 — [0–5 sec]
+VISUAL:
+Close-up of hospital clock showing 2:13 AM.
+Empty ER hallway.
+Cleaning staff in background.
+Cold coffee on desk.
+Female blonde ER doctor sitting exhausted in navy scrubs.
+
+TEXT ON SCREEN:
+“Your shift ended hours ago…”
+
+VOICEOVER (tired calm female voice):
+“Your shift ended hours ago…”
+
+SFX:
+Distant monitor beeps, soft AC sound.
+
+⸻
+
+SCENE 2 — [5–10 sec]
+VISUAL:
+Doctor typing endlessly on computer.
+Many unfinished charts open.
+She rubs her eyes.
+Paperwork everywhere.
+
+TEXT ON SCREEN:
+“But the charting didn’t.”
+
+VOICEOVER:
+“But somehow… the documentation never does.”
+
+CAMERA:
+Slow cinematic push-in.
+
+⸻
+
+SCENE 3 — [10–15 sec]
+VISUAL:
+Doctor opens MedNote AI on iPhone.
+Modern glowing UI.
+She taps “Start Recording.”
+Waveform animation appears.
+
+VOICEOVER:
+“So we built something to help.”
+
+TEXT ON SCREEN:
+“MedNote AI”
+
+MUSIC:
+Hopeful tone begins.
+
+⸻
+
+SCENE 4 — [15–21 sec]
+VISUAL:
+Doctor speaking naturally while walking in ER:
+“56-year-old male with chest pain radiating to left arm…”
+
+AI instantly generates:
+
+* Clinical note
+* Summary
+* Plan
+* Export options
+
+Beautiful smooth UI animations.
+
+TEXT ON SCREEN:
+“From voice → complete clinical note”
+
+VOICEOVER:
+“Turn real clinical conversations into structured notes in seconds.”
+
+⸻
+
+SCENE 5 — [21–27 sec]
+VISUAL:
+Doctor now relaxed at home on couch.
+Hair slightly messy after shift.
+Holding coffee peacefully.
+Phone shows:
+“Note completed successfully.”
+
+Warm lighting now instead of cold blue.
+
+VOICEOVER:
+“Less typing. Less burnout.”
+
+TEXT ON SCREEN:
+“More time to breathe.”
+
+⸻
+
+SCENE 6 — [27–35 sec]
+VISUAL:
+Clean black premium background.
+iPhone floating with MedNote AI UI.
+Subtle glow.
+Apple-style product shot.
+
+TEXT ON SCREEN:
+“Less typing. More medicine.”
+
+SECONDARY TEXT:
+Voice Notes • AI Summaries • One-Click Copy • Export to PPT
+
+FINAL CTA:
+“Download on the App Store”
+
+Show:
+MedNoteAI.net
+
+VOICEOVER (confident calm voice):
+“MedNote AI. Your AI clinical assistant.”
+
+END STYLE:
+Minimal cinematic fade to black.
+
+IMPORTANT:
+
+* Avoid cheesy startup ad style
+* Make it emotional and premium
+* Focus on physician burnout and relief
+* Realistic healthcare workflow only
+* Natural acting
+* High-end cinematic color grading
+* Do NOT make it look like generic AI content
+* Keep transitions smooth and elegant
