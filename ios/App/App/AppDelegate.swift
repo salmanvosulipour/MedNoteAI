@@ -12,6 +12,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Force frameworks to load before Capacitor bridge initializes
         _ = SignInWithApple.self
         _ = PurchasesPlugin.self
+        _ = AppReviewPlugin.self
         return true
     }
 

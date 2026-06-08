@@ -149,15 +149,14 @@ export async function requestInAppReview(): Promise<void> {
   }
 
   try {
-    // Use Capacitor's native bridge directly — avoids needing a separate npm package.
-    // On iOS, this calls SKStoreReviewController.requestReview() if the bridge is registered.
-    // Falls back silently when the plugin isn't available.
+    // Uses the custom AppReviewPlugin built into the iOS project (ios/App/App/AppReviewPlugin.swift).
+    // That plugin calls SKStoreReviewController.requestReview(in: scene) natively.
+    // Falls back silently on web or if the plugin is not registered.
     const bridge = (window as any).Capacitor?.Plugins?.AppReview;
     if (bridge?.requestReview) {
       await bridge.requestReview();
       localStorage.setItem(REVIEW_PROMPT_KEY, Date.now().toString());
     }
-    // Note: install @capacitor/app-review and run `npx cap sync ios` to enable this fully.
   } catch {
     // Silently ignore if plugin unavailable
   }
