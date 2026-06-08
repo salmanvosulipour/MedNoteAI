@@ -20,7 +20,7 @@ class AuthStorage implements IAuthStorage {
       .insert(users)
       .values({
         ...userData,
-        freeTokensRemaining: 1,
+        freeTokensRemaining: 0,
       })
       .onConflictDoUpdate({
         target: users.id,

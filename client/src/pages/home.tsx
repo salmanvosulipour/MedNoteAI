@@ -112,8 +112,8 @@ export default function HomePage() {
             <div className="absolute inset-0 bg-gradient-to-r from-amber-200 via-yellow-400 to-amber-600 opacity-20 group-hover:opacity-30 transition-opacity duration-500 animate-gradient-x" />
             <div className="relative bg-slate-950 dark:bg-slate-100 rounded-[20px] p-5 flex items-center justify-between">
               <div>
-                 <h3 className="font-bold text-white dark:text-slate-900 text-lg">Pro Access</h3>
-                 <p className="text-slate-400 dark:text-slate-600 text-xs mt-1">Unlock unlimited AI power</p>
+                 <h3 className="font-bold text-white dark:text-slate-900 text-lg">Go Pro</h3>
+                 <p className="text-slate-400 dark:text-slate-600 text-xs mt-1">Unlimited notes, ICD coding, discharge summaries — $39/mo</p>
               </div>
               <div className="px-4 py-2 rounded-xl bg-amber-500/10 text-amber-500 text-xs font-bold uppercase tracking-wider group-hover:bg-amber-500 group-hover:text-white transition-colors">
                 Upgrade

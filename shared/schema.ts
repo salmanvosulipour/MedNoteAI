@@ -25,8 +25,10 @@ export const users = pgTable("users", {
   // Email verification
   isEmailVerified: boolean("is_email_verified").default(false),
   emailVerifiedAt: timestamp("email_verified_at"),
-  // Free token system - 1 free use for new users
-  freeTokensRemaining: integer("free_tokens_remaining").default(1),
+  // Free token system - kept for backward compat, new users get 14-day trial via createdAt
+  freeTokensRemaining: integer("free_tokens_remaining").default(0),
+  // Account type — 'standard' (default) or 'ambassador' (lifetime free Pro, max 3)
+  accountType: varchar("account_type").default("standard").notNull(),
   // Paddle integration
   paddleCustomerId: varchar("paddle_customer_id"),
   // Auth token for mobile/API authentication

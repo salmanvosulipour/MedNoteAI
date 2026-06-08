@@ -200,8 +200,11 @@ export default function AuthPage() {
           <h1 className="text-3xl font-bold text-center bg-gradient-to-br from-white to-white/60 bg-clip-text text-transparent mb-1">
             MedNote AI
           </h1>
-          <p className="text-slate-400 text-center text-sm">
-            AI-powered clinical scribing
+          <p className="text-slate-300 text-center text-sm font-medium">
+            Your AI Medical Scribe
+          </p>
+          <p className="text-slate-500 text-center text-xs mt-1">
+            Finish your clinic notes in minutes, not hours
           </p>
         </motion.div>
 
@@ -266,15 +269,20 @@ export default function AuthPage() {
 
               <div className="pt-4 space-y-3">
                 {[
-                  { icon: "🔒", text: "Stays signed in — no passwords to remember" },
-                  { icon: "🎙️", text: "AI transcription from audio in seconds" },
-                  { icon: "📋", text: "Structured SOAP notes, auto-generated" },
+                  { icon: "🎙️", text: "Speak naturally — AI writes the note for you" },
+                  { icon: "📋", text: "Structured SOAP notes, ICD codes, discharge summaries" },
+                  { icon: "⏱️", text: "Save 2+ hours of documentation every shift" },
                 ].map((item, i) => (
                   <div key={i} className="flex items-center gap-3 text-slate-400 text-sm">
                     <span className="text-base">{item.icon}</span>
                     <span>{item.text}</span>
                   </div>
                 ))}
+              </div>
+
+              <div className="pt-3 flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-emerald-500/8 border border-emerald-500/15">
+                <span className="text-emerald-400 text-base">🔒</span>
+                <span className="text-[11px] text-emerald-400 font-medium">Secure &amp; Private — Patient data never stored or shared</span>
               </div>
             </motion.div>
           )}

@@ -271,11 +271,15 @@ export default function ProfilePage() {
               </div>
               <div className="flex items-center gap-2">
                 {billingStatus?.isSubscribed ? (
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">Pro</span>
-                ) : billingStatus != null ? (
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
-                    {billingStatus.freeTokensRemaining === 0 ? "Upgrade" : `${billingStatus.freeTokensRemaining} free case`}
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+                    {billingStatus.isAmbassador ? "Ambassador" : "Pro"}
                   </span>
+                ) : billingStatus?.isInTrial ? (
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                    Trial — {billingStatus.trialDaysRemaining}d left
+                  </span>
+                ) : billingStatus != null ? (
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Upgrade</span>
                 ) : null}
                 <ChevronRight className="w-4 h-4 text-slate-300" />
               </div>

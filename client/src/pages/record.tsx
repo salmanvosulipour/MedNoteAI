@@ -249,10 +249,12 @@ export default function RecordPage() {
       toast({ title: "Generating Medical Note", description: "AI is processing your dictation..." });
       const result = await processText(newCase.id, dictation);
       toast({ title: "Medical Note Generated", description: "Your case has been processed successfully." });
+      // Trigger native App Store review prompt (once per year, requires @capacitor/app-review)
+      import("@/lib/iap").then(({ requestInAppReview }) => requestInAppReview()).catch(() => {});
       setLocation(`/cases/${result.id}`);
     } catch (error: any) {
       if (error?.code === "SUBSCRIPTION_REQUIRED") {
-        toast({ title: "Free Trial Used", description: "You've used your free case. Subscribe to keep scribing." });
+        toast({ title: "Trial Ended", description: "Your 14-day free trial has ended. Subscribe to keep scribing." });
         setLocation("/subscription");
         return;
       }

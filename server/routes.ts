@@ -342,26 +342,37 @@ export async function registerRoutes(
       //   });
       // }
 
-      // Check subscription or free tokens
-      let hasActiveSubscription = false;
-      const subscription = await storage.getSubscriptionByUserId(userId);
-      if (subscription) {
-        hasActiveSubscription = ['active', 'on_trial'].includes(subscription.status);
-      }
+      // Ambassador accounts get unlimited lifetime Pro access
+      if ((user as any).accountType === 'ambassador') {
+        // Allow — no subscription check needed
+      } else {
+        // Check subscription or free tokens
+        let hasActiveSubscription = false;
+        const subscription = await storage.getSubscriptionByUserId(userId);
+        if (subscription) {
+          hasActiveSubscription = ['active', 'on_trial', 'trialing'].includes(subscription.status);
+        }
 
-      // Fallback: check RevenueCat live API (covers iOS subscribers using the web app
-      // when the webhook hasn't fired yet or was missed)
-      if (!hasActiveSubscription) {
-        hasActiveSubscription = await checkRevenueCatEntitlement(userId);
-      }
+        // Fallback: check RevenueCat live API (covers iOS subscribers using the web app
+        // when the webhook hasn't fired yet or was missed)
+        if (!hasActiveSubscription) {
+          hasActiveSubscription = await checkRevenueCatEntitlement(userId);
+        }
 
-      const hasFreeTokens = (user.freeTokensRemaining || 0) > 0;
+        // 14-day free trial for new users (based on account creation date)
+        const TRIAL_DAYS = 14;
+        const trialEnd = new Date((user.createdAt || new Date()).getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
+        const isInTrial = new Date() < trialEnd;
 
-      if (!hasActiveSubscription && !hasFreeTokens) {
-        return res.status(403).json({ 
-          error: "SUBSCRIPTION_REQUIRED",
-          message: "You've used your free case. Subscribe to continue creating cases." 
-        });
+        const hasFreeTokens = (user.freeTokensRemaining || 0) > 0;
+
+        if (!hasActiveSubscription && !isInTrial && !hasFreeTokens) {
+          return res.status(403).json({ 
+            error: "SUBSCRIPTION_REQUIRED",
+            message: "Your 14-day free trial has ended. Subscribe to continue creating cases.",
+            trialEnded: true,
+          });
+        }
       }
 
       const parsed = insertCaseSchema.safeParse(req.body);
@@ -720,12 +731,22 @@ export async function registerRoutes(
       }
 
       const subscription = await storage.getSubscriptionByUserId(userId);
-      const isSubscribed = subscription && ['active', 'trialing'].includes(subscription.status);
+      const isSubscribed = subscription && ['active', 'trialing', 'on_trial'].includes(subscription.status);
+      const isAmbassador = (user as any).accountType === 'ambassador';
+
+      const TRIAL_DAYS = 14;
+      const trialEnd = new Date((user.createdAt || new Date()).getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
+      const isInTrial = !isSubscribed && !isAmbassador && new Date() < trialEnd;
+      const trialDaysRemaining = isInTrial ? Math.max(0, Math.ceil((trialEnd.getTime() - Date.now()) / (24 * 60 * 60 * 1000))) : 0;
 
       res.json({
         isEmailVerified: user.isEmailVerified,
         freeTokensRemaining: user.freeTokensRemaining || 0,
-        isSubscribed,
+        isSubscribed: isSubscribed || isAmbassador,
+        isAmbassador,
+        isInTrial,
+        trialDaysRemaining,
+        trialEndsAt: trialEnd.toISOString(),
         subscription: subscription ? {
           status: subscription.status,
           currentPeriodEnd: subscription.currentPeriodEnd ? Math.floor(subscription.currentPeriodEnd.getTime() / 1000) : null,

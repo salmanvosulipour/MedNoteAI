@@ -21,12 +21,12 @@ import {
 } from "@/lib/iap";
 
 const features = [
-  { icon: Zap, label: "Unlimited AI Scribing", desc: "No caps on recordings" },
+  { icon: Zap, label: "Unlimited AI Notes", desc: "No caps on recordings or notes" },
   { icon: Globe, label: "Multilingual Transcription", desc: "30+ languages supported" },
-  { icon: Shield, label: "HIPAA Compliant", desc: "Encrypted & secure" },
-  { icon: CreditCard, label: "Export to PPTX & Text", desc: "Shareable notes instantly" },
-  { icon: Headphones, label: "Priority Support", desc: "Dedicated physician support" },
-  { icon: Check, label: "Cloud Sync", desc: "iOS & web included" },
+  { icon: Shield, label: "ICD-10 Coding", desc: "Auto-coded differential diagnoses" },
+  { icon: CreditCard, label: "Discharge Summaries", desc: "AI-generated, one click" },
+  { icon: Headphones, label: "Export to PPTX & Text", desc: "Shareable notes instantly" },
+  { icon: Check, label: "HIPAA Compliant", desc: "Encrypted & secure" },
 ];
 
 function authHeaders(): Record<string, string> {
@@ -161,7 +161,7 @@ export default function SubscriptionPage() {
   const displayPrice =
     selectedPackage?.product?.localizedPriceString ??
     selectedDirectProduct?.localizedPriceString ??
-    (isYearly ? "$99/yr" : "$15/mo");
+    (isYearly ? "$299/yr" : "$39/mo");
 
   const handlePurchase = async () => {
     if (!isNative()) {
@@ -360,8 +360,12 @@ export default function SubscriptionPage() {
               Upgrade to Pro
             </h1>
             <p className="text-slate-400 text-sm max-w-xs mx-auto leading-relaxed">
-              Save hours of documentation time every day with AI-powered medical scribing.
+              Unlimited notes, ICD-10 coding, and discharge summaries — starting at $39/month.
             </p>
+            <div className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+              <Check className="w-3 h-3 text-emerald-400" />
+              <span className="text-[11px] font-semibold text-emerald-400">14-day free trial included</span>
+            </div>
           </motion.div>
 
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mb-8">
@@ -394,12 +398,12 @@ export default function SubscriptionPage() {
                 <motion.div key={isYearly ? "yearly" : "monthly"} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
                   <div className="flex items-baseline justify-center gap-1 mb-1">
                     <span className="text-6xl font-bold bg-gradient-to-b from-white to-white/70 bg-clip-text text-transparent" data-testid="text-price">
-                      {isYearly ? "$99" : "$15"}
+                      {isYearly ? "$299" : "$39"}
                     </span>
                     <span className="text-slate-400 text-base mb-1">/{isYearly ? "year" : "mo"}</span>
                   </div>
                   {isYearly ? (
-                    <p className="text-xs text-emerald-400 font-semibold">Save $81 per year · $8.25/mo</p>
+                    <p className="text-xs text-emerald-400 font-semibold">Save $169 per year · $24.92/mo</p>
                   ) : (
                     <p className="text-xs text-slate-500">Billed monthly · Cancel anytime</p>
                   )}
@@ -453,8 +457,8 @@ export default function SubscriptionPage() {
               {purchasing
                 ? "Processing…"
                 : isNative()
-                  ? `Subscribe — ${displayPrice}`
-                  : `Subscribe — ${isYearly ? "$99/yr" : "$15/mo"}`}
+                  ? `Start Free Trial — ${displayPrice}`
+                  : `Start Free Trial — ${isYearly ? "$299/yr" : "$39/mo"}`}
             </Button>
           )}
 
@@ -469,7 +473,7 @@ export default function SubscriptionPage() {
           </button>
 
           <p className="text-xs text-center text-slate-500">
-            Billed through your Apple ID · Cancel anytime in iPhone Settings
+            14-day free trial · Then billed through Apple ID · Cancel anytime
           </p>
         </div>
       </div>

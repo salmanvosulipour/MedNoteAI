@@ -130,3 +130,35 @@ export function hasProEntitlement(customerInfo: any): boolean {
 export function isNative(): boolean {
   return Capacitor.isNativePlatform();
 }
+
+const REVIEW_PROMPT_KEY = "lastReviewPromptDate";
+const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+
+/**
+ * Request an Apple native in-app review (SKStoreReviewController).
+ * Gated to once per 365 days per Apple guidelines.
+ * Requires @capacitor/app-review to be installed and synced to the iOS project.
+ * Silently no-ops if the plugin is absent or not on a native platform.
+ */
+export async function requestInAppReview(): Promise<void> {
+  if (!isNative()) return;
+
+  const lastPrompt = localStorage.getItem(REVIEW_PROMPT_KEY);
+  if (lastPrompt && Date.now() - parseInt(lastPrompt, 10) < ONE_YEAR_MS) {
+    return;
+  }
+
+  try {
+    // Use Capacitor's native bridge directly — avoids needing a separate npm package.
+    // On iOS, this calls SKStoreReviewController.requestReview() if the bridge is registered.
+    // Falls back silently when the plugin isn't available.
+    const bridge = (window as any).Capacitor?.Plugins?.AppReview;
+    if (bridge?.requestReview) {
+      await bridge.requestReview();
+      localStorage.setItem(REVIEW_PROMPT_KEY, Date.now().toString());
+    }
+    // Note: install @capacitor/app-review and run `npx cap sync ios` to enable this fully.
+  } catch {
+    // Silently ignore if plugin unavailable
+  }
+}
