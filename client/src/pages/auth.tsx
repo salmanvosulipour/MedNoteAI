@@ -7,6 +7,7 @@ import { storeUser } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { getDeviceId, getDeviceName, overrideStoredDeviceId } from "@/lib/device";
 import { Loader2, Mail, Lock, User, Eye, EyeOff } from "lucide-react";
+import { useLanguage } from "@/hooks/useLanguage";
 
 const PRODUCTION_URL = "https://med-note-ai-1--salmanvosuli.replit.app";
 const apiBase = Capacitor.isNativePlatform() ? `${PRODUCTION_URL}/api` : "/api";
@@ -36,6 +37,7 @@ export default function AuthPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({ email: "", password: "", firstName: "", lastName: "" });
   const { toast } = useToast();
+  const { lang, setLang, t } = useLanguage();
 
   // Show error if redirected back from a failed Apple Sign In
   useEffect(() => {
@@ -201,11 +203,18 @@ export default function AuthPage() {
             MedNote AI
           </h1>
           <p className="text-slate-300 text-center text-sm font-medium">
-            Your AI Medical Scribe
+            {t("auth.tagline")}
           </p>
           <p className="text-slate-500 text-center text-xs mt-1">
-            Finish your clinic notes in minutes, not hours
+            {t("auth.subtitle")}
           </p>
+          <button
+            onClick={() => setLang(lang === "en" ? "ar" : "en")}
+            className="mt-2 mx-auto flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/8 border border-white/12 text-slate-500 hover:text-slate-300 text-xs transition-colors"
+            data-testid="button-toggle-lang"
+          >
+            {lang === "en" ? "🌐 العربية" : "🌐 English"}
+          </button>
         </motion.div>
 
         <AnimatePresence mode="wait">
@@ -226,17 +235,15 @@ export default function AuthPage() {
                   data-testid="button-sign-in-apple"
                   className="w-full h-14 flex items-center justify-center gap-3 bg-white text-black font-semibold text-base rounded-2xl shadow-xl hover:bg-white/90 active:scale-[0.98] transition-all disabled:opacity-60"
                 >
-                  {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><AppleLogo />Sign in with Apple</>}
+                  {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><AppleLogo />{t("auth.apple")}</>}
                 </button>
               ) : (
                 <>
                   <button
                     onClick={() => {
                       if (APPLE_WEB_CLIENT_ID) {
-                        // Full web OAuth flow — redirect to Apple
                         window.location.href = buildAppleOAuthURL();
                       } else {
-                        // Services ID not yet configured — direct user to iOS app
                         toast({
                           title: "Use the iOS app",
                           description: "Sign in with Apple is available in the MedNote AI iOS app. Download it from the App Store to use your Apple ID.",
@@ -247,7 +254,7 @@ export default function AuthPage() {
                     className="w-full h-14 flex items-center justify-center gap-3 bg-white text-black font-semibold text-base rounded-2xl shadow-xl hover:bg-white/90 active:scale-[0.98] transition-all"
                   >
                     <AppleLogo />
-                    Sign in with Apple
+                    {t("auth.apple")}
                   </button>
                   <button
                     onClick={() => setMode("login")}
@@ -255,34 +262,34 @@ export default function AuthPage() {
                     className="w-full h-14 flex items-center justify-center gap-3 bg-white/10 border border-white/20 text-white font-semibold text-base rounded-2xl hover:bg-white/15 active:scale-[0.98] transition-all"
                   >
                     <Mail className="w-5 h-5" />
-                    Sign in with Email
+                    {t("auth.email_login")}
                   </button>
                   <button
                     onClick={() => setMode("register")}
                     data-testid="button-create-account"
                     className="w-full h-14 flex items-center justify-center gap-3 bg-white/5 border border-white/10 text-white/70 font-semibold text-base rounded-2xl hover:bg-white/10 active:scale-[0.98] transition-all"
                   >
-                    Create Account with Email
+                    {t("auth.email_register")}
                   </button>
                 </>
               )}
 
               <div className="pt-4 space-y-3">
                 {[
-                  { icon: "🎙️", text: "Speak naturally — AI writes the note for you" },
-                  { icon: "📋", text: "Structured SOAP notes, ICD codes, discharge summaries" },
-                  { icon: "⏱️", text: "Save 2+ hours of documentation every shift" },
+                  { icon: "🎙️", key: "auth.feature1" },
+                  { icon: "📋", key: "auth.feature2" },
+                  { icon: "⏱️", key: "auth.feature3" },
                 ].map((item, i) => (
                   <div key={i} className="flex items-center gap-3 text-slate-400 text-sm">
                     <span className="text-base">{item.icon}</span>
-                    <span>{item.text}</span>
+                    <span>{t(item.key)}</span>
                   </div>
                 ))}
               </div>
 
               <div className="pt-3 flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-emerald-500/8 border border-emerald-500/15">
                 <span className="text-emerald-400 text-base">🔒</span>
-                <span className="text-[11px] text-emerald-400 font-medium">Secure &amp; Private — Patient data never stored or shared</span>
+                <span className="text-[11px] text-emerald-400 font-medium">{t("auth.badge")}</span>
               </div>
             </motion.div>
           )}
@@ -438,7 +445,7 @@ export default function AuthPage() {
           transition={{ delay: 0.5 }}
           className="text-center text-xs text-slate-600 mt-8 px-4"
         >
-          By continuing, you agree to our Terms of Service and Privacy Policy.
+          {t("auth.terms")}
         </motion.p>
       </div>
     </div>

@@ -3,13 +3,14 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { ChevronRight, CreditCard, Shield, HelpCircle, LogOut, User, Bell, Camera, Check, X, Edit3, Lock, Server, ShieldCheck, FileCheck } from "lucide-react";
+import { ChevronRight, CreditCard, Shield, HelpCircle, LogOut, User, Bell, Camera, Check, X, Edit3, Lock, Server, ShieldCheck, FileCheck, Globe } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { ChevronDown } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useLanguage } from "@/hooks/useLanguage";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
@@ -45,6 +46,28 @@ const SPECIALTIES = [
   "Urology",
   "Other"
 ];
+
+function LanguageToggle() {
+  const { lang, setLang } = useLanguage();
+  return (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <Globe className="w-5 h-5 text-slate-400" />
+        <div className="flex flex-col text-left">
+          <Label className="text-sm font-medium">Language / اللغة</Label>
+          <span className="text-xs text-muted-foreground">{lang === "en" ? "English" : "العربية"}</span>
+        </div>
+      </div>
+      <button
+        onClick={() => setLang(lang === "en" ? "ar" : "en")}
+        data-testid="button-toggle-language"
+        className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+      >
+        {lang === "en" ? "🌐 العربية" : "🌐 English"}
+      </button>
+    </div>
+  );
+}
 
 export default function ProfilePage() {
   const [, setLocation] = useLocation();
@@ -371,6 +394,8 @@ export default function ProfilePage() {
           <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Preferences</h3>
           
            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 space-y-4">
+             <LanguageToggle />
+             <Separator />
              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Bell className="w-5 h-5 text-slate-400" />
@@ -384,7 +409,7 @@ export default function ProfilePage() {
              <Separator />
              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-5 h-5" /> {/* Spacer */}
+                  <div className="w-5 h-5" />
                   <div className="flex flex-col text-left">
                     <Label className="text-sm font-medium">Auto-Save Audio</Label>
                     <span className="text-xs text-muted-foreground">Keep backup on device</span>

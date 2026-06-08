@@ -145,6 +145,9 @@ export const cases = pgTable("cases", {
   disposition: text("disposition"), // discharged, admitted, transferred, ama, observation
   dischargeSummary: text("discharge_summary"), // Generated discharge summary text
   finalNotes: text("final_notes"), // User's final dictated notes (separate from AI assessment)
+
+  // Demo / onboarding flag
+  isDemo: boolean("is_demo").default(false),
 });
 
 export const insertCaseSchema = createInsertSchema(cases).omit({

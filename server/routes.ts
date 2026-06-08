@@ -287,6 +287,46 @@ export async function registerRoutes(
     }
   });
 
+  // Seed a demo case for a new user (no-op if they already have cases or a demo)
+  app.post("/api/cases/seed-demo", sessionAuth, async (req: any, res) => {
+    try {
+      const userId = req.authUserId;
+      const existing = await storage.getCasesByUserId(userId);
+      const realCases = existing.filter((c: any) => !c.isDemo);
+      if (realCases.length > 0 || existing.length > 0) {
+        return res.json({ seeded: false, reason: "user already has cases" });
+      }
+
+      const demoCase = await storage.createCase({
+        userId,
+        patientName: "Sarah Mitchell",
+        mrn: "MRN-DEMO-001",
+        age: 54,
+        gender: "F",
+        chiefComplaint: "Chest pain and shortness of breath",
+        status: "completed",
+        transcription: "Demo transcription — this is an example case.",
+        hpi: "Sarah Mitchell is a 54-year-old female with a history of hypertension and hyperlipidemia who presents with substernal chest pain radiating to the left arm for the past 2 hours, rated 7/10, associated with diaphoresis and mild shortness of breath. Onset was at rest. Denies nausea, vomiting, or syncope. Last episode of chest pain was 6 months ago, evaluated and negative at that time.",
+        ros: { cardiovascular: "chest pain, palpitations", respiratory: "mild dyspnea", gastrointestinal: "denies nausea", musculoskeletal: "no extremity swelling" },
+        physicalExam: "Vitals: BP 158/94, HR 88, RR 18, SpO2 97% on RA, Temp 37.1°C. General: Alert, mild distress. CV: RRR, no murmurs. Resp: Clear to auscultation bilaterally. Abdomen: Soft, non-tender. Extremities: No edema.",
+        assessment: "Acute chest pain, likely NSTEMI vs unstable angina given the clinical presentation. EKG shows ST depression in V4-V6. Troponins pending. Risk-stratified as high-risk ACS.",
+        differentialDiagnosis: [
+          { diagnosis: "Non-ST Elevation Myocardial Infarction (NSTEMI)", icdCode: "I21.4" },
+          { diagnosis: "Unstable Angina", icdCode: "I20.0" },
+          { diagnosis: "Aortic Dissection", icdCode: "I71.00" },
+          { diagnosis: "Pulmonary Embolism", icdCode: "I26.99" },
+        ],
+        plan: "1. Aspirin 325mg PO stat, then 81mg daily\n2. Nitroglycerin 0.4mg SL PRN chest pain\n3. Serial EKGs q30 min\n4. Troponin I at 0h and 3h\n5. Heparin drip per ACS protocol\n6. Cardiology consult stat\n7. NPO for possible cath\n8. Continuous cardiac monitoring",
+        isDemo: true,
+      } as any);
+
+      res.json({ seeded: true, case: demoCase });
+    } catch (error) {
+      console.error("Error seeding demo case:", error);
+      res.status(500).json({ error: "Failed to seed demo case" });
+    }
+  });
+
   // Get all cases for a user
   app.get("/api/cases", async (req, res) => {
     try {

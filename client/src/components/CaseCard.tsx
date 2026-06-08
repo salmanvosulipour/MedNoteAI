@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ChevronRight, Calendar, Clock } from "lucide-react";
 import { Link } from "wouter";
@@ -11,6 +11,7 @@ export interface Case {
   chiefComplaint: string;
   date: string;
   status: 'draft' | 'completed' | 'processing';
+  isDemo?: boolean;
 }
 
 export function CaseCard({ data }: { data: Case }) {
@@ -26,9 +27,16 @@ export function CaseCard({ data }: { data: Case }) {
         <CardContent className="p-4">
           <div className="flex justify-between items-start mb-2">
             <div>
-              <h3 className="font-heading font-semibold text-lg text-foreground group-hover:text-primary transition-colors">
-                {data.patientName}
-              </h3>
+              <div className="flex items-center gap-2">
+                <h3 className="font-heading font-semibold text-lg text-foreground group-hover:text-primary transition-colors">
+                  {data.patientName}
+                </h3>
+                {data.isDemo && (
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-600 uppercase tracking-wide">
+                    Demo
+                  </span>
+                )}
+              </div>
               <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
                 <span>{data.age} yrs</span>
                 <span className="w-1 h-1 rounded-full bg-slate-300"></span>
