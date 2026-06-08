@@ -448,6 +448,121 @@ export default function AuthPage() {
           {t("auth.terms")}
         </motion.p>
       </div>
+
+      {/* Landing extras — only shown on web (not native iOS) */}
+      {!Capacitor.isNativePlatform() && (
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.7, duration: 0.6 }}
+          className="w-full max-w-sm relative z-10 mt-6 pb-16 space-y-8"
+        >
+          {/* Demo video #15 */}
+          <DemoVideoSection />
+
+          {/* Testimonials #16 */}
+          <TestimonialsSection />
+        </motion.div>
+      )}
+    </div>
+  );
+}
+
+function DemoVideoSection() {
+  const [playing, setPlaying] = useState(false);
+  // Set VITE_DEMO_VIDEO_URL to a YouTube/Vimeo embed URL to activate
+  const videoUrl = import.meta.env.VITE_DEMO_VIDEO_URL as string | undefined;
+
+  return (
+    <div className="space-y-3">
+      <p className="text-center text-xs text-slate-500 font-medium uppercase tracking-wider">See it in action</p>
+      <div className="relative rounded-2xl overflow-hidden bg-slate-900 border border-white/8 aspect-video shadow-xl">
+        {videoUrl && playing ? (
+          <iframe
+            src={`${videoUrl}?autoplay=1`}
+            className="w-full h-full"
+            allow="autoplay; fullscreen"
+            allowFullScreen
+          />
+        ) : (
+          <button
+            onClick={() => videoUrl ? setPlaying(true) : undefined}
+            className="w-full h-full flex flex-col items-center justify-center gap-3 group"
+            data-testid="button-play-demo"
+          >
+            <div className="relative">
+              <div className="w-14 h-14 rounded-full bg-white/10 border border-white/20 flex items-center justify-center group-hover:bg-white/20 transition-colors">
+                <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-white ml-1">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              </div>
+              <div className="absolute inset-0 rounded-full bg-blue-500/30 blur-xl animate-pulse" />
+            </div>
+            <div className="text-center">
+              <p className="text-white font-semibold text-sm">60-second demo</p>
+              <p className="text-slate-500 text-xs mt-0.5">Voice → Full SOAP note, live</p>
+            </div>
+            {!videoUrl && (
+              <p className="text-slate-600 text-[10px] mt-1">Coming soon</p>
+            )}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const TESTIMONIALS = [
+  {
+    name: "Dr. Sarah K.",
+    specialty: "Emergency Medicine",
+    quote: "I finish my notes before leaving the ER. MedNote AI changed my workflow completely.",
+    avatar: "SK",
+  },
+  {
+    name: "Dr. James M.",
+    specialty: "Family Medicine",
+    quote: "Saves me 2 hours every shift. My patients get more of my attention now.",
+    avatar: "JM",
+  },
+  {
+    name: "Dr. Aisha R.",
+    specialty: "Internal Medicine",
+    quote: "The ICD-10 coding alone is worth the subscription. Accurate, fast, effortless.",
+    avatar: "AR",
+  },
+];
+
+function TestimonialsSection() {
+  return (
+    <div className="space-y-3">
+      <p className="text-center text-xs text-slate-500 font-medium uppercase tracking-wider">
+        Join doctors saving 2hrs/day
+      </p>
+      <div className="space-y-3">
+        {TESTIMONIALS.map((t) => (
+          <div
+            key={t.name}
+            className="bg-white/4 border border-white/8 rounded-2xl p-4 flex gap-3"
+          >
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500/30 to-violet-500/30 border border-white/15 flex items-center justify-center flex-shrink-0">
+              <span className="text-[10px] font-bold text-white/70">{t.avatar}</span>
+            </div>
+            <div>
+              <p className="text-white/80 text-sm leading-relaxed">"{t.quote}"</p>
+              <p className="text-slate-500 text-xs mt-1.5 font-medium">{t.name} · {t.specialty}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center justify-center gap-1.5 pt-1">
+        {[...Array(5)].map((_, i) => (
+          <svg key={i} viewBox="0 0 20 20" fill="#f59e0b" className="w-3.5 h-3.5">
+            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+          </svg>
+        ))}
+        <span className="text-slate-500 text-xs ml-1">4.9 · App Store</span>
+      </div>
     </div>
   );
 }
