@@ -384,7 +384,7 @@ export default function SubscriptionPage() {
               >
                 Yearly
                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${isYearly ? "bg-emerald-500/20 text-emerald-600" : "bg-emerald-500/20 text-emerald-400"}`}>
-                  -45%
+                  -37%
                 </span>
               </button>
             </div>
@@ -403,7 +403,7 @@ export default function SubscriptionPage() {
                     <span className="text-slate-400 text-base mb-1">/{isYearly ? "year" : "mo"}</span>
                   </div>
                   {isYearly ? (
-                    <p className="text-xs text-emerald-400 font-semibold">Save $169 per year · $24.92/mo</p>
+                    <p className="text-xs text-emerald-400 font-semibold">Save $180 per year · $24.99/mo</p>
                   ) : (
                     <p className="text-xs text-slate-500">Billed monthly · Cancel anytime</p>
                   )}
