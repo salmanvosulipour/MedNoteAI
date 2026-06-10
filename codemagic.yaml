@@ -111,10 +111,11 @@ workflows:
           echo "=== Info.plist after patch ==="
           /usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$PLIST"
           /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$PLIST"
-          # Patch xcodeproj build settings as backup
+          # Patch xcodeproj build settings
           sed -i '' "s/CURRENT_PROJECT_VERSION = [0-9]*/CURRENT_PROJECT_VERSION = $BUILD_NUMBER/" ios/App/App.xcodeproj/project.pbxproj
-          echo "=== pbxproj CURRENT_PROJECT_VERSION after patch ==="
-          grep "CURRENT_PROJECT_VERSION" ios/App/App.xcodeproj/project.pbxproj
+          sed -i '' "s/MARKETING_VERSION = [0-9.]*;/MARKETING_VERSION = 1.3;/" ios/App/App.xcodeproj/project.pbxproj
+          echo "=== pbxproj versions after patch ==="
+          grep "CURRENT_PROJECT_VERSION\|MARKETING_VERSION" ios/App/App.xcodeproj/project.pbxproj
 
       - name: Build and export IPA
         script: |
