@@ -114,6 +114,18 @@ uri = "file://public/subscription-review-screenshot.png"
 type = "image"
 title = "mednote_subscription_screenshot_flat"
 
+[[generated]]
+id = "dhImGlcusL6rrpPwpdDUm"
+uri = "file://public/subscription-monthly-1024.png"
+type = "image"
+title = "subscription_monthly_card"
+
+[[generated]]
+id = "7txJUQlPXm2-0BWA-xyhV"
+uri = "file://public/subscription-yearly-1024.png"
+type = "image"
+title = "subscription_yearly_card"
+
 [[outputs]]
 id = "pTtgsmERw6QOFw7et5UOI"
 uri = "file://mednote-ios.zip"
@@ -323,3 +335,15 @@ id = "Gnq2loRihpHenwvZ-ERYw"
 uri = "file://public/subscription-review-screenshot.png"
 type = "image"
 title = "Subscription Review Screenshot — 640×920px (Apple required size)"
+
+[[outputs]]
+id = "P5g21hTNVAI2jRxGxnaiN"
+uri = "file://public/subscription-monthly-1024.png"
+type = "image"
+title = "Monthly Plan Image — 1024×1024px"
+
+[[outputs]]
+id = "2tkJOsKcuMeWFDsERli1C"
+uri = "file://public/subscription-yearly-1024.png"
+type = "image"
+title = "Yearly Plan Image — 1024×1024px"
