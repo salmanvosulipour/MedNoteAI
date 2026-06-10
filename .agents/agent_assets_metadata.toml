@@ -108,6 +108,12 @@ uri = "file://attached_assets/scene_background.png"
 type = "image"
 title = "cinematic_hospital_background"
 
+[[generated]]
+id = "GL38g2JAVFWYwI6A6-X9m"
+uri = "file://public/subscription-review-screenshot.png"
+type = "image"
+title = "mednote_subscription_review_screenshot"
+
 [[outputs]]
 id = "pTtgsmERw6QOFw7et5UOI"
 uri = "file://mednote-ios.zip"
@@ -311,3 +317,9 @@ id = "_2_SJpR5a12cNGPa5iWN_"
 uri = "file://attached_assets/generated_videos/mednote_reel_v2.mp4"
 type = "video"
 title = "MedNote AI — Instagram Reel v2 (9:16, 34s, with your character)"
+
+[[outputs]]
+id = "Gnq2loRihpHenwvZ-ERYw"
+uri = "file://public/subscription-review-screenshot.png"
+type = "image"
+title = "MedNote AI Pro — Subscription Review Screenshot"
