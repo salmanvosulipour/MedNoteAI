@@ -1,0 +1,116 @@
+Showing the last 50 lines. Click this button to load the full log
+        }
+      ],
+      "user-info" : {
+        "NSLocalizedDescription" : "This bundle is invalid. The value for key CFBundleShortVersionString [1.1] in the Info.plist file must contain a higher version than that of the previously approved version [1.2]. Please find more information about CFBundleShortVersionString at https://developer.apple.com/documentation/bundleresources/information_property_list/cfbundleshortversionstring",
+        "NSLocalizedFailureReason" : "The server’s response was: ‘{\n    code = 90062;\n    description = \"This bundle is invalid. The value for key CFBundleShortVersionString [1.1] in the Info.plist file must contain a higher version than that of the previously approved version [1.2]. Please find more information about CFBundleShortVersionString at https://developer.apple.com/documentation/bundleresources/information_property_list/cfbundleshortversionstring\";\n}’.",
+        "NSUnderlyingError" : "Error Domain=IrisAPI Code=-19241 \"A server error occurred.\" UserInfo={code=90062, NSLocalizedDescription=A server error occurred., description=This bundle is invalid. The value for key CFBundleShortVersionString [1.1] in the Info.plist file must contain a higher version than that of the previously approved version [1.2]. Please find more information about CFBundleShortVersionString at https://developer.apple.com/documentation/bundleresources/information_property_list/cfbundleshortversionstring}",
+        "iris-code" : "90062"
+      }
+    },
+    {
+      "code" : 90478,
+      "message" : "Invalid Version. The build with the version “1.2” can’t be imported because a later version has been closed for new build submissions. Choose a different version number.",
+      "underlying-errors" : [
+        {
+          "code" : -19241,
+          "message" : "A server error occurred.",
+          "underlying-errors" : [
+
+          ],
+          "user-info" : {
+            "NSLocalizedDescription" : "A server error occurred.",
+            "code" : "90478",
+            "description" : "Invalid Version. The build with the version “1.2” can’t be imported because a later version has been closed for new build submissions. Choose a different version number."
+          }
+        }
+      ],
+      "user-info" : {
+        "NSLocalizedDescription" : "Invalid Version. The build with the version “1.2” can’t be imported because a later version has been closed for new build submissions. Choose a different version number.",
+        "NSLocalizedFailureReason" : "The server’s response was: ‘{\n    code = 90478;\n    description = \"Invalid Version. The build with the version \\U201c1.2\\U201d can\\U2019t be imported because a later version has been closed for new build submissions. Choose a different version number.\";\n}’.",
+        "NSUnderlyingError" : "Error Domain=IrisAPI Code=-19241 \"A server error occurred.\" UserInfo={code=90478, NSLocalizedDescription=A server error occurred., description=Invalid Version. The build with the version “1.2” can’t be imported because a later version has been closed for new build submissions. Choose a different version number.}",
+        "iris-code" : "90478"
+      }
+    }
+  ],
+  "tool-path" : "/Applications/Xcode-26.4.app/Contents/SharedFrameworks/ContentDelivery.framework/Resources",
+  "tool-version" : "26.30.4 (173004)"
+}
+
+Failed to upload archive at "/Users/builder/clone/build/ios/ipa/App.ipa"
+Failed to publish /Users/builder/clone/build/ios/ipa/App.ipa
+
+Failed to publish App.ipa to App Store Connect.
+
+Build failed :|
+
+
+Publishing failed :|
+Failed to publish App.ipa to App Store Connect.
+
+
+M
+MedNote
+Personal Account
+Personal Account
+M
+MedNote
+Create new team
+Applications
+Builds
+OTA Updates
+NEW
+App Preview
+Settings
+Billing
+Get $20 free CodePush credit with the coupon codepush20
+Learn More
+All systems operational
+
+Account settings
+salmanvosulipour@gmail.com
+
+Log out
+MedNote-AI
+MedNote-AI
+github.com/salmanvosulipour/MedNote-AI
+
+
+Start new build
+Build overview
+ID:
+6a299987b227f7f3c3612d1e
+
+Please provide this ID when you contact our support team
+Index:
+6
+Status:
+failed
+Workflow:
+MedNote AI - iOS App Store
+Started by:
+salmanvosulipour@gmail.com
+
+salmanvosulipour@gmail.com
+Started:
+7 minutes ago
+Jun 10th, 2026 at 21:06 +04
+Duration:
+3m 14s
+Machine:
+Mac mini M2
+Branch:
+main
+Commit:
+be286b3
+Artifacts
+App.ipa
+[2.75 MB]
+App.app.dSYM.zip
+[741.05 KB]
+Capacitor.framework.dSYM.zip
+[1.23 MB]
+Cordova.framework.dSYM.zip
+[464.87 KB]
+MedNote-AI_6_artifacts.zip
+[40.91 KB]
