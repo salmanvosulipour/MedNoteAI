@@ -79,7 +79,7 @@ export function CaseCard({ data }: { data: Case }) {
                   <button
                     onClick={handleDeleteClick}
                     data-testid={`button-delete-case-${data.id}`}
-                    className="p-1.5 rounded-full text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                    className="p-1.5 rounded-full text-slate-300 hover:text-red-500 active:text-red-500 hover:bg-red-50 active:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                     title="Delete case"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
