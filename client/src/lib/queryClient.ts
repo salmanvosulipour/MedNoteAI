@@ -10,6 +10,22 @@ export function resolveUrl(url: string): string {
   return url;
 }
 
+function getAuthHeaders(): Record<string, string> {
+  try {
+    const stored = localStorage.getItem("user");
+    if (!stored) return {};
+    const user = JSON.parse(stored);
+    const token = user?.token;
+    const deviceId = localStorage.getItem("mednote_device_id");
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    if (deviceId) headers["X-Device-ID"] = deviceId;
+    return headers;
+  } catch {
+    return {};
+  }
+}
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
@@ -24,7 +40,10 @@ export async function apiRequest(
 ): Promise<Response> {
   const res = await fetch(resolveUrl(url), {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers: {
+      ...(data ? { "Content-Type": "application/json" } : {}),
+      ...getAuthHeaders(),
+    },
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
@@ -41,6 +60,7 @@ export const getQueryFn: <T>(options: {
   async ({ queryKey }) => {
     const res = await fetch(resolveUrl(queryKey.join("/") as string), {
       credentials: "include",
+      headers: getAuthHeaders(),
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
