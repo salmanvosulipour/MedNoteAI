@@ -46,6 +46,12 @@ export function useAuth() {
         headers["X-Device-ID"] = deviceId;
       } catch { /* non-fatal */ }
 
+      // Skip API call if no token and no session cookie — nothing to validate
+      if (!token && window.location.pathname === "/apple-callback") {
+        setUser(null);
+        return;
+      }
+
       const res = await fetch(resolveUrl("/api/auth/user"), { credentials: "include", headers });
       if (res.ok) {
         const userData = await res.json();
@@ -60,7 +66,12 @@ export function useAuth() {
             return;
           }
         }
-        clearStoredUser();
+        // Only wipe stored credentials if we had a token that was rejected.
+        // Without a token a 401 is expected — don't clear storage that another
+        // flow (e.g. apple-callback) may be in the process of writing.
+        if (token) {
+          clearStoredUser();
+        }
         setUser(null);
       }
     } catch {
