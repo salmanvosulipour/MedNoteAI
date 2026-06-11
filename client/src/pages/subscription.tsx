@@ -1,6 +1,8 @@
 import { MobileLayout } from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
-import { Check, Star, X, Loader2, CheckCircle, Zap, Shield, Globe, Headphones, CreditCard, Apple, RotateCcw } from "lucide-react";
+import { Check, Star, X, Loader2, CheckCircle, Zap, Shield, Globe, Headphones, CreditCard, Apple, RotateCcw, Tag } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { apiRequest } from "@/lib/queryClient";
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
@@ -53,6 +55,30 @@ export default function SubscriptionPage() {
   const [purchasing, setPurchasing] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [purchaseSuccess, setPurchaseSuccess] = useState(false);
+  const [promoCode, setPromoCode] = useState("");
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [promoRedeemed, setPromoRedeemed] = useState(false);
+  const [showPromo, setShowPromo] = useState(false);
+
+  const handleRedeemPromo = async () => {
+    if (!promoCode.trim()) return;
+    setPromoLoading(true);
+    try {
+      const res = await apiRequest("POST", "/api/promo/redeem", { code: promoCode });
+      const data = await res.json();
+      if (!res.ok) {
+        toast({ title: "Invalid Code", description: data.message, variant: "destructive" });
+      } else {
+        setPromoRedeemed(true);
+        toast({ title: "🎉 Promo Applied!", description: "Unlimited access unlocked." });
+        setTimeout(() => setLocation("/home"), 1500);
+      }
+    } catch {
+      toast({ title: "Error", description: "Could not redeem code", variant: "destructive" });
+    } finally {
+      setPromoLoading(false);
+    }
+  };
 
   const { data: billingStatus, isLoading } = useQuery({
     queryKey: ["/api/billing/status"],
@@ -475,6 +501,38 @@ export default function SubscriptionPage() {
           <p className="text-xs text-center text-slate-500">
             14-day free trial · Then billed through Apple ID · Cancel anytime
           </p>
+
+          {!showPromo ? (
+            <button
+              onClick={() => setShowPromo(true)}
+              className="w-full flex items-center justify-center gap-1.5 py-1 text-xs text-slate-600 hover:text-slate-400 transition-colors"
+              data-testid="button-show-promo"
+            >
+              <Tag className="w-3 h-3" />
+              Have a promo code?
+            </button>
+          ) : (
+            <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="flex gap-2">
+              <Input
+                placeholder="Enter promo code..."
+                value={promoCode}
+                onChange={(e) => setPromoCode(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleRedeemPromo()}
+                disabled={promoLoading || promoRedeemed}
+                className="uppercase bg-white/8 border-white/15 text-white placeholder:text-slate-500 text-sm"
+                data-testid="input-promo-code"
+                autoFocus
+              />
+              <Button
+                onClick={handleRedeemPromo}
+                disabled={promoLoading || promoRedeemed || !promoCode.trim()}
+                className="shrink-0 bg-white/10 hover:bg-white/20 border border-white/15 text-white"
+                data-testid="button-redeem-promo"
+              >
+                {promoRedeemed ? <Check className="w-4 h-4 text-emerald-400" /> : promoLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Apply"}
+              </Button>
+            </motion.div>
+          )}
         </div>
       </div>
     </MobileLayout>
