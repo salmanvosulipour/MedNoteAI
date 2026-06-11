@@ -265,7 +265,7 @@ export default function SubscriptionPage() {
 
   if (isLoading) {
     return (
-      <MobileLayout showNav={false} className="bg-[#080B14] text-white relative overflow-hidden">
+      <MobileLayout showNav={false} className="bg-[#080B14] text-white relative">
         <div className="flex-1 flex items-center justify-center">
           <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
         </div>
@@ -275,7 +275,7 @@ export default function SubscriptionPage() {
 
   if (billingStatus?.isSubscribed || purchaseSuccess) {
     return (
-      <MobileLayout showNav={false} className="bg-[#080B14] text-white relative overflow-hidden">
+      <MobileLayout showNav={false} className="bg-[#080B14] text-white relative">
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-emerald-500/15 rounded-full blur-[120px]" />
           <div className="absolute bottom-0 right-0 w-[300px] h-[300px] bg-blue-600/10 rounded-full blur-[80px]" />
@@ -358,7 +358,7 @@ export default function SubscriptionPage() {
   }
 
   return (
-    <MobileLayout showNav={false} className="bg-[#080B14] text-white relative overflow-hidden">
+    <MobileLayout showNav={false} className="bg-[#080B14] text-white relative">
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-[700px] h-[400px] bg-blue-600/20 rounded-full blur-[120px]" />
         <div className="absolute top-1/3 -right-20 w-[350px] h-[350px] bg-violet-600/15 rounded-full blur-[100px]" />
