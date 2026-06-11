@@ -79,17 +79,36 @@ function PromoCodeSection({ onSuccess }: { onSuccess: () => void }) {
     if (!code.trim()) return;
     setLoading(true);
     try {
-      const res = await apiRequest("POST", "/api/promo/redeem", { code });
+      // Build auth headers the same way queryClient does
+      const authHeaders: Record<string, string> = { "Content-Type": "application/json" };
+      try {
+        const stored = localStorage.getItem("user");
+        if (stored) {
+          const u = JSON.parse(stored);
+          if (u?.token) authHeaders["Authorization"] = `Bearer ${u.token}`;
+        }
+        const deviceId = localStorage.getItem("mednote_device_id");
+        if (deviceId) authHeaders["X-Device-ID"] = deviceId;
+      } catch {}
+
+      const res = await fetch("/api/promo/redeem", {
+        method: "POST",
+        headers: authHeaders,
+        credentials: "include",
+        body: JSON.stringify({ code: code.trim() }),
+      });
       const data = await res.json();
       if (!res.ok) {
-        toast({ title: "Invalid Code", description: data.message, variant: "destructive" });
+        toast({ title: "Invalid Code", description: data.message || "Could not redeem code", variant: "destructive" });
+      } else if (data.alreadyActive) {
+        toast({ title: "Already Active", description: "You already have unlimited access." });
       } else {
         setRedeemed(true);
         toast({ title: "🎉 Promo Applied!", description: "Unlimited access unlocked." });
         setTimeout(onSuccess, 1500);
       }
     } catch {
-      toast({ title: "Error", description: "Could not redeem code", variant: "destructive" });
+      toast({ title: "Error", description: "Could not connect. Try again.", variant: "destructive" });
     } finally {
       setLoading(false);
     }

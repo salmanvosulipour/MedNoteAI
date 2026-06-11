@@ -64,17 +64,36 @@ export default function SubscriptionPage() {
     if (!promoCode.trim()) return;
     setPromoLoading(true);
     try {
-      const res = await apiRequest("POST", "/api/promo/redeem", { code: promoCode });
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      try {
+        const stored = localStorage.getItem("user");
+        if (stored) {
+          const u = JSON.parse(stored);
+          if (u?.token) headers["Authorization"] = `Bearer ${u.token}`;
+        }
+        const deviceId = localStorage.getItem("mednote_device_id");
+        if (deviceId) headers["X-Device-ID"] = deviceId;
+      } catch {}
+
+      const res = await fetch("/api/promo/redeem", {
+        method: "POST",
+        headers,
+        credentials: "include",
+        body: JSON.stringify({ code: promoCode.trim() }),
+      });
       const data = await res.json();
       if (!res.ok) {
-        toast({ title: "Invalid Code", description: data.message, variant: "destructive" });
+        toast({ title: "Invalid Code", description: data.message || "Could not redeem code", variant: "destructive" });
+      } else if (data.alreadyActive) {
+        toast({ title: "Already Active", description: "You already have unlimited access." });
+        setTimeout(() => setLocation("/home"), 1500);
       } else {
         setPromoRedeemed(true);
         toast({ title: "🎉 Promo Applied!", description: "Unlimited access unlocked." });
         setTimeout(() => setLocation("/home"), 1500);
       }
     } catch {
-      toast({ title: "Error", description: "Could not redeem code", variant: "destructive" });
+      toast({ title: "Error", description: "Could not connect. Try again.", variant: "destructive" });
     } finally {
       setPromoLoading(false);
     }
