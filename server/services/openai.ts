@@ -93,7 +93,7 @@ ${input.transcription}${finalizationContext}
 Extract each section carefully. The dictation contains history, exam findings, and plan all together — separate them into the correct fields.`;
 
   const response = await openai.chat.completions.create({
-    model: "gpt-4o",
+    model: "gpt-5",
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },
@@ -131,7 +131,7 @@ Extract each section carefully. The dictation contains history, exam findings, a
 
 export async function paraphraseDispositionNote(rawDictation: string): Promise<string> {
   const response = await openai.chat.completions.create({
-    model: "gpt-4o",
+    model: "gpt-5",
     messages: [
       {
         role: "system",
@@ -154,7 +154,7 @@ export async function generateDiagnosticInterpretation(
   findings: string
 ): Promise<string> {
   const response = await openai.chat.completions.create({
-    model: "gpt-4o",
+    model: "gpt-5",
     messages: [
       {
         role: "system",

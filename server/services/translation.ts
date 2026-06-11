@@ -7,7 +7,7 @@ const openai = new OpenAI({
 
 export async function translateToEnglish(text: string, sourceLanguage?: string): Promise<{ translatedText: string; detectedLanguage: string }> {
   const response = await openai.chat.completions.create({
-    model: "gpt-4o",
+    model: "gpt-5",
     messages: [
       {
         role: "system",
@@ -44,7 +44,7 @@ Preserve medical terms, drug names, and clinical measurements exactly as mention
 
 export async function translateFromEnglish(text: string, targetLanguage: string): Promise<string> {
   const response = await openai.chat.completions.create({
-    model: "gpt-4o",
+    model: "gpt-5",
     messages: [
       {
         role: "system",
