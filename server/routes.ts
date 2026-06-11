@@ -382,11 +382,8 @@ export async function registerRoutes(
       //   });
       // }
 
-      // Ambassador accounts get unlimited lifetime Pro access
-      if ((user as any).accountType === 'ambassador') {
-        // Allow — no subscription check needed
-      } else {
-        // Check subscription or free tokens
+      // Ambassador accounts get unlimited lifetime Pro access — skip all subscription checks
+      if ((user as any).accountType !== 'ambassador') {
         let hasActiveSubscription = false;
         const subscription = await storage.getSubscriptionByUserId(userId);
         if (subscription) {
@@ -413,6 +410,14 @@ export async function registerRoutes(
             trialEnded: true,
           });
         }
+
+        // Decrement free token if applicable
+        const parsed2 = insertCaseSchema.safeParse(req.body);
+        if (parsed2.success) {
+          if (!hasActiveSubscription && hasFreeTokens) {
+            await storage.decrementFreeTokens(userId);
+          }
+        }
       }
 
       const parsed = insertCaseSchema.safeParse(req.body);
@@ -423,11 +428,6 @@ export async function registerRoutes(
       // Enforce server-side ownership - always use authenticated user's ID
       const caseData = { ...parsed.data, userId };
       const newCase = await storage.createCase(caseData);
-
-      // Decrement free token if not subscribed
-      if (!hasActiveSubscription && hasFreeTokens) {
-        await storage.decrementFreeTokens(userId);
-      }
 
       res.status(201).json(newCase);
     } catch (error) {
