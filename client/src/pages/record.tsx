@@ -4,7 +4,7 @@ import { AudioVisualizer } from "@/components/AudioVisualizer";
 import { ChevronLeft, Square, Mic, Sparkles, Loader2, Play, Pause, Shield } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { createCase, processText, processAudio } from "@/lib/api";
+import { createCase, processText } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -303,15 +303,12 @@ export default function RecordPage() {
         chiefComplaint: chiefComplaint.trim(),
       });
 
-      let result;
-      if (audioBlob) {
-        toast({ title: "AI Transcribing", description: "Whisper is processing your audio..." });
-        result = await processAudio(newCase.id, audioBlob);
-      } else {
-        // Fallback: Web Speech API text → OpenAI note generation
-        toast({ title: "Generating Medical Note", description: "AI is processing your dictation..." });
-        result = await processText(newCase.id, dictation);
+      // Always use the captured speech text — server audio transcription is unavailable
+      if (!dictation || dictation.trim().length < 5) {
+        throw new Error("No speech detected. Please speak clearly and try again.");
       }
+      toast({ title: "Generating Medical Note", description: "AI is processing your dictation..." });
+      const result = await processText(newCase.id, dictation);
 
       toast({ title: "Medical Note Generated", description: "Your case has been processed successfully." });
       import("@/lib/iap").then(({ requestInAppReview }) => requestInAppReview()).catch(() => {});
