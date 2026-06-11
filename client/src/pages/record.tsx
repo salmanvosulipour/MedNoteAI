@@ -4,7 +4,7 @@ import { AudioVisualizer } from "@/components/AudioVisualizer";
 import { ChevronLeft, Square, Mic, Sparkles, Loader2, Play, Pause, Shield } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { createCase, processText } from "@/lib/api";
+import { createCase, processText, apiFetch } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -76,6 +76,8 @@ export default function RecordPage() {
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const isRecordingRef = useRef(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   const isRecording = recordingState === "recording";
   const isPaused = recordingState === "paused";
@@ -147,22 +149,45 @@ export default function RecordPage() {
   const startRecording = async (existingFinal = "") => {
     try {
       if (!streamRef.current) {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: false,
+            autoGainControl: true,
+            sampleRate: 48000,
+            channelCount: 1,
+          },
+        });
         streamRef.current = stream;
       }
 
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SpeechRecognition) {
-        toast({ title: "Not Supported", description: "Use Chrome, Edge, or Safari for speech recognition.", variant: "destructive" });
-        return;
+      // Start MediaRecorder for Gemini transcription (parallel to Web Speech API)
+      if (!existingFinal) audioChunksRef.current = [];
+      try {
+        const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+          ? "audio/webm;codecs=opus"
+          : MediaRecorder.isTypeSupported("audio/webm")
+          ? "audio/webm"
+          : "audio/ogg";
+        const mr = new MediaRecorder(streamRef.current!, { mimeType, audioBitsPerSecond: 128000 });
+        mr.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
+        mr.start(1000);
+        mediaRecorderRef.current = mr;
+      } catch {
+        // MediaRecorder not available — fall back to Web Speech API text only
       }
 
-      const recognition = buildRecognition(existingFinal);
-      if (!recognition) return;
+      // Also run Web Speech API for live preview text
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        const recognition = buildRecognition(existingFinal);
+        if (recognition) {
+          recognitionRef.current = recognition;
+          recognition.start();
+        }
+      }
 
-      recognitionRef.current = recognition;
       isRecordingRef.current = true;
-      recognition.start();
       setRecordingState("recording");
       if (!existingFinal) {
         setDuration(0);
@@ -180,10 +205,16 @@ export default function RecordPage() {
       recognitionRef.current.stop();
       recognitionRef.current = null;
     }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+      mediaRecorderRef.current.pause();
+    }
     setRecordingState("paused");
   };
 
   const handleResume = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "paused") {
+      mediaRecorderRef.current.resume();
+    }
     startRecording(finalTranscriptRef);
   };
 
@@ -193,18 +224,43 @@ export default function RecordPage() {
       recognitionRef.current.stop();
       recognitionRef.current = null;
     }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(t => t.stop());
-      streamRef.current = null;
-    }
-    setRecordingState("idle");
 
-    const finalText = transcription.trim();
-    if (finalText) {
-      processRecording(finalText);
+    setRecordingState("idle");
+    const capturedText = transcription.trim();
+
+    const mr = mediaRecorderRef.current;
+    mediaRecorderRef.current = null;
+
+    const stopStream = () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
+        streamRef.current = null;
+      }
+    };
+
+    if (mr && mr.state !== "inactive") {
+      mr.onstop = () => {
+        stopStream();
+        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        audioChunksRef.current = [];
+        if (audioBlob.size > 5000) {
+          processRecording(capturedText, audioBlob);
+        } else if (capturedText) {
+          processRecording(capturedText, null);
+        } else {
+          toast({ title: "No Speech Detected", description: "Please speak clearly into the microphone.", variant: "destructive" });
+          setPatientDetailsConfirmed(false);
+        }
+      };
+      mr.stop();
     } else {
-      toast({ title: "No Speech Detected", description: "Please speak clearly into the microphone.", variant: "destructive" });
-      setPatientDetailsConfirmed(false);
+      stopStream();
+      if (capturedText) {
+        processRecording(capturedText, null);
+      } else {
+        toast({ title: "No Speech Detected", description: "Please speak clearly into the microphone.", variant: "destructive" });
+        setPatientDetailsConfirmed(false);
+      }
     }
   };
 
@@ -235,7 +291,7 @@ export default function RecordPage() {
     startRecording();
   };
 
-  const processRecording = async (dictation: string) => {
+  const processRecording = async (dictation: string, audioBlob: Blob | null) => {
     setIsProcessing(true);
     try {
       const newCase = await createCase({
@@ -246,14 +302,33 @@ export default function RecordPage() {
         gender: patientGender,
         chiefComplaint: chiefComplaint.trim(),
       });
-      toast({ title: "Generating Medical Note", description: "AI is processing your dictation..." });
-      const result = await processText(newCase.id, dictation);
+
+      let result;
+      if (audioBlob) {
+        // Use Gemini 2.5-flash transcription via process-audio (best quality)
+        toast({ title: "AI Transcribing", description: "Gemini is processing your audio..." });
+        const formData = new FormData();
+        formData.append("audio", audioBlob, "recording.webm");
+        const res = await apiFetch(`/api/cases/${newCase.id}/process-audio`, {
+          method: "POST",
+          body: formData,
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw Object.assign(new Error(err.error || "Failed to process audio"), { code: err.error });
+        }
+        result = await res.json();
+      } else {
+        // Fallback: Web Speech API text → OpenAI note generation
+        toast({ title: "Generating Medical Note", description: "AI is processing your dictation..." });
+        result = await processText(newCase.id, dictation);
+      }
+
       toast({ title: "Medical Note Generated", description: "Your case has been processed successfully." });
-      // Trigger native App Store review prompt (once per year, requires @capacitor/app-review)
       import("@/lib/iap").then(({ requestInAppReview }) => requestInAppReview()).catch(() => {});
       setLocation(`/cases/${result.id}`);
     } catch (error: any) {
-      if (error?.code === "SUBSCRIPTION_REQUIRED") {
+      if (error?.code === "SUBSCRIPTION_REQUIRED" || error?.message?.includes("SUBSCRIPTION_REQUIRED")) {
         toast({ title: "Trial Ended", description: "Your 14-day free trial has ended. Subscribe to keep scribing." });
         setLocation("/subscription");
         return;
