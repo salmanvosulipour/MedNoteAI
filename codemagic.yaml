@@ -104,17 +104,23 @@ workflows:
         script: |
           BUILD_NUMBER=$(date +%s)
           echo "=== BUILD NUMBER: $BUILD_NUMBER ==="
-          # Patch Info.plist with literal value (no variable reference)
+
+          # Use agvtool — Apple's official tool to set versions across all project files
+          cd ios/App
+          xcrun agvtool new-marketing-version 1.4
+          xcrun agvtool new-version -all $BUILD_NUMBER
+          cd ../..
+
+          # Belt-and-suspenders: also patch directly
           PLIST="ios/App/App/Info.plist"
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" "$PLIST"
           /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 1.4" "$PLIST"
-          echo "=== Info.plist after patch ==="
-          /usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$PLIST"
-          /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$PLIST"
-          # Patch xcodeproj build settings
-          sed -i '' "s/CURRENT_PROJECT_VERSION = [0-9]*/CURRENT_PROJECT_VERSION = $BUILD_NUMBER/" ios/App/App.xcodeproj/project.pbxproj
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" "$PLIST"
           sed -i '' "s/MARKETING_VERSION = [0-9.]*;/MARKETING_VERSION = 1.4;/" ios/App/App.xcodeproj/project.pbxproj
-          echo "=== pbxproj versions after patch ==="
+          sed -i '' "s/CURRENT_PROJECT_VERSION = [0-9]*/CURRENT_PROJECT_VERSION = $BUILD_NUMBER/" ios/App/App.xcodeproj/project.pbxproj
+
+          echo "=== Versions after patch ==="
+          /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$PLIST"
           grep "CURRENT_PROJECT_VERSION\|MARKETING_VERSION" ios/App/App.xcodeproj/project.pbxproj
 
       - name: Build and export IPA
