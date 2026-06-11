@@ -25,31 +25,62 @@ export interface MedicalSummary {
 }
 
 export async function generateMedicalSummary(input: TranscriptionInput): Promise<MedicalSummary> {
-  const systemPrompt = `You are an expert medical scribe AI assistant. Your task is to generate a structured medical note from a physician's dictation.
+  const systemPrompt = `You are an expert medical scribe AI. A physician has dictated a full patient encounter — the dictation covers the history, review of systems, physical exam findings, and their clinical impression and plan, all mixed together in free speech.
 
-Output a JSON object with the following fields:
-- chiefComplaint: Brief statement of the patient's main concern
-- hpi: History of Present Illness - detailed narrative of the current problem
-- ros: Review of Systems - object with keys for each system (General, HEENT, Cardiovascular, Respiratory, GI, Neurologic, etc.) and their findings
-- physicalExam: Formatted physical examination findings
-- assessment: Clinical assessment and reasoning
-- differentialDiagnosis: Array of objects with {diagnosis, icdCode} - include ICD-10 codes
-- plan: Array of strings, each a numbered treatment step. Example: ["1. Order chest X-ray.", "2. Obtain blood tests (CBC, BMP)."]
-- patientEducation: Patient-friendly education about their condition
-- treatmentRedFlags: Warning signs that require immediate medical attention
+Your job is to READ the entire dictation carefully and EXTRACT each section into its own structured field. Do NOT copy the entire dictation into a single field. Do NOT leave fields empty if the information exists in the dictation.
 
-Be thorough, professional, and use standard medical terminology.`;
+Return a JSON object with EXACTLY these fields:
 
-  const userPrompt = `Generate a medical note for the following patient encounter:
+{
+  "chiefComplaint": "One sentence — the patient's main complaint and duration. e.g. 'Epigastric pain for 2 days'",
 
-Patient: ${input.patientName}
-Age: ${input.age} years old
-Gender: ${input.gender}
+  "hpi": "Full narrative paragraph of the History of Present Illness — onset, location, duration, character, associated symptoms, aggravating/relieving factors, and pertinent positives/negatives mentioned in the history portion of the dictation",
 
-Physician's Dictation:
+  "ros": {
+    "General": "findings or 'unremarkable'",
+    "GI/Abdominal": "findings or 'unremarkable'",
+    "Cardiovascular": "findings or 'unremarkable'",
+    "Respiratory": "findings or 'unremarkable'",
+    "Neurological": "findings or 'unremarkable'"
+  },
+
+  "physicalExam": "Formatted physical exam findings. Use line breaks between systems. Include vitals if mentioned. Extract from the examination portion of the dictation — do NOT leave blank if the physician mentioned any exam findings.",
+
+  "assessment": "The physician's clinical assessment, impression, working diagnosis, and reasoning. Extract from the impression/assessment portion of the dictation.",
+
+  "differentialDiagnosis": [
+    { "diagnosis": "Most likely diagnosis", "icdCode": "ICD-10 code" },
+    { "diagnosis": "Second possibility", "icdCode": "ICD-10 code" }
+  ],
+
+  "plan": [
+    "1. First action item (labs, imaging, medications, referrals)",
+    "2. Second action item",
+    "3. Third action item"
+  ],
+
+  "patientEducation": "Patient-friendly explanation of their condition and what to expect",
+
+  "treatmentRedFlags": "Warning signs the patient should watch for that require immediate medical attention"
+}
+
+CRITICAL RULES:
+- Distribute the dictation content across ALL relevant fields — do NOT dump everything into hpi
+- physicalExam should contain vitals + exam findings if mentioned
+- ros should reflect pertinent positives and negatives mentioned
+- If the physician mentions a diagnosis, put it in assessment and differentialDiagnosis
+- If the physician mentions labs, imaging, or medications, put them in plan
+- Generate reasonable content for fields based on the clinical context even if not explicitly stated
+- Always return valid JSON with all fields populated`;
+
+  const userPrompt = `Parse this physician dictation into a structured medical note:
+
+Patient: ${input.patientName}, ${input.age} years old, ${input.gender}
+
+FULL DICTATION:
 ${input.transcription}
 
-Please generate a complete, structured medical note in JSON format.`;
+Extract each section carefully. The dictation contains history, exam findings, and plan all together — separate them into the correct fields.`;
 
   const response = await openai.chat.completions.create({
     model: "gpt-4o",
@@ -66,7 +97,26 @@ Please generate a complete, structured medical note in JSON format.`;
     throw new Error("No response from OpenAI");
   }
 
-  return JSON.parse(content) as MedicalSummary;
+  let parsed: MedicalSummary;
+  try {
+    parsed = JSON.parse(content) as MedicalSummary;
+  } catch (e) {
+    console.error("OpenAI returned non-JSON content:", content.slice(0, 500));
+    throw new Error("OpenAI returned invalid JSON");
+  }
+
+  // Ensure required fields have defaults so the UI never shows empty
+  return {
+    chiefComplaint: parsed.chiefComplaint || "",
+    hpi: parsed.hpi || "",
+    ros: parsed.ros && typeof parsed.ros === "object" ? parsed.ros : {},
+    physicalExam: parsed.physicalExam || "",
+    assessment: parsed.assessment || "",
+    differentialDiagnosis: Array.isArray(parsed.differentialDiagnosis) ? parsed.differentialDiagnosis : [],
+    plan: parsed.plan || [],
+    patientEducation: parsed.patientEducation || "",
+    treatmentRedFlags: parsed.treatmentRedFlags || "",
+  };
 }
 
 export async function paraphraseDispositionNote(rawDictation: string): Promise<string> {
