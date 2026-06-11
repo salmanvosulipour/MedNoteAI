@@ -4,7 +4,7 @@ import { AudioVisualizer } from "@/components/AudioVisualizer";
 import { ChevronLeft, Square, Mic, Sparkles, Loader2, Play, Pause, Shield } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { createCase, processText, apiFetch } from "@/lib/api";
+import { createCase, processText, processAudio } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -305,19 +305,8 @@ export default function RecordPage() {
 
       let result;
       if (audioBlob) {
-        // Use Gemini 2.5-flash transcription via process-audio (best quality)
-        toast({ title: "AI Transcribing", description: "Gemini is processing your audio..." });
-        const formData = new FormData();
-        formData.append("audio", audioBlob, "recording.webm");
-        const res = await apiFetch(`/api/cases/${newCase.id}/process-audio`, {
-          method: "POST",
-          body: formData,
-        });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          throw Object.assign(new Error(err.error || "Failed to process audio"), { code: err.error });
-        }
-        result = await res.json();
+        toast({ title: "AI Transcribing", description: "Whisper is processing your audio..." });
+        result = await processAudio(newCase.id, audioBlob);
       } else {
         // Fallback: Web Speech API text → OpenAI note generation
         toast({ title: "Generating Medical Note", description: "AI is processing your dictation..." });
