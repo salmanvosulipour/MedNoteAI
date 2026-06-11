@@ -484,6 +484,8 @@ export async function registerRoutes(
         age: caseRecord.age,
         gender: caseRecord.gender,
         transcription: caseRecord.transcription,
+        finalNotes: (caseRecord as any).finalNotes ?? null,
+        disposition: (caseRecord as any).disposition ?? null,
       });
 
       // Update case with AI-generated content

@@ -10,6 +10,8 @@ export interface TranscriptionInput {
   age: number;
   gender: string;
   transcription: string;
+  finalNotes?: string | null;
+  disposition?: string | null;
 }
 
 export interface MedicalSummary {
@@ -73,12 +75,20 @@ CRITICAL RULES:
 - Generate reasonable content for fields based on the clinical context even if not explicitly stated
 - Always return valid JSON with all fields populated`;
 
+  const finalizationContext = input.disposition || input.finalNotes
+    ? `\n\nFINALIZATION (added by physician after the encounter):
+${input.disposition ? `Disposition: ${input.disposition}` : ""}
+${input.finalNotes ? `Final Notes: ${input.finalNotes}` : ""}
+
+Incorporate this finalization data into your Assessment and Plan — the disposition is the confirmed outcome, so update the Assessment to reflect it and ensure the Plan matches.`
+    : "";
+
   const userPrompt = `Parse this physician dictation into a structured medical note:
 
 Patient: ${input.patientName}, ${input.age} years old, ${input.gender}
 
 FULL DICTATION:
-${input.transcription}
+${input.transcription}${finalizationContext}
 
 Extract each section carefully. The dictation contains history, exam findings, and plan all together — separate them into the correct fields.`;
 

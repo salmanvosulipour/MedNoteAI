@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { fetchCase, updateCase, invalidateCase, paraphraseNote, deleteCase, type Case } from "@/lib/api";
+import { fetchCase, updateCase, invalidateCase, paraphraseNote, deleteCase, generateSummary, type Case } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { isNative } from "@/lib/iap";
@@ -80,6 +80,7 @@ export default function CaseDetailPage() {
   const [studyDialogOpen, setStudyDialogOpen] = useState(false);
   const [rxPreviewOpen, setRxPreviewOpen] = useState(false);
   const [isParaphrasing, setIsParaphrasing] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
   const [newMed, setNewMed] = useState<Medication>({ name: "", dose: "", frequency: "", duration: "", instructions: "" });
   const [newStudy, setNewStudy] = useState<DiagnosticStudy>({ type: "", interpretation: "", aiAssisted: false });
 
@@ -669,6 +670,13 @@ export default function CaseDetailPage() {
           </Button>
         </div>
       </header>
+
+      {isRegenerating && (
+        <div className="mx-4 mt-3 flex items-center gap-2 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-lg px-4 py-2.5 text-sm text-blue-700 dark:text-blue-300">
+          <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+          <span>Regenerating medical note with final diagnosis…</span>
+        </div>
+      )}
 
       <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <DialogContent className="max-w-sm">
@@ -1291,13 +1299,31 @@ export default function CaseDetailPage() {
                           disposition: selectedDisposition,
                           dischargeSummary: dischargeSummary,
                           status: 'completed'
-                        });
-                        setDispositionDialogOpen(false);
-                        toast({
-                          title: caseData.disposition ? "Disposition Updated" : "Case Finalized",
-                          description: selectedDisposition === 'discharged' 
-                            ? "Discharge summary updated."
-                            : "Final diagnosis and disposition saved.",
+                        }, {
+                          onSuccess: () => {
+                            setDispositionDialogOpen(false);
+                            toast({
+                              title: caseData.disposition ? "Disposition Updated" : "Case Finalized",
+                              description: "Regenerating medical note with final diagnosis...",
+                            });
+                            setIsRegenerating(true);
+                            generateSummary(id)
+                              .then(() => {
+                                invalidateCase(id);
+                                toast({
+                                  title: "Note Updated",
+                                  description: "Medical note regenerated with final disposition.",
+                                });
+                              })
+                              .catch(() => {
+                                toast({
+                                  title: "Note Update Failed",
+                                  description: "Could not regenerate note, but disposition was saved.",
+                                  variant: "destructive",
+                                });
+                              })
+                              .finally(() => setIsRegenerating(false));
+                          }
                         });
                       }}
                       disabled={!selectedDisposition || isParaphrasing}
