@@ -1,0 +1,122 @@
+Showing the last 50 lines. Click this button to load the full log
+        }
+      ],
+      "user-info" : {
+        "NSLocalizedDescription" : "Invalid Pre-Release Train. The train version '1.3' is closed for new build submissions",
+        "NSLocalizedFailureReason" : "The server’s response was: ‘{\n    code = 90186;\n    description = \"Invalid Pre-Release Train. The train version '1.3' is closed for new build submissions\";\n}’.",
+        "NSUnderlyingError" : "Error Domain=IrisAPI Code=-19241 \"A server error occurred.\" UserInfo={code=90186, NSLocalizedDescription=A server error occurred., description=Invalid Pre-Release Train. The train version '1.3' is closed for new build submissions}",
+        "iris-code" : "90186"
+      }
+    },
+    {
+      "code" : 90062,
+      "message" : "This bundle is invalid. The value for key CFBundleShortVersionString [1.3] in the Info.plist file must contain a higher version than that of the previously approved version [1.3]. Please find more information about CFBundleShortVersionString at https://developer.apple.com/documentation/bundleresources/information_property_list/cfbundleshortversionstring",
+      "underlying-errors" : [
+        {
+          "code" : -19241,
+          "message" : "A server error occurred.",
+          "underlying-errors" : [
+
+          ],
+          "user-info" : {
+            "NSLocalizedDescription" : "A server error occurred.",
+            "code" : "90062",
+            "description" : "This bundle is invalid. The value for key CFBundleShortVersionString [1.3] in the Info.plist file must contain a higher version than that of the previously approved version [1.3]. Please find more information about CFBundleShortVersionString at https://developer.apple.com/documentation/bundleresources/information_property_list/cfbundleshortversionstring"
+          }
+        }
+      ],
+      "user-info" : {
+        "NSLocalizedDescription" : "This bundle is invalid. The value for key CFBundleShortVersionString [1.3] in the Info.plist file must contain a higher version than that of the previously approved version [1.3]. Please find more information about CFBundleShortVersionString at https://developer.apple.com/documentation/bundleresources/information_property_list/cfbundleshortversionstring",
+        "NSLocalizedFailureReason" : "The server’s response was: ‘{\n    code = 90062;\n    description = \"This bundle is invalid. The value for key CFBundleShortVersionString [1.3] in the Info.plist file must contain a higher version than that of the previously approved version [1.3]. Please find more information about CFBundleShortVersionString at https://developer.apple.com/documentation/bundleresources/information_property_list/cfbundleshortversionstring\";\n}’.",
+        "NSUnderlyingError" : "Error Domain=IrisAPI Code=-19241 \"A server error occurred.\" UserInfo={code=90062, NSLocalizedDescription=A server error occurred., description=This bundle is invalid. The value for key CFBundleShortVersionString [1.3] in the Info.plist file must contain a higher version than that of the previously approved version [1.3]. Please find more information about CFBundleShortVersionString at https://developer.apple.com/documentation/bundleresources/information_property_list/cfbundleshortversionstring}",
+        "iris-code" : "90062"
+      }
+    }
+  ],
+  "tool-path" : "/Applications/Xcode-26.4.app/Contents/SharedFrameworks/ContentDelivery.framework/Resources",
+  "tool-version" : "26.30.4 (173004)"
+}
+
+Failed to upload archive at "/Users/builder/clone/build/ios/ipa/App.ipa"
+Failed to publish /Users/builder/clone/build/ios/ipa/App.ipa
+
+Failed to publish App.ipa to App Store Connect.
+
+Build failed :|
+
+
+Publishing failed :|
+Failed to publish App.ipa to App Store Connect.
+
+
+M
+MedNote
+Personal Account
+Personal Account
+M
+MedNote
+Create new team
+Applications
+Builds
+OTA Updates
+NEW
+App Preview
+Settings
+Billing
+Get $20 free CodePush credit with the coupon codepush20
+Learn More
+All systems operational
+
+Account settings
+salmanvosulipour@gmail.com
+
+Log out
+MedNote-AI
+MedNote-AI
+github.com/salmanvosulipour/MedNote-AI
+
+
+Start new build
+Build overview
+ID:
+6a2a6b4bee22ce75c8419ece
+
+Please provide this ID when you contact our support team
+Index:
+12
+Status:
+failed
+Workflow:
+MedNote AI - iOS App Store
+Started by:
+salmanvosulipour@gmail.com
+
+salmanvosulipour@gmail.com
+Started:
+6 minutes ago
+Jun 11th, 2026 at 12:01 +04
+Duration:
+6m 12s
+Machine:
+Mac mini M2
+Branch:
+main
+Commit:
+668e633
+Artifacts
+App.ipa
+[9.02 MB]
+App.app.dSYM.zip
+[2.44 MB]
+Capacitor.framework.dSYM.zip
+[1.23 MB]
+CapacitorCommunityAppleSignIn.framework.dSYM.zip
+[758.00 KB]
+Cordova.framework.dSYM.zip
+[464.87 KB]
+PurchasesHybridCommon.framework.dSYM.zip
+[2.21 MB]
+RevenueCat.framework.dSYM.zip
+[6.16 MB]
+RevenuecatPurchasesCapacitor.framework.dSYM.zip
+[2.43 MB]
