@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, registerAuthRoutes } from "./replit_integrations/auth";
 import { generateMedicalSummary, generateDiagnosticInterpretation, paraphraseDispositionNote } from "./services/openai";
-import { transcribeAudio } from "./services/gemini";
+import { transcribeAudio, cleanMedicalTranscription } from "./services/gemini";
 import { sendCaseSummaryEmail } from "./services/resend";
 import { insertCaseSchema } from "@shared/schema";
 import { z } from "zod";
@@ -656,7 +656,10 @@ export async function registerRoutes(
       // Update status to processing
       await storage.updateCase(req.params.id, { status: "processing" });
 
-      const transcription = parsed.data.dictation;
+      const rawDictation = parsed.data.dictation;
+
+      // Clean garbled speech-to-text with Gemini before OpenAI note generation
+      const transcription = await cleanMedicalTranscription(rawDictation);
 
       // Generate medical summary with OpenAI
       const summary = await generateMedicalSummary({

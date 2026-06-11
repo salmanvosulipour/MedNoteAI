@@ -49,3 +49,46 @@ Transcribe the audio now:`,
   
   return text;
 }
+
+export async function cleanMedicalTranscription(rawText: string): Promise<string> {
+  const response = await genAI.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: [
+      {
+        role: "user",
+        parts: [
+          {
+            text: `You are a medical transcription correction specialist. The text below was captured by a browser's built-in speech recognition, which does not understand medical terminology. It contains phonetic errors — medical terms were misheard and written as incorrect words.
+
+Your job: correct ALL medical terminology errors while keeping the meaning and structure intact. Do NOT add new information. Do NOT summarize. Return ONLY the corrected transcription text.
+
+The speaker has an Arabic/Middle-Eastern accent. Common phonetic substitutions to fix:
+- "APK area" / "Epic area" / "Epic 3 area" → "epigastric area"
+- "grey umbilical" / "preambe Kali" / "priambly" → "periumbilical"
+- "nozia" / "nasha" / "nawsea" → "nausea"
+- "warmicking" / "vomicking" / "vom" → "vomiting"
+- "reborn" / "rebound" confusion → "rebound tenderness"
+- "gastrology" → "gastroenterology"
+- "worries" → "vomiting" (context dependent)
+- "diabetic" → "diabetes" (when used as noun)
+- "hypertension" should stay as is
+- "debit is" → "diabetes"
+- "preamble and as but" → "peristaltic sounds"
+- "prolimed" / "prolined" → "prolonged"
+- "DVT" related: "deep vein" stays, "thrombosis" stays
+- Fix any other obvious medical mis-transcriptions
+
+Input text:
+${rawText}
+
+Output (corrected transcription only):`,
+          },
+        ],
+      },
+    ],
+  });
+
+  const cleaned = response.text;
+  // If Gemini fails for any reason, return original text as fallback
+  return cleaned?.trim() || rawText;
+}
