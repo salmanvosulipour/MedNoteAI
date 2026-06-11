@@ -1,10 +1,10 @@
 import { MobileLayout } from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ChevronLeft, Share2, AlertTriangle, Pill, Plus, GraduationCap, Stethoscope, Activity, FlaskConical, FileImage, Loader2, CheckCircle, Check, Download, Printer, Presentation, TrendingUp, Mic, MicOff, ClipboardCheck, Pencil, RefreshCw, Brain, Heart, Zap, ShieldAlert, ScrollText } from "lucide-react";
+import { ChevronLeft, Share2, AlertTriangle, Pill, Plus, GraduationCap, Stethoscope, Activity, FlaskConical, FileImage, Loader2, CheckCircle, Check, Download, Printer, Presentation, TrendingUp, Mic, MicOff, ClipboardCheck, Pencil, RefreshCw, Brain, Heart, Zap, ShieldAlert, ScrollText, Trash2 } from "lucide-react";
 import { EditableSection, PhysicalExamDisplay, parseAIContent } from "@/components/EditableSection";
 import pptxgen from "pptxgenjs";
-import { Link, useRoute } from "wouter";
+import { Link, useRoute, useLocation } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { fetchCase, updateCase, invalidateCase, paraphraseNote, type Case } from "@/lib/api";
+import { fetchCase, updateCase, invalidateCase, paraphraseNote, deleteCase, type Case } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { isNative } from "@/lib/iap";
@@ -45,6 +45,21 @@ export default function CaseDetailPage() {
   const [, params] = useRoute("/cases/:id");
   const id = params?.id || "new";
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingCase, setDeletingCase] = useState(false);
+
+  const handleDeleteCase = async () => {
+    setDeletingCase(true);
+    try {
+      await deleteCase(id);
+      setShowDeleteConfirm(false);
+      setLocation("/cases");
+    } catch {
+      toast({ title: "Error", description: "Failed to delete case.", variant: "destructive" });
+      setDeletingCase(false);
+    }
+  };
 
   const { data: caseData, isLoading, error } = useQuery<ExtendedCase>({
     queryKey: ["case", id],
@@ -649,8 +664,30 @@ export default function CaseDetailPage() {
           <Button variant="ghost" size="icon" className="h-9 w-9" onClick={handlePrint} data-testid="button-print" title="Print">
             <Printer className="w-4 h-4" />
           </Button>
+          <Button variant="ghost" size="icon" className="h-9 w-9 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20" onClick={() => setShowDeleteConfirm(true)} data-testid="button-delete-case" title="Delete case">
+            <Trash2 className="w-4 h-4" />
+          </Button>
         </div>
       </header>
+
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete Case?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            This case will be permanently deleted. This cannot be undone.
+          </p>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowDeleteConfirm(false)} disabled={deletingCase}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteCase} disabled={deletingCase} data-testid="button-confirm-delete-case">
+              {deletingCase ? "Deleting..." : "Delete Case"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ScrollArea className="flex-1">
         <div className="p-6 pb-24">
