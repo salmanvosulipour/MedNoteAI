@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { ChevronRight, CreditCard, Shield, HelpCircle, LogOut, User, Bell, Camera, Check, X, Edit3, Lock, Server, ShieldCheck, FileCheck, Globe } from "lucide-react";
+import { ChevronRight, CreditCard, Shield, HelpCircle, LogOut, User, Bell, Camera, Check, X, Edit3, Lock, Server, ShieldCheck, FileCheck, Globe, Tag } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -66,6 +66,67 @@ function LanguageToggle() {
         {lang === "en" ? "🌐 العربية" : "🌐 English"}
       </button>
     </div>
+  );
+}
+
+function PromoCodeSection({ onSuccess }: { onSuccess: () => void }) {
+  const [code, setCode] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [redeemed, setRedeemed] = useState(false);
+  const { toast } = useToast();
+
+  const handleRedeem = async () => {
+    if (!code.trim()) return;
+    setLoading(true);
+    try {
+      const res = await apiRequest("POST", "/api/promo/redeem", { code });
+      const data = await res.json();
+      if (!res.ok) {
+        toast({ title: "Invalid Code", description: data.message, variant: "destructive" });
+      } else {
+        setRedeemed(true);
+        toast({ title: "🎉 Promo Applied!", description: "Unlimited access unlocked." });
+        setTimeout(onSuccess, 1500);
+      }
+    } catch {
+      toast({ title: "Error", description: "Could not redeem code", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <section className="space-y-4">
+      <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Promo Code</h3>
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+        <div className="flex items-center gap-3 mb-3">
+          <Tag className="w-5 h-5 text-blue-500" />
+          <div>
+            <p className="text-sm font-medium">Have a promo code?</p>
+            <p className="text-xs text-muted-foreground">Enter it below to unlock unlimited access</p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Input
+            placeholder="Enter code..."
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleRedeem()}
+            disabled={loading || redeemed}
+            className="uppercase"
+            data-testid="input-promo-code"
+          />
+          <Button
+            onClick={handleRedeem}
+            disabled={loading || redeemed || !code.trim()}
+            className="shrink-0"
+            data-testid="button-redeem-promo"
+          >
+            {redeemed ? <Check className="w-4 h-4" /> : loading ? "..." : "Apply"}
+          </Button>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -419,6 +480,10 @@ export default function ProfilePage() {
              </div>
            </div>
         </section>
+
+        {!billingStatus?.isAmbassador && !billingStatus?.isSubscribed && (
+          <PromoCodeSection onSuccess={() => window.location.reload()} />
+        )}
 
         <Button 
           variant="destructive" 

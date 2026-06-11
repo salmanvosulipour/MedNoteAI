@@ -856,5 +856,33 @@ export async function registerRoutes(
     }
   });
 
+  // Promo code redemption
+  app.post('/api/promo/redeem', sessionAuth, async (req: any, res) => {
+    try {
+      const userId = req.authUserId;
+      const { code } = req.body;
+      if (!code) return res.status(400).json({ message: "No code provided" });
+
+      const VALID_CODES = (process.env.AMBASSADOR_CODES || "MEDNOTE-FREE,MEDNOTEAI,DOCFREE2024")
+        .split(",").map((c: string) => c.trim().toUpperCase());
+
+      if (!VALID_CODES.includes(code.trim().toUpperCase())) {
+        return res.status(400).json({ message: "Invalid promo code" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      if ((user as any).accountType === 'ambassador') {
+        return res.json({ message: "Already active", alreadyActive: true });
+      }
+
+      await storage.updateUser(userId, { accountType: 'ambassador' } as any);
+      res.json({ success: true, message: "Promo code applied! You now have unlimited access." });
+    } catch (e) {
+      console.error("[promo]", e);
+      res.status(500).json({ message: "Failed to redeem code" });
+    }
+  });
+
   return httpServer;
 }
