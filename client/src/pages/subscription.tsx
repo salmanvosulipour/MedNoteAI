@@ -521,6 +521,28 @@ export default function SubscriptionPage() {
             14-day free trial · Then billed through Apple ID · Cancel anytime
           </p>
 
+          <div className="flex items-center justify-center gap-4">
+            <a
+              href="https://mednoteai.net/terms"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-slate-600 hover:text-slate-400 underline underline-offset-2 transition-colors"
+              data-testid="link-terms"
+            >
+              Terms of Use
+            </a>
+            <span className="text-slate-700 text-xs">·</span>
+            <a
+              href="https://mednoteai.net/privacy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-slate-600 hover:text-slate-400 underline underline-offset-2 transition-colors"
+              data-testid="link-privacy"
+            >
+              Privacy Policy
+            </a>
+          </div>
+
           {!showPromo ? (
             <button
               onClick={() => setShowPromo(true)}
