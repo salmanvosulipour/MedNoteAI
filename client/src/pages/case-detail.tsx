@@ -1280,9 +1280,13 @@ export default function CaseDetailPage() {
                               };
                               
                               recognition.onerror = (event: any) => {
-                                if (event.error !== 'aborted' && event.error !== 'no-speech') {
-                                  toast({ title: "Speech recognition error", variant: "destructive" });
+                                const err = event.error || "";
+                                if (err === "network") {
+                                  toast({ title: "Network Error", description: "Speech recognition requires internet.", variant: "destructive" });
+                                } else if (err === "audio-capture" || err === "not-allowed") {
+                                  toast({ title: "Microphone Error", description: "Could not access microphone.", variant: "destructive" });
                                 }
+                                // aborted, no-speech, service-not-allowed etc. are non-critical — suppress
                               };
                               
                               recognition.onend = () => {
