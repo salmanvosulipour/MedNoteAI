@@ -80,6 +80,7 @@ export default function CaseDetailPage() {
   const [studyDialogOpen, setStudyDialogOpen] = useState(false);
   const [rxPreviewOpen, setRxPreviewOpen] = useState(false);
   const [isParaphrasing, setIsParaphrasing] = useState(false);
+  const [isReCleaningNotes, setIsReCleaningNotes] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [newMed, setNewMed] = useState<Medication>({ name: "", dose: "", frequency: "", duration: "", instructions: "" });
   const [newStudy, setNewStudy] = useState<DiagnosticStudy>({ type: "", interpretation: "", aiAssisted: false });
@@ -1180,7 +1181,36 @@ export default function CaseDetailPage() {
                       </Button>
                     </div>
                     {(caseData as ExtendedCase).finalNotes && (
-                      <p className="text-sm text-muted-foreground mt-2">{(caseData as ExtendedCase).finalNotes}</p>
+                      <div className="mt-2">
+                        <p className="text-sm text-muted-foreground">{(caseData as ExtendedCase).finalNotes}</p>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="mt-1 h-7 px-2 text-xs text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+                          disabled={isReCleaningNotes}
+                          data-testid="button-reclean-notes"
+                          onClick={async () => {
+                            const raw = (caseData as ExtendedCase).finalNotes!;
+                            setIsReCleaningNotes(true);
+                            try {
+                              const cleaned = await paraphraseNote(raw);
+                              await updateMutation.mutateAsync({ finalNotes: cleaned });
+                              invalidateCase(id);
+                              toast({ title: "Notes Cleaned", description: "Final notes have been paraphrased by AI." });
+                            } catch {
+                              toast({ title: "Could not clean notes", variant: "destructive" });
+                            } finally {
+                              setIsReCleaningNotes(false);
+                            }
+                          }}
+                        >
+                          {isReCleaningNotes ? (
+                            <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Cleaning...</>
+                          ) : (
+                            <>✨ AI Clean</>
+                          )}
+                        </Button>
+                      </div>
                     )}
                   </div>
                   <Link href={`/cases/${id}/disposition`}>
