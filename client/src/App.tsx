@@ -75,11 +75,12 @@ function Router() {
   }
 
   if (!user?.termsAcceptedAt) {
+    const AcceptancePage = () => <TermsPage requireAcceptance={true} />;
     return (
       <Switch>
-        <Route path="/" component={TermsPage} />
-        <Route path="/terms" component={TermsPage} />
-        <Route component={TermsPage} />
+        <Route path="/" component={AcceptancePage} />
+        <Route path="/terms" component={AcceptancePage} />
+        <Route component={AcceptancePage} />
       </Switch>
     );
   }
