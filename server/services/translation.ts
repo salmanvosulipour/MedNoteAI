@@ -27,7 +27,7 @@ Preserve medical terms, drug names, and clinical measurements exactly as mention
       }
     ],
     response_format: { type: "json_object" },
-    max_tokens: 4096,
+    max_completion_tokens: 4096,
   });
 
   const content = response.choices[0]?.message?.content;
@@ -55,7 +55,7 @@ export async function translateFromEnglish(text: string, targetLanguage: string)
         content: text
       }
     ],
-    max_tokens: 4096,
+    max_completion_tokens: 4096,
   });
 
   return response.choices[0]?.message?.content || text;
