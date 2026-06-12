@@ -92,17 +92,28 @@ ${input.transcription}${finalizationContext}
 
 Extract each section carefully. The dictation contains history, exam findings, and plan all together — separate them into the correct fields.`;
 
-  const response = await openai.chat.completions.create({
-    model: "gpt-5",
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
-    ],
-    response_format: { type: "json_object" },
-    max_completion_tokens: 4096,
-  });
+  let content: string | null | undefined;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const response = await openai.chat.completions.create({
+        model: "gpt-5",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        response_format: { type: "json_object" },
+        max_completion_tokens: 4096,
+      });
+      content = response.choices[0]?.message?.content;
+      if (content) break;
+      console.warn(`OpenAI attempt ${attempt}: empty response, retrying...`);
+    } catch (err: any) {
+      console.warn(`OpenAI attempt ${attempt} failed: ${err.message}`);
+      if (attempt === 3) throw err;
+      await new Promise(r => setTimeout(r, 2000 * attempt));
+    }
+  }
 
-  const content = response.choices[0]?.message?.content;
   if (!content) {
     throw new Error("No response from OpenAI");
   }

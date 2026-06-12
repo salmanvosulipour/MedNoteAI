@@ -59,7 +59,7 @@ The speaker has an Arabic/Middle-Eastern accent. Common phonetic substitutions t
           content: rawText,
         },
       ],
-      max_tokens: 1024,
+      max_completion_tokens: 1024,
     });
 
     return response.choices[0]?.message?.content?.trim() || rawText;
