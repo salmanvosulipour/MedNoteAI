@@ -10,6 +10,7 @@ import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth";
 import AppleCallbackPage from "@/pages/apple-callback";
 import TermsPage from "@/pages/terms";
+import PrivacyPage from "@/pages/privacy";
 import ForgotPasswordPage from "@/pages/forgot-password";
 import ResetPasswordPage from "@/pages/reset-password";
 import HomePage from "@/pages/home";
@@ -66,6 +67,7 @@ function Router() {
         <Route path="/home" component={AuthPage} />
         <Route path="/apple-callback" component={AppleCallbackPage} />
         <Route path="/terms" component={TermsPage} />
+        <Route path="/privacy" component={PrivacyPage} />
         <Route path="/forgot-password" component={ForgotPasswordPage} />
         <Route path="/reset-password" component={ResetPasswordPage} />
         <Route path="/verify-email" component={VerifyEmailPage} />
@@ -95,6 +97,7 @@ function Router() {
       <Route path="/home" component={HomePage} />
       <Route path="/auth" component={HomePage} />
       <Route path="/terms" component={HomePage} />
+      <Route path="/privacy" component={PrivacyPage} />
       <Route path="/record" component={RecordPage} />
       <Route path="/cases" component={CasesPage} />
       <Route path="/cases/:id" component={CaseDetailPage} />
