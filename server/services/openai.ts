@@ -250,23 +250,34 @@ Make the narrative flow naturally. For sections with limited data, write a brief
 }
 
 export async function paraphraseDispositionNote(rawDictation: string): Promise<string> {
-  const response = await openai.chat.completions.create({
-    model: "gpt-5",
-    messages: [
-      {
-        role: "system",
-        content: `You are an expert medical scribe. Convert raw physician voice dictation into a clean, professional, concise clinical note.
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const response = await openai.chat.completions.create({
+        model: "gpt-5",
+        messages: [
+          {
+            role: "system",
+            content: `You are an expert medical scribe. Convert raw physician voice dictation into a clean, professional, concise clinical note.
 Fix transcription errors, use proper medical terminology, correct spelling, remove filler words, and structure the note clearly.
 Keep all clinical facts exactly as stated. Return only the cleaned note text — no headings, no JSON, no extra commentary.`,
-      },
-      {
-        role: "user",
-        content: `Clean up this raw dictation into a professional clinical note:\n\n${rawDictation}`,
-      },
-    ],
-    max_completion_tokens: 1024,
-  });
-  return response.choices[0]?.message?.content?.trim() || rawDictation;
+          },
+          {
+            role: "user",
+            content: `Clean up this raw dictation into a professional clinical note:\n\n${rawDictation}`,
+          },
+        ],
+        max_completion_tokens: 1024,
+      });
+      const content = response.choices[0]?.message?.content?.trim();
+      if (content) return content;
+      console.warn(`paraphraseDispositionNote attempt ${attempt}: empty response, retrying...`);
+    } catch (err: any) {
+      console.warn(`paraphraseDispositionNote attempt ${attempt} failed: ${err.message}`);
+      if (attempt === 3) return rawDictation;
+      await new Promise(r => setTimeout(r, 2000 * attempt));
+    }
+  }
+  return rawDictation;
 }
 
 export async function generateDiagnosticInterpretation(
