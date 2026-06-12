@@ -91,6 +91,13 @@ export default function CaseDetailPage() {
   const hpiRecognitionRef = useRef<any>(null);
   const hpiStreamRef = useRef<MediaStream | null>(null);
 
+  // Physical Exam Edit
+  const [physExamDialogOpen, setPhysExamDialogOpen] = useState(false);
+  const [physExamText, setPhysExamText] = useState("");
+  const [isRecordingPhysExam, setIsRecordingPhysExam] = useState(false);
+  const physExamRecognitionRef = useRef<any>(null);
+  const physExamStreamRef = useRef<MediaStream | null>(null);
+
   useEffect(() => {
     if (caseData) {
       setDiagnosticStudies(caseData.diagnosticStudies || []);
@@ -175,6 +182,56 @@ export default function CaseDetailPage() {
       toast({ title: "HPI Updated", description: "History of Present Illness has been updated." });
     }
     setHpiDialogOpen(false);
+  };
+
+  const startPhysExamRecording = () => {
+    const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognitionAPI) {
+      toast({ title: "Speech recognition not supported", description: "Please use Chrome, Edge, or Safari.", variant: "destructive" });
+      return;
+    }
+    navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+      physExamStreamRef.current = stream;
+      const recognition = new SpeechRecognitionAPI();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = "en-US";
+      let finalText = physExamText;
+      recognition.onresult = (event: any) => {
+        let interim = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          if (event.results[i].isFinal) finalText += event.results[i][0].transcript + " ";
+          else interim += event.results[i][0].transcript;
+        }
+        setPhysExamText(finalText + interim);
+      };
+      recognition.onerror = (e: any) => {
+        if (e.error !== "aborted" && e.error !== "no-speech") setIsRecordingPhysExam(false);
+      };
+      recognition.onend = () => {
+        if (physExamRecognitionRef.current && isRecordingPhysExam) {
+          try { physExamRecognitionRef.current.start(); } catch {}
+        }
+      };
+      physExamRecognitionRef.current = recognition;
+      recognition.start();
+      setIsRecordingPhysExam(true);
+    }).catch(() => toast({ title: "Microphone access denied", variant: "destructive" }));
+  };
+
+  const stopPhysExamRecording = () => {
+    physExamRecognitionRef.current?.stop();
+    physExamStreamRef.current?.getTracks().forEach(t => t.stop());
+    setIsRecordingPhysExam(false);
+  };
+
+  const savePhysExam = () => {
+    stopPhysExamRecording();
+    if (physExamText.trim()) {
+      updateMutation.mutate({ physicalExam: physExamText.trim() });
+      toast({ title: "Physical Exam Updated" });
+    }
+    setPhysExamDialogOpen(false);
   };
 
   const getDispositionLabel = (value: string) => {
@@ -667,7 +724,7 @@ export default function CaseDetailPage() {
       {isRegenerating && (
         <div className="mx-4 mt-3 flex items-center gap-2 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-lg px-4 py-2.5 text-sm text-blue-700 dark:text-blue-300">
           <Loader2 className="w-4 h-4 animate-spin shrink-0" />
-          <span>Regenerating medical note with final diagnosis…</span>
+          <span>Generating structured disposition summary…</span>
         </div>
       )}
 
@@ -793,6 +850,18 @@ export default function CaseDetailPage() {
                 variant="default"
                 testId="physical-exam"
                 renderContent={(content) => <PhysicalExamDisplay content={content} />}
+                extraActions={
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs text-blue-500 hover:text-blue-600 hover:bg-blue-50 gap-1"
+                    onClick={() => { setPhysExamText(caseData.physicalExam || ""); setPhysExamDialogOpen(true); }}
+                    data-testid="button-edit-physexam"
+                  >
+                    <Pencil className="w-3 h-3" />
+                    Edit
+                  </Button>
+                }
               />
 
               <Separator />
@@ -1411,6 +1480,63 @@ export default function CaseDetailPage() {
             >
               <Check className="w-4 h-4 mr-1" />
               Save Updated HPI
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Physical Exam Edit Dialog */}
+      <Dialog open={physExamDialogOpen} onOpenChange={(open) => {
+        if (!open) stopPhysExamRecording();
+        setPhysExamDialogOpen(open);
+      }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="w-4 h-4 text-blue-500" />
+              Edit Physical Examination
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground">
+              Dictate or type the updated physical exam findings. Unreported systems will be noted as normal.
+            </p>
+            <div className="relative">
+              <Textarea
+                value={physExamText}
+                onChange={(e) => setPhysExamText(e.target.value)}
+                placeholder="e.g. General: Alert, no distress. Cardiovascular: Regular rate and rhythm. Abdomen: Soft, tender in RUQ..."
+                className={`min-h-[180px] resize-none pr-12 text-sm leading-relaxed ${isRecordingPhysExam ? "border-red-400 ring-2 ring-red-100" : ""}`}
+                data-testid="textarea-physexam"
+              />
+              <Button
+                type="button"
+                variant={isRecordingPhysExam ? "destructive" : "secondary"}
+                size="icon"
+                onClick={isRecordingPhysExam ? stopPhysExamRecording : startPhysExamRecording}
+                className={`absolute right-2 top-2 h-9 w-9 rounded-xl ${isRecordingPhysExam ? "animate-pulse" : ""}`}
+                data-testid="button-voice-physexam"
+              >
+                {isRecordingPhysExam ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+              </Button>
+            </div>
+            {isRecordingPhysExam && (
+              <div className="flex items-center gap-2 text-xs text-red-500">
+                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                Listening… speak clearly
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => { stopPhysExamRecording(); setPhysExamDialogOpen(false); }}>Cancel</Button>
+            <Button
+              onClick={savePhysExam}
+              disabled={!physExamText.trim()}
+              className="bg-gradient-to-r from-blue-600 to-violet-600 text-white"
+              data-testid="button-save-physexam"
+            >
+              <Check className="w-4 h-4 mr-1" />
+              Save Physical Exam
             </Button>
           </DialogFooter>
         </DialogContent>

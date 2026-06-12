@@ -46,7 +46,7 @@ Return a JSON object with EXACTLY these fields:
     "Neurological": "findings or 'unremarkable'"
   },
 
-  "physicalExam": "Formatted physical exam findings. Use line breaks between systems. Include vitals if mentioned. Extract from the examination portion of the dictation — do NOT leave blank if the physician mentioned any exam findings.",
+  "physicalExam": "Complete physical exam findings formatted by system. Always include ALL standard systems below. For any system the physician did not explicitly report as abnormal, write 'Normal' or 'WNL'. Use line breaks between systems. Format exactly as:\nGeneral: [findings or 'Alert, well-appearing, in no acute distress']\nVitals: [BP/HR/RR/Temp/SpO2 or 'WNL']\nHEENT: [findings or 'Normal']\nNeck: [findings or 'Supple, no lymphadenopathy']\nCardiovascular: [findings or 'Regular rate and rhythm, no murmurs']\nRespiratory: [findings or 'Clear to auscultation bilaterally']\nAbdomen: [findings or 'Soft, non-tender, non-distended']\nExtremities: [findings or 'No edema, cyanosis, or clubbing']\nNeurological: [findings or 'Alert and oriented x3, grossly intact']\nSkin: [findings or 'No rashes or lesions']\nOnly mark abnormal if the physician explicitly dictated abnormal findings.",
 
   "assessment": "The physician's clinical assessment, impression, working diagnosis, and reasoning. Extract from the impression/assessment portion of the dictation.",
 
@@ -127,6 +127,115 @@ Extract each section carefully. The dictation contains history, exam findings, a
     patientEducation: parsed.patientEducation || "",
     treatmentRedFlags: parsed.treatmentRedFlags || "",
   };
+}
+
+export interface DispositionNoteInput {
+  patientName: string;
+  age: number;
+  gender: string;
+  mrn?: string | null;
+  chiefComplaint?: string | null;
+  hpi?: string | null;
+  physicalExam?: string | null;
+  ros?: Record<string, string> | null;
+  assessment?: string | null;
+  differentialDiagnosis?: Array<{ diagnosis: string; icdCode: string }> | null;
+  plan?: string | null;
+  disposition: string;
+  finalNotes?: string | null;
+  medications?: Array<{ name: string; dose: string; frequency: string; duration: string; instructions?: string }> | null;
+  patientEducation?: string | null;
+  treatmentRedFlags?: string | null;
+  recordedAt?: string | null;
+}
+
+const DISPOSITION_LABELS: Record<string, string> = {
+  discharged: "Discharged Home",
+  admitted: "Admitted to Hospital",
+  transferred: "Transferred",
+  ama: "Left Against Medical Advice",
+  observation: "Admitted for Observation",
+};
+
+export async function generateStructuredDispositionNote(input: DispositionNoteInput): Promise<string> {
+  const dispositionLabel = DISPOSITION_LABELS[input.disposition] || input.disposition;
+
+  const rosText = input.ros && Object.keys(input.ros).length > 0
+    ? Object.entries(input.ros).map(([sys, findings]) => `${sys}: ${findings}`).join("\n")
+    : "Not recorded";
+
+  const ddxText = input.differentialDiagnosis && input.differentialDiagnosis.length > 0
+    ? input.differentialDiagnosis.map((d, i) => `${i + 1}. ${d.diagnosis} (${d.icdCode})`).join("\n")
+    : "Not recorded";
+
+  const medsText = input.medications && input.medications.length > 0
+    ? input.medications.map(m => `- ${m.name} ${m.dose}, ${m.frequency}${m.duration ? " for " + m.duration : ""}${m.instructions ? " — " + m.instructions : ""}`).join("\n")
+    : "None";
+
+  const prompt = `You are an expert medical scribe. Write a complete, professional, structured clinical disposition summary for the following patient encounter. 
+
+Write it as a proper medical document — NOT a list of fields. Use full clinical sentences and paragraphs where appropriate. It should read like a real hospital discharge or clinical encounter summary.
+
+PATIENT: ${input.patientName}, ${input.age}-year-old ${input.gender}${input.mrn ? `, MRN: ${input.mrn}` : ""}
+DATE: ${input.recordedAt ? new Date(input.recordedAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
+FINAL DISPOSITION: ${dispositionLabel}
+
+CHIEF COMPLAINT: ${input.chiefComplaint || "Not recorded"}
+
+HPI: ${input.hpi || "Not recorded"}
+
+REVIEW OF SYSTEMS:
+${rosText}
+
+PHYSICAL EXAMINATION:
+${input.physicalExam || "Not recorded"}
+
+ASSESSMENT: ${input.assessment || "Not recorded"}
+
+DIFFERENTIAL DIAGNOSIS:
+${ddxText}
+
+TREATMENT PLAN: ${input.plan || "Not recorded"}
+
+MEDICATIONS: 
+${medsText}
+
+PHYSICIAN FINAL NOTES: ${input.finalNotes || "None"}
+
+PATIENT EDUCATION: ${input.patientEducation || "Not recorded"}
+
+WARNING SIGNS / RED FLAGS: ${input.treatmentRedFlags || "Not recorded"}
+
+---
+
+Write the disposition summary now. Use these section headers exactly:
+
+CLINICAL ENCOUNTER SUMMARY
+Patient Information
+Chief Complaint & History
+Review of Systems
+Physical Examination
+Assessment & Differential Diagnosis
+Treatment & Management
+Medications Prescribed
+Disposition & Follow-up
+Patient Education & Instructions
+
+Make the narrative flow naturally. For sections with limited data, write a brief professional statement rather than "Not recorded". End with the disposition decision clearly stated and any follow-up instructions.`;
+
+  const response = await openai.chat.completions.create({
+    model: "gpt-5",
+    messages: [
+      {
+        role: "system",
+        content: "You are an expert clinical documentation specialist. Write professional, complete medical disposition summaries that read as real clinical documents — not template fill-ins.",
+      },
+      { role: "user", content: prompt },
+    ],
+    max_completion_tokens: 2048,
+  });
+
+  return response.choices[0]?.message?.content?.trim() || "";
 }
 
 export async function paraphraseDispositionNote(rawDictation: string): Promise<string> {

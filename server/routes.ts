@@ -488,20 +488,53 @@ export async function registerRoutes(
         disposition: (caseRecord as any).disposition ?? null,
       });
 
-      // Update case with AI-generated content
-      const updated = await storage.updateCase(req.params.id, {
+      const planText = Array.isArray(summary.plan) ? summary.plan.join("\n") : summary.plan;
+
+      // Build the base update payload
+      const updatePayload: Record<string, any> = {
         chiefComplaint: summary.chiefComplaint,
         hpi: summary.hpi,
         ros: summary.ros,
         physicalExam: summary.physicalExam,
         assessment: summary.assessment,
         differentialDiagnosis: summary.differentialDiagnosis,
-        plan: Array.isArray(summary.plan) ? summary.plan.join("\n") : summary.plan,
+        plan: planText,
         patientEducation: summary.patientEducation,
         treatmentRedFlags: summary.treatmentRedFlags,
         status: "completed",
-      });
+      };
 
+      // If disposition is set, also generate a full structured narrative summary
+      const disposition = (caseRecord as any).disposition;
+      if (disposition) {
+        try {
+          const { generateStructuredDispositionNote } = await import("./services/openai.js");
+          const dischargeSummary = await generateStructuredDispositionNote({
+            patientName: caseRecord.patientName,
+            age: caseRecord.age,
+            gender: caseRecord.gender,
+            mrn: (caseRecord as any).mrn ?? null,
+            chiefComplaint: summary.chiefComplaint,
+            hpi: summary.hpi,
+            physicalExam: summary.physicalExam,
+            ros: summary.ros,
+            assessment: summary.assessment,
+            differentialDiagnosis: summary.differentialDiagnosis,
+            plan: planText,
+            disposition,
+            finalNotes: (caseRecord as any).finalNotes ?? null,
+            medications: (caseRecord as any).dischargeMedications ?? null,
+            patientEducation: summary.patientEducation,
+            treatmentRedFlags: summary.treatmentRedFlags,
+            recordedAt: (caseRecord as any).recordedAt?.toString() ?? null,
+          });
+          updatePayload.dischargeSummary = dischargeSummary;
+        } catch (e) {
+          console.error("Failed to generate disposition narrative (non-fatal):", e);
+        }
+      }
+
+      const updated = await storage.updateCase(req.params.id, updatePayload);
       res.json(updated);
     } catch (error) {
       console.error("Error generating summary:", error);
