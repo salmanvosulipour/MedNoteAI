@@ -91,7 +91,7 @@ function PromoCodeSection({ onSuccess }: { onSuccess: () => void }) {
         if (deviceId) authHeaders["X-Device-ID"] = deviceId;
       } catch {}
 
-      const res = await fetch("/api/promo/redeem", {
+      const res = await fetch(resolveUrl("/api/promo/redeem"), {
         method: "POST",
         headers: authHeaders,
         credentials: "include",
@@ -157,10 +157,19 @@ export default function ProfilePage() {
   const { data: billingStatus } = useQuery({
     queryKey: ["/api/billing/status"],
     queryFn: async () => {
-      const authToken = localStorage.getItem("authToken");
+      const headers: Record<string, string> = {};
+      try {
+        const stored = localStorage.getItem("user");
+        if (stored) {
+          const u = JSON.parse(stored);
+          if (u?.token) headers["Authorization"] = `Bearer ${u.token}`;
+        }
+        const deviceId = localStorage.getItem("mednote_device_id");
+        if (deviceId) headers["X-Device-ID"] = deviceId;
+      } catch {}
       const res = await fetch(resolveUrl("/api/billing/status"), {
         credentials: "include",
-        headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+        headers,
       });
       if (!res.ok) return null;
       return res.json();
