@@ -39,20 +39,29 @@ export function useAuth() {
     try {
       const stored = getStoredUser();
       const token = (stored as any)?.token;
+
+      // No stored token = definitely not authenticated; skip the network round-trip
+      // so fresh installs and logged-out states show the login screen immediately.
+      if (!token) {
+        setUser(null);
+        return;
+      }
+
       const headers: Record<string, string> = {};
-      if (token) headers["Authorization"] = `Bearer ${token}`;
+      headers["Authorization"] = `Bearer ${token}`;
       try {
         const deviceId = await getDeviceId();
         headers["X-Device-ID"] = deviceId;
       } catch { /* non-fatal */ }
 
-      // Skip API call if no token and no session cookie — nothing to validate
-      if (!token && window.location.pathname === "/apple-callback") {
-        setUser(null);
-        return;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
+      let res: Response;
+      try {
+        res = await fetch(resolveUrl("/api/auth/user"), { credentials: "include", headers, signal: controller.signal });
+      } finally {
+        clearTimeout(timeout);
       }
-
-      const res = await fetch(resolveUrl("/api/auth/user"), { credentials: "include", headers });
       if (res.ok) {
         const userData = await res.json();
         storeUser({ ...userData, token: token || userData.token });
