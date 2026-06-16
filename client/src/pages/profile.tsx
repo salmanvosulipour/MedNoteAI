@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { ChevronRight, CreditCard, Shield, HelpCircle, LogOut, User, Bell, Camera, Check, X, Edit3, Lock, Server, ShieldCheck, FileCheck, Globe, Tag } from "lucide-react";
+import { ChevronRight, CreditCard, Shield, HelpCircle, LogOut, User, Bell, Camera, Check, X, Edit3, Lock, Server, ShieldCheck, FileCheck, Globe, Tag, Trash2 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
 import { clearStoredUser, useAuth } from "@/hooks/useAuth";
 import { apiRequest, resolveUrl } from "@/lib/queryClient";
+import { Capacitor } from "@capacitor/core";
 
 const SPECIALTIES = [
   "Emergency Medicine",
@@ -183,6 +184,8 @@ export default function ProfilePage() {
   const [editNameValue, setEditNameValue] = useState("");
   const [privacyDialogOpen, setPrivacyDialogOpen] = useState(false);
   const [specialtyOpen, setSpecialtyOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -195,6 +198,34 @@ export default function ProfilePage() {
     }
     clearStoredUser();
     setLocation("/auth");
+  };
+
+  const handleDeleteAccount = async () => {
+    setIsDeleting(true);
+    try {
+      const stored = localStorage.getItem("user");
+      const headers: Record<string, string> = {};
+      if (stored) {
+        const u = JSON.parse(stored);
+        if (u?.token) headers["Authorization"] = `Bearer ${u.token}`;
+      }
+      const deviceId = localStorage.getItem("mednote_device_id");
+      if (deviceId) headers["X-Device-ID"] = deviceId;
+
+      const res = await fetch(resolveUrl("/api/auth/account"), {
+        method: "DELETE",
+        credentials: "include",
+        headers,
+      });
+      if (!res.ok) throw new Error("Failed to delete account");
+      clearStoredUser();
+      setDeleteDialogOpen(false);
+      setLocation("/auth");
+    } catch {
+      toast({ title: "Error", description: "Could not delete account. Please try again.", variant: "destructive" });
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   useEffect(() => {
@@ -509,7 +540,7 @@ export default function ProfilePage() {
            </div>
         </section>
 
-        {!billingStatus?.isAmbassador && !billingStatus?.isSubscribed && (
+        {!Capacitor.isNativePlatform() && !billingStatus?.isAmbassador && !billingStatus?.isSubscribed && (
           <PromoCodeSection onSuccess={() => window.location.reload()} />
         )}
 
@@ -522,6 +553,48 @@ export default function ProfilePage() {
           <LogOut className="w-4 h-4 mr-2" />
           Sign Out
         </Button>
+
+        <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <DialogTrigger asChild>
+            <button
+              className="w-full text-center text-xs text-slate-400 hover:text-red-500 transition-colors py-1"
+              data-testid="button-delete-account"
+            >
+              Delete Account
+            </button>
+          </DialogTrigger>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-red-600">
+                <Trash2 className="w-5 h-5" />
+                Delete Account
+              </DialogTitle>
+              <DialogDescription>
+                This will permanently delete your account and all associated cases and data. This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex gap-3 mt-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setDeleteDialogOpen(false)}
+                disabled={isDeleting}
+                data-testid="button-delete-cancel"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                className="flex-1"
+                onClick={handleDeleteAccount}
+                disabled={isDeleting}
+                data-testid="button-delete-confirm"
+              >
+                {isDeleting ? "Deleting…" : "Delete Account"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <div className="text-center">
             <p className="text-xs text-slate-400">Version 1.0.2 (Build 450)</p>

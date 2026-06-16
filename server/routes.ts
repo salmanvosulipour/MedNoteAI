@@ -897,6 +897,19 @@ export async function registerRoutes(
     }
   });
 
+  // Account deletion
+  app.delete('/api/auth/account', sessionAuth, async (req: any, res) => {
+    try {
+      const userId = req.authUserId;
+      await storage.deleteAccount(userId);
+      req.session?.destroy(() => {});
+      res.json({ success: true });
+    } catch (e) {
+      console.error("[delete-account]", e);
+      res.status(500).json({ message: "Failed to delete account" });
+    }
+  });
+
   // Promo code redemption
   app.post('/api/promo/redeem', sessionAuth, async (req: any, res) => {
     try {

@@ -47,13 +47,20 @@ export default function AiConsentPage({ onAccept }: AiConsentPageProps) {
           className="mb-6 p-5 rounded-2xl bg-white/5 border border-white/10 space-y-4 text-sm text-slate-300 leading-relaxed"
         >
           <p>
-            MedNote AI uses OpenAI to generate clinical notes, summaries, and related outputs.
+            MedNote AI uses third-party AI services to process your clinical data:
+          </p>
+          <ul className="list-disc list-inside space-y-1 text-slate-400 text-xs">
+            <li><span className="text-slate-300 font-medium">Google Gemini</span> — transcribes your audio recordings into text</li>
+            <li><span className="text-slate-300 font-medium">OpenAI GPT</span> — generates structured clinical notes from transcribed text</li>
+          </ul>
+          <p>
+            Data sent may include: audio recordings, transcribed speech, symptoms, examination findings, treatment plans, and other clinical details you enter.
           </p>
           <p>
-            The clinical text you enter or dictate may be sent to OpenAI for processing. This may include symptoms, examination findings, treatment plans, patient context, and other clinical details entered by the user.
+            Neither Google nor OpenAI will use your data to train their models. No data is sold or used for advertising.
           </p>
           <p className="text-white font-medium">
-            By continuing, you agree that this information may be sent to OpenAI for AI processing.
+            By tapping "I Agree" you consent to this data being processed by Google Gemini and OpenAI as described above.
           </p>
         </motion.div>
 

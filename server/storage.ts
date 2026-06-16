@@ -36,6 +36,7 @@ export interface IStorage {
   touchDeviceSession(token: string): Promise<void>;
   deleteDeviceSession(token: string): Promise<void>;
   deleteAllDeviceSessions(userId: string): Promise<void>;
+  deleteAccount(userId: string): Promise<void>;
 
   // Case methods
   getCase(id: string): Promise<Case | undefined>;
@@ -299,6 +300,15 @@ export class DatabaseStorage implements IStorage {
   async deleteCase(id: string): Promise<boolean> {
     const result = await db.delete(cases).where(eq(cases.id, id)).returning();
     return result.length > 0;
+  }
+
+  async deleteAccount(userId: string): Promise<void> {
+    // Device sessions don't cascade — delete manually first
+    await db.delete(deviceSessions).where(eq(deviceSessions.userId, userId)).catch(() => {});
+    // Cases cascade via FK, but delete explicitly to be safe
+    await db.delete(cases).where(eq(cases.userId, userId)).catch(() => {});
+    // Delete the user record — remaining FK cascades handle the rest
+    await db.delete(users).where(eq(users.id, userId));
   }
 }
 
