@@ -195,7 +195,7 @@ export default function SubscriptionPage() {
   const displayPrice =
     selectedPackage?.product?.localizedPriceString ??
     selectedDirectProduct?.localizedPriceString ??
-    (isYearly ? "$99/yr" : "$15/mo");
+    (isYearly ? "$299/yr" : "$39/mo");
 
   const handlePurchase = async () => {
     if (!isNative()) {
@@ -394,7 +394,7 @@ export default function SubscriptionPage() {
               Upgrade to Pro
             </h1>
             <p className="text-slate-400 text-sm max-w-xs mx-auto leading-relaxed">
-              Unlimited notes, ICD-10 coding, and discharge summaries — starting at $15/month.
+              Unlimited notes, ICD-10 coding, and discharge summaries — starting at $39/month.
             </p>
             <div className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
               <Check className="w-3 h-3 text-emerald-400" />
@@ -432,14 +432,12 @@ export default function SubscriptionPage() {
                 <motion.div key={isYearly ? "yearly" : "monthly"} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
                   <div className="flex items-baseline justify-center gap-1 mb-1">
                     <span className="text-6xl font-bold bg-gradient-to-b from-white to-white/70 bg-clip-text text-transparent" data-testid="text-price">
-                      {isNative() && displayPrice
-                        ? displayPrice.replace(/\/(yr|mo|year|month).*/, "")
-                        : (isYearly ? "$99" : "$15")}
+                      {isYearly ? "$299" : "$39"}
                     </span>
                     <span className="text-slate-400 text-base mb-1">/{isYearly ? "year" : "mo"}</span>
                   </div>
                   {isYearly ? (
-                    <p className="text-xs text-emerald-400 font-semibold">Save $81 per year · $8.25/mo</p>
+                    <p className="text-xs text-emerald-400 font-semibold">Save $180 per year · $24.99/mo</p>
                   ) : (
                     <p className="text-xs text-slate-500">Billed monthly · Cancel anytime</p>
                   )}
@@ -494,7 +492,7 @@ export default function SubscriptionPage() {
                 ? "Processing…"
                 : isNative()
                   ? `Start Free Trial — ${displayPrice}`
-                  : `Start Free Trial — ${isYearly ? "$99/yr" : "$15/mo"}`}
+                  : `Start Free Trial — ${isYearly ? "$299/yr" : "$39/mo"}`}
             </Button>
           )}
 
