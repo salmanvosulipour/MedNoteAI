@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 
-export const AI_CONSENT_KEY = "mednote_ai_consent_v1";
+export const AI_CONSENT_KEY = "mednote_ai_consent_v2";
 
 interface AiConsentPageProps {
   onAccept: () => void;
