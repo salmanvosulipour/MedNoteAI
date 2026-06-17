@@ -171,20 +171,9 @@ export default function SubscriptionPage() {
     if (pkgs.length) {
       const match = pkgs.find((p: any) => {
         if (isYearly) {
-          return (
-            p.packageType === "ANNUAL" ||
-            p.identifier === "$rc_annual" ||
-            p.product?.productIdentifier?.toLowerCase().includes("annual") ||
-            p.product?.productIdentifier?.toLowerCase().includes("yearly") ||
-            p.product?.productIdentifier === YEARLY_PRODUCT_ID
-          );
+          return p.product?.productIdentifier === YEARLY_PRODUCT_ID;
         } else {
-          return (
-            p.packageType === "MONTHLY" ||
-            p.identifier === "$rc_monthly" ||
-            p.product?.productIdentifier?.toLowerCase().includes("monthly") ||
-            p.product?.productIdentifier === MONTHLY_PRODUCT_ID
-          );
+          return p.product?.productIdentifier === MONTHLY_PRODUCT_ID;
         }
       });
       return match ?? (isYearly ? pkgs[pkgs.length - 1] : pkgs[0]);

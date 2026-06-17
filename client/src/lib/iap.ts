@@ -3,8 +3,8 @@ import { Purchases, LOG_LEVEL } from "@revenuecat/purchases-capacitor";
 
 const RC_IOS_API_KEY = "appl_qEyiFLlgqTdoUtQrYJtoCXWWvDJ";
 export const ENTITLEMENT_ID = "pro";
-export const MONTHLY_PRODUCT_ID = "mednote.monthly";
-export const YEARLY_PRODUCT_ID = "mednote.yearly";
+export const MONTHLY_PRODUCT_ID = "mednote.yearly";
+export const YEARLY_PRODUCT_ID = "mednote.monthly";
 
 let initialized = false;
 let initPromise: Promise<void> | null = null;
