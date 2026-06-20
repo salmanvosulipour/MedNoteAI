@@ -22,6 +22,8 @@ export default function HomePage() {
     queryKey: ["cases", user?.id],
     queryFn: () => fetchCases(user?.id ? String(user.id) : ""),
     enabled: !!user?.id,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   const recentCases = cases.slice(0, 3);

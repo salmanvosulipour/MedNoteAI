@@ -16,6 +16,8 @@ export default function CasesPage() {
     queryKey: ["cases", user?.id],
     queryFn: () => fetchCases(user?.id ? String(user.id) : ""),
     enabled: !!user?.id,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   const filteredCases = cases.filter((c: Case) => 

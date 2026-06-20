@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { fetchCase, updateCase, invalidateCase, paraphraseNote, deleteCase, generateSummary, type Case } from "@/lib/api";
+import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { isNative } from "@/lib/iap";
@@ -53,6 +54,8 @@ export default function CaseDetailPage() {
     setDeletingCase(true);
     try {
       await deleteCase(id);
+      queryClient.removeQueries({ queryKey: ["case", id] });
+      await queryClient.invalidateQueries({ queryKey: ["cases"] });
       setShowDeleteConfirm(false);
       setLocation("/cases");
     } catch {
