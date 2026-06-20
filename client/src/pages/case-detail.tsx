@@ -65,6 +65,7 @@ export default function CaseDetailPage() {
     queryKey: ["case", id],
     queryFn: () => fetchCase(id) as Promise<ExtendedCase>,
     enabled: id !== "new",
+    refetchInterval: (query) => query.state.data?.status === "processing" ? 3000 : false,
   });
 
   const [diagnosticStudies, setDiagnosticStudies] = useState<DiagnosticStudy[]>([]);
