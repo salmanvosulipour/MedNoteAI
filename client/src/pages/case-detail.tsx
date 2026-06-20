@@ -65,7 +65,8 @@ export default function CaseDetailPage() {
     queryKey: ["case", id],
     queryFn: () => fetchCase(id) as Promise<ExtendedCase>,
     enabled: id !== "new",
-    refetchInterval: (query) => query.state.data?.status === "processing" ? 3000 : false,
+    staleTime: 0,
+    refetchInterval: (query) => query.state.data?.status === "processing" ? 1000 : false,
   });
 
   const [diagnosticStudies, setDiagnosticStudies] = useState<DiagnosticStudy[]>([]);
@@ -646,13 +647,27 @@ export default function CaseDetailPage() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || caseData?.status === "processing") {
     return (
       <MobileLayout showNav={false}>
         <div className="flex items-center justify-center h-full">
-          <div className="text-center">
-            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
-            <p className="text-muted-foreground">Loading case...</p>
+          <div className="text-center px-8">
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+              <Brain className="w-8 h-8 text-primary animate-pulse" />
+            </div>
+            <h2 className="text-lg font-semibold mb-2">
+              {caseData?.status === "processing" ? "Generating Medical Note" : "Loading case..."}
+            </h2>
+            {caseData?.status === "processing" && (
+              <p className="text-muted-foreground text-sm">
+                AI is analyzing your dictation and building the structured note. This usually takes 15–30 seconds.
+              </p>
+            )}
+            <div className="flex justify-center gap-1 mt-4">
+              <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0ms" }} />
+              <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "150ms" }} />
+              <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "300ms" }} />
+            </div>
           </div>
         </div>
       </MobileLayout>
