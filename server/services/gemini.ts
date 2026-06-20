@@ -33,7 +33,7 @@ export async function transcribeAudio(audioBase64: string, mimeType: string): Pr
 export async function cleanMedicalTranscription(rawText: string): Promise<string> {
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-5-mini",
+      model: "gpt-4o-mini",
       messages: [
         {
           role: "system",

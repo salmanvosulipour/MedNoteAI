@@ -697,31 +697,45 @@ export async function registerRoutes(
 
       // Run AI processing in background (after response is sent)
       const rawDictation = parsed.data.dictation;
+      const bgCaseId = req.params.id;
       (async () => {
+        const timeoutMs = 120_000;
+        const timer = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error(`Background job timed out after ${timeoutMs / 1000}s`)), timeoutMs)
+        );
         try {
-          const transcription = await cleanMedicalTranscription(rawDictation);
-          const summary = await generateMedicalSummary({
-            patientName: caseRecord.patientName,
-            age: caseRecord.age,
-            gender: caseRecord.gender,
-            transcription,
-          });
-          await storage.updateCase(req.params.id, {
-            transcription,
-            chiefComplaint: summary.chiefComplaint,
-            hpi: summary.hpi,
-            ros: summary.ros,
-            physicalExam: summary.physicalExam,
-            assessment: summary.assessment,
-            differentialDiagnosis: summary.differentialDiagnosis,
-            plan: Array.isArray(summary.plan) ? summary.plan.join("\n") : summary.plan,
-            patientEducation: summary.patientEducation,
-            treatmentRedFlags: summary.treatmentRedFlags,
-            status: "completed",
-          });
+          await Promise.race([
+            (async () => {
+              console.log(`[bg] Starting AI processing for case ${bgCaseId}`);
+              const transcription = await cleanMedicalTranscription(rawDictation);
+              console.log(`[bg] Transcription cleaned for case ${bgCaseId}`);
+              const summary = await generateMedicalSummary({
+                patientName: caseRecord.patientName,
+                age: caseRecord.age,
+                gender: caseRecord.gender,
+                transcription,
+              });
+              console.log(`[bg] Summary generated for case ${bgCaseId}`);
+              await storage.updateCase(bgCaseId, {
+                transcription,
+                chiefComplaint: summary.chiefComplaint,
+                hpi: summary.hpi,
+                ros: summary.ros,
+                physicalExam: summary.physicalExam,
+                assessment: summary.assessment,
+                differentialDiagnosis: summary.differentialDiagnosis,
+                plan: Array.isArray(summary.plan) ? summary.plan.join("\n") : summary.plan,
+                patientEducation: summary.patientEducation,
+                treatmentRedFlags: summary.treatmentRedFlags,
+                status: "completed",
+              });
+              console.log(`[bg] Case ${bgCaseId} marked completed`);
+            })(),
+            timer,
+          ]);
         } catch (bgError) {
-          console.error("Background processing error:", bgError);
-          await storage.updateCase(req.params.id, { status: "failed" });
+          console.error(`[bg] Background processing error for case ${bgCaseId}:`, bgError);
+          await storage.updateCase(bgCaseId, { status: "failed" }).catch(() => {});
         }
       })();
     } catch (error) {

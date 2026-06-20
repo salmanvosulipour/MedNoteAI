@@ -96,7 +96,7 @@ Extract each section carefully. The dictation contains history, exam findings, a
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       const response = await openai.chat.completions.create({
-        model: "gpt-5",
+        model: "gpt-4o",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
@@ -235,7 +235,7 @@ Patient Education & Instructions
 Make the narrative flow naturally. For sections with limited data, write a brief professional statement rather than "Not recorded". End with the disposition decision clearly stated and any follow-up instructions.`;
 
   const response = await openai.chat.completions.create({
-    model: "gpt-5",
+    model: "gpt-4o",
     messages: [
       {
         role: "system",
@@ -253,7 +253,7 @@ export async function paraphraseDispositionNote(rawDictation: string): Promise<s
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       const response = await openai.chat.completions.create({
-        model: "gpt-5",
+        model: "gpt-4o",
         messages: [
           {
             role: "system",
@@ -285,7 +285,7 @@ export async function generateDiagnosticInterpretation(
   findings: string
 ): Promise<string> {
   const response = await openai.chat.completions.create({
-    model: "gpt-5",
+    model: "gpt-4o",
     messages: [
       {
         role: "system",
