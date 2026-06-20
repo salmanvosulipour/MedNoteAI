@@ -691,56 +691,35 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Dictation text is required" });
       }
 
-      // Mark as processing and respond immediately so iOS doesn't timeout
-      await storage.updateCase(req.params.id, { status: "processing" });
-      res.json({ status: "processing", id: req.params.id });
-
-      // Run AI processing in background (after response is sent)
       const rawDictation = parsed.data.dictation;
-      const bgCaseId = req.params.id;
-      (async () => {
-        const timeoutMs = 120_000;
-        const timer = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error(`Background job timed out after ${timeoutMs / 1000}s`)), timeoutMs)
-        );
-        try {
-          await Promise.race([
-            (async () => {
-              console.log(`[bg] Starting AI processing for case ${bgCaseId}`);
-              const transcription = await cleanMedicalTranscription(rawDictation);
-              console.log(`[bg] Transcription cleaned for case ${bgCaseId}`);
-              const summary = await generateMedicalSummary({
-                patientName: caseRecord.patientName,
-                age: caseRecord.age,
-                gender: caseRecord.gender,
-                transcription,
-              });
-              console.log(`[bg] Summary generated for case ${bgCaseId}`);
-              await storage.updateCase(bgCaseId, {
-                transcription,
-                chiefComplaint: summary.chiefComplaint,
-                hpi: summary.hpi,
-                ros: summary.ros,
-                physicalExam: summary.physicalExam,
-                assessment: summary.assessment,
-                differentialDiagnosis: summary.differentialDiagnosis,
-                plan: Array.isArray(summary.plan) ? summary.plan.join("\n") : summary.plan,
-                patientEducation: summary.patientEducation,
-                treatmentRedFlags: summary.treatmentRedFlags,
-                status: "completed",
-              });
-              console.log(`[bg] Case ${bgCaseId} marked completed`);
-            })(),
-            timer,
-          ]);
-        } catch (bgError) {
-          console.error(`[bg] Background processing error for case ${bgCaseId}:`, bgError);
-          await storage.updateCase(bgCaseId, { status: "failed" }).catch(() => {});
-        }
-      })();
+      console.log(`[process-text] Starting AI processing for case ${req.params.id}`);
+      const transcription = await cleanMedicalTranscription(rawDictation);
+      console.log(`[process-text] Transcription cleaned for case ${req.params.id}`);
+      const summary = await generateMedicalSummary({
+        patientName: caseRecord.patientName,
+        age: caseRecord.age,
+        gender: caseRecord.gender,
+        transcription,
+      });
+      console.log(`[process-text] Summary generated for case ${req.params.id}`);
+      const updatedCase = await storage.updateCase(req.params.id, {
+        transcription,
+        chiefComplaint: summary.chiefComplaint,
+        hpi: summary.hpi,
+        ros: summary.ros,
+        physicalExam: summary.physicalExam,
+        assessment: summary.assessment,
+        differentialDiagnosis: summary.differentialDiagnosis,
+        plan: Array.isArray(summary.plan) ? summary.plan.join("\n") : summary.plan,
+        patientEducation: summary.patientEducation,
+        treatmentRedFlags: summary.treatmentRedFlags,
+        status: "completed",
+      });
+      console.log(`[process-text] Case ${req.params.id} completed`);
+      res.json(updatedCase);
     } catch (error) {
       console.error("Error processing text:", error);
-      await storage.updateCase(req.params.id, { status: "draft" });
+      await storage.updateCase(req.params.id, { status: "failed" });
       res.status(500).json({ error: "Failed to generate medical note" });
     }
   });

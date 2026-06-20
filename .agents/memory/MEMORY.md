@@ -1,0 +1,1 @@
+- [iOS bundled client code](ios-bundled-client.md) — App Store app runs bundled JS; all live fixes must be server-side only, not frontend React changes.
