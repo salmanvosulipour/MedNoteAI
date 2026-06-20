@@ -149,6 +149,21 @@ export async function processAudio(caseId: string, audioBlob: Blob): Promise<Cas
   return res.json();
 }
 
+async function pollCaseUntilComplete(caseId: string): Promise<Case> {
+  const maxAttempts = 90; // 3 minutes max (2s intervals)
+  for (let i = 0; i < maxAttempts; i++) {
+    await new Promise(r => setTimeout(r, 2000));
+    const res = await apiFetch(`${API_BASE}/cases/${caseId}`);
+    if (!res.ok) continue;
+    const data: Case = await res.json();
+    if (data.status === "completed") return data;
+    if (data.status === "failed" || data.status === "draft") {
+      throw new Error("Processing failed. Please try again.");
+    }
+  }
+  throw new Error("Processing timed out. Please try again.");
+}
+
 export async function processText(caseId: string, dictation: string): Promise<Case> {
   const res = await apiFetch(`${API_BASE}/cases/${caseId}/process-text`, {
     method: "POST",
@@ -156,10 +171,16 @@ export async function processText(caseId: string, dictation: string): Promise<Ca
     body: JSON.stringify({ dictation }),
   });
   if (!res.ok) {
-    const error = await res.json();
+    const error = await res.json().catch(() => ({}));
     throw new Error(error.error || "Failed to process dictation");
   }
-  return res.json();
+  const data = await res.json();
+  // Server responds immediately with { status: "processing" } — poll until done
+  if (data.status === "processing") {
+    return pollCaseUntilComplete(caseId);
+  }
+  // Fallback: server returned completed case directly
+  return data as Case;
 }
 
 export async function generateSummary(caseId: string): Promise<Case> {

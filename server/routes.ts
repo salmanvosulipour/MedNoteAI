@@ -691,38 +691,39 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Dictation text is required" });
       }
 
-      // Update status to processing
+      // Mark as processing and respond immediately so iOS doesn't timeout
       await storage.updateCase(req.params.id, { status: "processing" });
+      res.json({ status: "processing", id: req.params.id });
 
+      // Run AI processing in background (after response is sent)
       const rawDictation = parsed.data.dictation;
-
-      // Clean garbled speech-to-text with Gemini before OpenAI note generation
-      const transcription = await cleanMedicalTranscription(rawDictation);
-
-      // Generate medical summary with OpenAI
-      const summary = await generateMedicalSummary({
-        patientName: caseRecord.patientName,
-        age: caseRecord.age,
-        gender: caseRecord.gender,
-        transcription,
-      });
-
-      // Update case with all data
-      const updated = await storage.updateCase(req.params.id, {
-        transcription,
-        chiefComplaint: summary.chiefComplaint,
-        hpi: summary.hpi,
-        ros: summary.ros,
-        physicalExam: summary.physicalExam,
-        assessment: summary.assessment,
-        differentialDiagnosis: summary.differentialDiagnosis,
-        plan: Array.isArray(summary.plan) ? summary.plan.join("\n") : summary.plan,
-        patientEducation: summary.patientEducation,
-        treatmentRedFlags: summary.treatmentRedFlags,
-        status: "completed",
-      });
-
-      res.json(updated);
+      (async () => {
+        try {
+          const transcription = await cleanMedicalTranscription(rawDictation);
+          const summary = await generateMedicalSummary({
+            patientName: caseRecord.patientName,
+            age: caseRecord.age,
+            gender: caseRecord.gender,
+            transcription,
+          });
+          await storage.updateCase(req.params.id, {
+            transcription,
+            chiefComplaint: summary.chiefComplaint,
+            hpi: summary.hpi,
+            ros: summary.ros,
+            physicalExam: summary.physicalExam,
+            assessment: summary.assessment,
+            differentialDiagnosis: summary.differentialDiagnosis,
+            plan: Array.isArray(summary.plan) ? summary.plan.join("\n") : summary.plan,
+            patientEducation: summary.patientEducation,
+            treatmentRedFlags: summary.treatmentRedFlags,
+            status: "completed",
+          });
+        } catch (bgError) {
+          console.error("Background processing error:", bgError);
+          await storage.updateCase(req.params.id, { status: "failed" });
+        }
+      })();
     } catch (error) {
       console.error("Error processing text:", error);
       await storage.updateCase(req.params.id, { status: "draft" });
