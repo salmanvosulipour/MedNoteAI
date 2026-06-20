@@ -5,6 +5,7 @@ import { ChevronLeft, Square, Mic, Sparkles, Loader2, Play, Pause } from "lucide
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { createCase, processText } from "@/lib/api";
+import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -302,6 +303,8 @@ export default function RecordPage() {
       toast({ title: "Generating Medical Note", description: "AI is processing your dictation..." });
       const result = await processText(newCase.id, dictation);
 
+      // Pre-populate the cache so case-detail shows completed data instantly (no stale "Processing" flash)
+      queryClient.setQueryData(["case", result.id], result);
       toast({ title: "Medical Note Generated", description: "Your case has been processed successfully." });
       import("@/lib/iap").then(({ requestInAppReview }) => requestInAppReview()).catch(() => {});
       setLocation(`/cases/${result.id}`);
